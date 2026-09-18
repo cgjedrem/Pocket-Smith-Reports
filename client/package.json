@@ -43,7 +43,7 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^4",
+    "@vitejs/plugin-react": "^5",
     "jsdom": "^25",
     "sass": "^1.102.0",
     "tailwindcss": "^4",
