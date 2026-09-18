@@ -100,9 +100,11 @@ describe("MonthlyReportsPage — AC23 month list", () => {
     render(<MonthlyReportsPage />);
     expect(screen.getByRole("heading", { name: "Monthly Reports" })).toBeInTheDocument();
     const toolbar = await screen.findByRole("toolbar", { name: "Report controls" });
+    // Export/Regenerate buttons appear only after the report fetch resolves;
+    // the toolbar renders earlier, so await the buttons explicitly.
+    await waitFor(() => expect(toolbar).toHaveTextContent("Export PDF"));
     expect(toolbar).toHaveTextContent("2026-07");
     expect(toolbar).toHaveTextContent("Report — 2026-07");
-    expect(toolbar).toHaveTextContent("Export PDF");
     expect(toolbar).toHaveTextContent("Regenerate");
   });
 
