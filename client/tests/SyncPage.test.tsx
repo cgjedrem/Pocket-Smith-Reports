@@ -167,6 +167,9 @@ describe("SyncPage — sync button", () => {
   });
 
   it("start > end → client-side error, no API call", async () => {
+    // Pin now → stable month defaults: end = 2026-07, start = monthAgo(3) = 2026-04.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(2026, 6, 27, 12, 0, 0));
     vi.mocked(getSyncStatus).mockRejectedValue(noSyncError());
     render(<SyncPage />);
     await waitFor(() => expect(screen.getByText(/No sync yet/i)).toBeInTheDocument());

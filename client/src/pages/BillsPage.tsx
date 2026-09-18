@@ -17,7 +17,7 @@ import { BillsStaleBadge } from "@/components/bills/BillsStaleBadge";
 import { BillsWarningBanner } from "@/components/bills/BillsWarningBanner";
 import { EventDetailDialog } from "@/components/bills/EventDetailDialog";
 
-import { useBillsEvents, useBillsSnapshot } from "@/hooks/useBills";
+import { useBillsSnapshot } from "@/hooks/useBills";
 
 function currentMonth(): string {
   const d = new Date();

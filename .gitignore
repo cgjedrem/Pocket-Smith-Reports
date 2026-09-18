@@ -25,6 +25,8 @@ data/*.json
 *.html
 !docs/**/*.pdf
 !docs/**/*.html
+# Vite entry point is source, not report output
+!client/index.html
 # Private reference PDFs — old report sections, real data, never commit
 docs/old sections/
 out/

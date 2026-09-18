@@ -28,7 +28,7 @@ vi.mock("@/hooks/useBillsSourceSubscription", () => ({
   useBillsSourceSubscription: vi.fn(() => 0),
 }));
 
-import { useBillsEvent, useBillsEvents, useBillsSnapshot } from "@/hooks/useBills";
+import { useBillsEvents, useBillsSnapshot } from "@/hooks/useBills";
 import { BillsPage } from "@/pages/BillsPage";
 import { ApiError } from "@/types/api";
 
