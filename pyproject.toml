@@ -9,7 +9,7 @@ description = "PocketSmith sync + reports API"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.140,<0.141",
-    "uvicorn>=0.51,<0.52",
+    "uvicorn>=0.51,<0.54",
     "pydantic>=2",
     "httpx",
 ]
