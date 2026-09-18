@@ -167,7 +167,8 @@ PYTHONPATH=src python -m mega.build_mega --start 2025-08 --end 2026-07 --data-di
 
 ## Supported MoM Synthetic Release Gate
 
-Install Python dependencies with `python -m pip install -r requirements.txt`.
+Install Python dependencies with `uv sync` (reads `pyproject.toml` + `uv.lock`;
+get uv from https://docs.astral.sh/uv/).
 WeasyPrint also needs native libraries: on Windows install a 64-bit GTK 3
 runtime (Pango, Cairo, and GDK-PixBuf); on Linux install those packages and
 system fonts. The Python wheel alone does not provide the Windows GTK DLLs.
@@ -225,7 +226,7 @@ docs/
 Run the current report test slices:
 
 ```bash
-PYTHONPATH=src python -m pytest src/mega/tests src/v4_pipeline/tests src/mom/tests -q
+uv run pytest src/mega/tests src/v4_pipeline/tests src/mom/tests -q
 ```
 
 Run the Mega release gate. It uses only the committed synthetic fixture, builds

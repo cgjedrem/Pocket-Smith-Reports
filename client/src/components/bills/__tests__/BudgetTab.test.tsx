@@ -8,6 +8,7 @@
 // est-vs-real row to the Bills group.
 
 import { render, screen, within } from "@testing-library/react";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import type { FinanceEvent, MonthData, PartnerEconomy } from "@/types/api";
@@ -469,12 +470,7 @@ describe("BudgetTab CC group", () => {
     // budget based — same category txn go to same category planned".
     // Read the component source and assert the literal field name is
     // gone from Section B/C logic.
-    const fs = require("node:fs") as typeof import("node:fs");
-    const path = require("node:path") as typeof import("node:path");
-    const src = fs.readFileSync(
-      path.resolve(__dirname, "../BudgetTab.tsx"),
-      "utf-8",
-    );
+    const src = readFileSync("src/components/bills/BudgetTab.tsx", "utf-8");
     expect(src).not.toMatch(/isMatched/);
   });
 });
