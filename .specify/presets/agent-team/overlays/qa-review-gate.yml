@@ -1,0 +1,28 @@
+# Workflow overlay: qa-review gate between `tasks` and `implement` (task item 4).
+#
+# Install into a project (after `specify workflow add speckit`, which this bundle
+# already performs) with one of:
+#
+#   specify workflow overlay add <this-file>
+#
+# or, post bundle install, from the stable in-project copy shipped by the
+# agent-team preset:
+#
+#   specify workflow overlay add .specify/presets/agent-team/overlays/qa-review-gate.yml
+#
+# The copy under payload/presets/agent-team/overlays/ is a byte-identical
+# duplicate; THIS file is the canonical source — if you edit one, sync the other.
+
+id: qa-review-gate
+extends: speckit
+priority: 10
+enabled: true
+
+edits:
+  - insert_after: tasks
+    step:
+      id: qa-review
+      type: gate
+      message: "QA review gate — hand spec.md, plan.md, and tasks.md to the qa-reviewer persona before implementation. Reviewer must confirm: (a) every spec.md acceptance criterion maps to at least one task, (b) every task has a verifiable done-condition, (c) risky/destructive steps include rollback or verification notes. On FAIL or PASS-WITH-CAVEATS, revise the plan/tasks and re-review. Approve only on explicit QA sign-off."
+      options: [approve, reject]
+      on_reject: abort

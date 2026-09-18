@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "copilot/**"
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu:
+    name: Ubuntu Python 3.13
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10
+        with:
+          enable-cache: true
+      - name: Install Python dependencies
+        run: uv sync --locked
+      - name: Run tests
+        run: uv run pytest src/mega/tests src/v4_pipeline/tests src/mom/tests src/budget_api/tests -q
+
+  windows:
+    name: Windows Python 3.13
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10
+        with:
+          enable-cache: true
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          uv sync --locked
+          $code = $LASTEXITCODE
+          if ($code -ne 0) { exit $code }
+      - name: Run tests
+        shell: pwsh
+        run: |
+          uv run pytest src/mega/tests src/v4_pipeline/tests src/mom/tests src/budget_api/tests -m "not pdf_renderer" -q
+          $code = $LASTEXITCODE
+          if ($code -ne 0) { exit $code }
+
+  client:
+    name: Client build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install dependencies
+        working-directory: client
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        working-directory: client
+        run: pnpm build
+      - name: Test
+        working-directory: client
+        run: pnpm test

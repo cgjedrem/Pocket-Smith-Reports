@@ -1,0 +1,12 @@
+/* KpiCoverSection — 3-col grid for the 3 line charts below the bar chart. */
+.threeCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .threeCol {
+    grid-template-columns: 1fr;
+  }
+}

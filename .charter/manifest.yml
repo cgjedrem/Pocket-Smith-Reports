@@ -1,0 +1,14 @@
+version: 1
+name: "cgjedrem Core Conventions"
+# Toolchain fragments are a PER-PROJECT CHOICE (v1.1.0): select exactly ONE of
+# `toolchain/npm-strict` or `toolchain/pnpm-strict` in /speckit.charter.config —
+# npm end-to-end repos (Frivillig, Ungfritid, path-of-practice) take npm-strict;
+# pnpm repos (ticker, Pocket-Smith client) keep pnpm-strict.
+mandatory_fragments:
+  - "platform/windows-powershell"
+recommended_fragments:
+  - "backend/node-backend"
+  - "client/react-client"
+  - "quality/playwright-e2e"
+  - "toolchain/npm-strict"
+  - "toolchain/pnpm-strict"

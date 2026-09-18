@@ -1,0 +1,62 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+
+# Local memory artifacts - not committed
+memory.md
+docs/memory/
+docs/dreams/
+
+# Vault files (PII — never commit real PocketSmith data)
+data/raw/
+data/private/
+**/data/private/
+data/*.json
+!data/sample_*.json
+
+# Python build artifacts
+*.egg-info/
+
+# Build outputs
+*.pdf
+*.html
+!docs/**/*.pdf
+!docs/**/*.html
+# Vite entry point is source, not report output
+!client/index.html
+# Private reference PDFs — old report sections, real data, never commit
+docs/old sections/
+out/
+/reports/
+build/
+dist/
+
+# Secrets
+.env
+*.key
+api_key
+
+# Frontend (future Vite client)
+client/node_modules/
+client/dist/
+client/.vite/
+
+# Stale tsc emit - .js files next to .tsx sources shadow React modules.
+# Vite resolves `.js` over `.tsx` for extensionless imports.
+client/src/**/*.js
+client/src/**/*.js.map
+client/src/**/*.d.ts
+!client/src/**/*.config.js
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

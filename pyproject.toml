@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pocket-smith-reports"
+version = "0.1.0"
+description = "PocketSmith sync + reports API"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.140,<0.142",
+    "uvicorn>=0.51,<0.54",
+    "pydantic>=2",
+    "httpx",
+    "weasyprint>=70,<71",
+    "pypdf>=6.16.1,<6.19",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+markers = [
+    "pdf_renderer: requires a working native WeasyPrint renderer",
+    "asyncio: marks async tests for pytest-asyncio",
+]

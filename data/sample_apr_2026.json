@@ -1,0 +1,778 @@
+{
+  "transactions": [
+    {
+      "id": 100001,
+      "date": "2026-04-01",
+      "amount": -100.0,
+      "payee": "Payee A 0",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "1",
+        "title": "Test A"
+      }
+    },
+    {
+      "id": 100011,
+      "date": "2026-04-01",
+      "amount": -200.0,
+      "payee": "Payee B 0",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "2",
+        "title": "Test B"
+      }
+    },
+    {
+      "id": 100002,
+      "date": "2026-04-02",
+      "amount": -200.0,
+      "payee": "Payee A 1",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "1",
+        "title": "Test A"
+      }
+    },
+    {
+      "id": 100012,
+      "date": "2026-04-02",
+      "amount": -400.0,
+      "payee": "Payee B 1",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "2",
+        "title": "Test B"
+      }
+    },
+    {
+      "id": 100003,
+      "date": "2026-04-03",
+      "amount": -300.0,
+      "payee": "Payee A 2",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "1",
+        "title": "Test A"
+      }
+    },
+    {
+      "id": 100013,
+      "date": "2026-04-03",
+      "amount": -600.0,
+      "payee": "Payee B 2",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "2",
+        "title": "Test B"
+      }
+    },
+    {
+      "id": 100004,
+      "date": "2026-04-04",
+      "amount": -400.0,
+      "payee": "Payee A 3",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "1",
+        "title": "Test A"
+      }
+    },
+    {
+      "id": 100014,
+      "date": "2026-04-04",
+      "amount": -800.0,
+      "payee": "Payee B 3",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "2",
+        "title": "Test B"
+      }
+    },
+    {
+      "id": 100005,
+      "date": "2026-04-05",
+      "amount": -500.0,
+      "payee": "Payee A 4",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "1",
+        "title": "Test A"
+      }
+    },
+    {
+      "id": 100015,
+      "date": "2026-04-05",
+      "amount": -1000.0,
+      "payee": "Payee B 4",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "2",
+        "title": "Test B"
+      }
+    },
+    {
+      "id": 100006,
+      "date": "2026-04-06",
+      "amount": -600.0,
+      "payee": "Payee A 5",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "1",
+        "title": "Test A"
+      }
+    },
+    {
+      "id": 100016,
+      "date": "2026-04-06",
+      "amount": -1200.0,
+      "payee": "Payee B 5",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "2",
+        "title": "Test B"
+      }
+    },
+    {
+      "id": 100007,
+      "date": "2026-04-07",
+      "amount": -700.0,
+      "payee": "Payee A 6",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "1",
+        "title": "Test A"
+      }
+    },
+    {
+      "id": 100017,
+      "date": "2026-04-07",
+      "amount": -1400.0,
+      "payee": "Payee B 6",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "2",
+        "title": "Test B"
+      }
+    },
+    {
+      "id": 100008,
+      "date": "2026-04-08",
+      "amount": -800.0,
+      "payee": "Payee A 7",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "1",
+        "title": "Test A"
+      }
+    },
+    {
+      "id": 100018,
+      "date": "2026-04-08",
+      "amount": -1600.0,
+      "payee": "Payee B 7",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "2",
+        "title": "Test B"
+      }
+    },
+    {
+      "id": 100009,
+      "date": "2026-04-09",
+      "amount": -900.0,
+      "payee": "Payee A 8",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "1",
+        "title": "Test A"
+      }
+    },
+    {
+      "id": 100019,
+      "date": "2026-04-09",
+      "amount": -1800.0,
+      "payee": "Payee B 8",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "2",
+        "title": "Test B"
+      }
+    },
+    {
+      "id": 100010,
+      "date": "2026-04-10",
+      "amount": -1000.0,
+      "payee": "Payee A 9",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "1",
+        "title": "Test A"
+      }
+    },
+    {
+      "id": 100020,
+      "date": "2026-04-10",
+      "amount": -2000.0,
+      "payee": "Payee B 9",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "2",
+        "title": "Test B"
+      }
+    },
+    {
+      "id": 100021,
+      "date": "2026-04-11",
+      "amount": 30000.0,
+      "payee": "Salary Payee A",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "3",
+        "title": "Test Income Salary"
+      }
+    },
+    {
+      "id": 100022,
+      "date": "2026-04-11",
+      "amount": 25000.0,
+      "payee": "Salary Payee B",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "3",
+        "title": "Test Income Salary"
+      }
+    },
+    {
+      "id": 100023,
+      "date": "2026-04-12",
+      "amount": 1500.0,
+      "payee": "Freelance Payee A",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "4",
+        "title": "Test Income Third Party"
+      }
+    },
+    {
+      "id": 100024,
+      "date": "2026-04-12",
+      "amount": 0.0,
+      "payee": "Freelance Payee B",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "4",
+        "title": "Test Income Third Party"
+      }
+    },
+    {
+      "id": 100025,
+      "date": "2026-04-13",
+      "amount": 2000.0,
+      "payee": "Savings Move A",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "5",
+        "title": "Test Savings"
+      }
+    },
+    {
+      "id": 100026,
+      "date": "2026-04-13",
+      "amount": 1000.0,
+      "payee": "Savings Move B",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "5",
+        "title": "Test Savings"
+      }
+    },
+    {
+      "id": 100027,
+      "date": "2026-04-14",
+      "amount": 3000.0,
+      "payee": "Savings Deposit A",
+      "account": {
+        "id": "3",
+        "name": "Fixture A Savings"
+      },
+      "transaction_account": {
+        "id": "3",
+        "name": "Fixture A Savings"
+      },
+      "category": {
+        "id": "5",
+        "title": "Test Savings"
+      }
+    },
+    {
+      "id": 100028,
+      "date": "2026-04-15",
+      "amount": -800.0,
+      "payee": "Savings Withdrawal B",
+      "account": {
+        "id": "4",
+        "name": "Fixture B Savings"
+      },
+      "transaction_account": {
+        "id": "4",
+        "name": "Fixture B Savings"
+      },
+      "category": {
+        "id": "5",
+        "title": "Test Savings"
+      }
+    },
+    {
+      "id": 100029,
+      "date": "2026-04-16",
+      "amount": -1200.0,
+      "payee": "Home Payee A",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "6",
+        "title": "Test Home"
+      }
+    },
+    {
+      "id": 100030,
+      "date": "2026-04-16",
+      "amount": -600.0,
+      "payee": "Home Payee B",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "6",
+        "title": "Test Home"
+      }
+    },
+    {
+      "id": 100031,
+      "date": "2026-04-17",
+      "amount": -500.0,
+      "payee": "Home Reimb A",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "6",
+        "title": "Test Home"
+      }
+    },
+    {
+      "id": 100032,
+      "date": "2026-04-17",
+      "amount": 500.0,
+      "payee": "Home Reimb B",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "6",
+        "title": "Test Home"
+      }
+    },
+    {
+      "id": 100033,
+      "date": "2026-04-18",
+      "amount": -700.0,
+      "payee": "Personal Payee Fixture A 1",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "7",
+        "title": "Test Personal Fixture A"
+      }
+    },
+    {
+      "id": 100034,
+      "date": "2026-04-19",
+      "amount": -300.0,
+      "payee": "Personal Payee Fixture A 2",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "7",
+        "title": "Test Personal Fixture A"
+      }
+    },
+    {
+      "id": 100035,
+      "date": "2026-04-18",
+      "amount": -900.0,
+      "payee": "Personal Payee Fixture B 1",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "8",
+        "title": "Test Personal Fixture B"
+      }
+    },
+    {
+      "id": 100036,
+      "date": "2026-04-19",
+      "amount": -300.0,
+      "payee": "Personal Payee Fixture B 2",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "8",
+        "title": "Test Personal Fixture B"
+      }
+    },
+    {
+      "id": 100037,
+      "date": "2026-04-20",
+      "amount": -2500.0,
+      "payee": "Trip Payee A",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "9",
+        "title": "Test Trips"
+      }
+    },
+    {
+      "id": 100038,
+      "date": "2026-04-20",
+      "amount": -1500.0,
+      "payee": "Trip Payee B",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "9",
+        "title": "Test Trips"
+      }
+    },
+    {
+      "id": 100039,
+      "date": "2026-04-21",
+      "amount": -3000.0,
+      "payee": "CC Payment A",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "10",
+        "title": "Test CC Payment"
+      }
+    },
+    {
+      "id": 100040,
+      "date": "2026-04-21",
+      "amount": -2000.0,
+      "payee": "CC Payment B",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "10",
+        "title": "Test CC Payment"
+      }
+    },
+    {
+      "id": 100041,
+      "date": "2026-04-22",
+      "amount": 1000.0,
+      "payee": "CC Credit A",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "10",
+        "title": "Test CC Payment"
+      }
+    },
+    {
+      "id": 100042,
+      "date": "2026-04-23",
+      "amount": -400.0,
+      "payee": "Excluded Payee A",
+      "account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "transaction_account": {
+        "id": "1",
+        "name": "Fixture A Checking"
+      },
+      "category": {
+        "id": "11",
+        "title": "Test Excluded"
+      }
+    },
+    {
+      "id": 100043,
+      "date": "2026-04-23",
+      "amount": -600.0,
+      "payee": "Excluded Payee B",
+      "account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "transaction_account": {
+        "id": "2",
+        "name": "Fixture B Checking"
+      },
+      "category": {
+        "id": "11",
+        "title": "Test Excluded"
+      }
+    }
+  ]
+}

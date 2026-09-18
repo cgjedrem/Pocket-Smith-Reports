@@ -1,0 +1,213 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-09-03T00:00:00Z",
+  "catalog_url": "https://raw.githubusercontent.com/enso-dev-beep/enso-skills-and-scripts/main/bundles/cgjedrem-spec-stack/catalogs/extensions.catalog.json",
+  "extensions": {
+    "brownfield": {
+      "name": "Brownfield Bootstrap",
+      "id": "brownfield",
+      "description": "Bootstrap spec-kit for existing codebases \u2014 auto-discover architecture and adopt SDD incrementally",
+      "author": "Quratulain-bilal",
+      "version": "1.0.0",
+      "download_url": "https://codeload.github.com/Quratulain-bilal/spec-kit-brownfield/zip/7479c5206a573e95890cbc252dd30806121a44bb",
+      "repository": "https://github.com/Quratulain-bilal/spec-kit-brownfield",
+      "documentation": "https://github.com/Quratulain-bilal/spec-kit-brownfield/blob/main/README.md",
+      "license": "MIT",
+      "category": "process",
+      "effect": "read-write",
+      "requires": {
+        "speckit_version": ">=0.4.0"
+      },
+      "provides": {
+        "commands": 4,
+        "hooks": 1
+      },
+      "tags": [
+        "brownfield",
+        "bootstrap",
+        "existing-project",
+        "migration",
+        "onboarding"
+      ],
+      "verified": false
+    },
+    "charter": {
+      "name": "Charter \u2014 Constitution Composer",
+      "id": "charter",
+      "description": "Compose project constitutions from shared fragment registries",
+      "author": "sakitA",
+      "version": "0.6.0",
+      "download_url": "https://codeload.github.com/Fyloss/spec-kit-charter/zip/d983dfc7bf9705f6270927c3b26642d9aeb26a94",
+      "repository": "https://github.com/Fyloss/spec-kit-charter",
+      "homepage": "https://github.com/Fyloss/spec-kit-charter",
+      "documentation": "https://github.com/Fyloss/spec-kit-charter/blob/master/README.md",
+      "license": "MIT",
+      "category": "process",
+      "effect": "read-write",
+      "requires": {
+        "speckit_version": ">=0.11.9",
+        "commands": [
+          "speckit.constitution"
+        ]
+      },
+      "provides": {
+        "commands": 5,
+        "hooks": 1
+      },
+      "tags": [
+        "constitution",
+        "governance",
+        "multi-repo",
+        "composition",
+        "fragments"
+      ],
+      "verified": false
+    },
+    "conduct": {
+      "name": "Conduct Extension",
+      "id": "conduct",
+      "description": "Executes a single spec-kit phase via sub-agent delegation to reduce context pollution.",
+      "author": "twbrandon7",
+      "version": "1.0.0",
+      "download_url": "https://codeload.github.com/twbrandon7/spec-kit-conduct-ext/zip/0226d7a1c147657e150377948f52d4c4cc15f4ad",
+      "repository": "https://github.com/twbrandon7/spec-kit-conduct-ext",
+      "homepage": "https://github.com/twbrandon7/spec-kit-conduct-ext",
+      "documentation": "https://github.com/twbrandon7/spec-kit-conduct-ext/blob/main/README.md",
+      "license": "MIT",
+      "category": "process",
+      "effect": "read-write",
+      "requires": {
+        "speckit_version": ">=0.3.1",
+        "commands": [
+          "speckit.specify",
+          "speckit.plan",
+          "speckit.tasks",
+          "speckit.implement"
+        ]
+      },
+      "provides": {
+        "commands": 1,
+        "hooks": 0
+      },
+      "tags": [
+        "conduct",
+        "workflow",
+        "automation"
+      ],
+      "verified": false
+    },
+    "red-team": {
+      "name": "Red Team",
+      "id": "red-team",
+      "description": "Adversarial review of functional specs before /speckit.plan. Parallel adversarial lens agents catch hostile actors, silent failures, and regulatory blind spots.",
+      "author": "Ash Brener",
+      "version": "1.0.3",
+      "download_url": "https://codeload.github.com/ashbrener/spec-kit-red-team/zip/4f749df9066ed0d4d7517034f10964a1903864cb",
+      "repository": "https://github.com/ashbrener/spec-kit-red-team",
+      "homepage": "https://github.com/ashbrener/spec-kit-red-team",
+      "documentation": "https://github.com/ashbrener/spec-kit-red-team/blob/main/README.md",
+      "license": "MIT",
+      "category": "process",
+      "effect": "read-write",
+      "requires": {
+        "speckit_version": ">=0.1.0"
+      },
+      "provides": {
+        "commands": 2,
+        "hooks": 1
+      },
+      "tags": [
+        "adversarial-review",
+        "quality-gate",
+        "spec-hardening",
+        "pre-plan",
+        "audit"
+      ],
+      "verified": false
+    },
+    "plan-review-gate": {
+      "name": "Plan Review Gate",
+      "id": "plan-review-gate",
+      "description": "Spec Kit extension for requiring a merge request before proceeding with /speckit.tasks",
+      "author": "luno",
+      "version": "1.0.0",
+      "download_url": "https://codeload.github.com/luno/spec-kit-plan-review-gate/zip/11340d1d0608228e93b065825196deacbfb68e43",
+      "repository": "https://github.com/luno/spec-kit-plan-review-gate",
+      "homepage": "https://github.com/luno/spec-kit-plan-review-gate",
+      "documentation": "https://github.com/luno/spec-kit-plan-review-gate/blob/main/README.md",
+      "license": "MIT",
+      "category": "process",
+      "effect": "read-only",
+      "requires": {
+        "speckit_version": ">=0.1.0"
+      },
+      "provides": {
+        "commands": 1,
+        "hooks": 1
+      },
+      "tags": [
+        "review",
+        "quality",
+        "workflow",
+        "gate"
+      ],
+      "verified": false
+    },
+    "trace": {
+      "name": "Spec Trace (patched)",
+      "id": "trace",
+      "description": "Build a requirement \u2192 test traceability matrix from spec.md and the test suite \u2014 surface untested requirements and orphan tests. NOTE: this entry serves the manifest-patched copy shipped inside cgjedrem-spec-stack (upstream extension.yml is incompatible with spec-kit >= 1.0.x: uses requires.spec_kit and bare-string provides.commands).",
+      "author": "Quratulain-bilal (manifest patch by cgjedrem)",
+      "version": "1.0.0",
+      "download_url": "https://raw.githubusercontent.com/enso-dev-beep/enso-skills-and-scripts/93bd9db45449ae495d422bf67b0edd7c82c4e04d/bundles/cgjedrem-spec-stack/payload/dist/trace-1.0.0.zip",
+      "repository": "https://github.com/Quratulain-bilal/spec-kit-trace",
+      "documentation": "https://github.com/Quratulain-bilal/spec-kit-trace/blob/main/README.md",
+      "license": "MIT",
+      "category": "verification",
+      "effect": "read-write",
+      "requires": {
+        "speckit_version": ">=0.4.0"
+      },
+      "provides": {
+        "commands": 4,
+        "hooks": 0
+      },
+      "tags": [
+        "traceability",
+        "testing",
+        "coverage",
+        "compliance",
+        "requirements"
+      ],
+      "verified": false
+    },
+    "bugfix": {
+      "name": "Bugfix Workflow",
+      "id": "bugfix",
+      "description": "Structured bugfix workflow \u2014 capture bugs, trace to spec artifacts, and patch specs surgically",
+      "author": "Quratulain-bilal",
+      "version": "1.1.0",
+      "download_url": "https://codeload.github.com/Quratulain-bilal/spec-kit-bugfix/zip/b2707c171f5672c7d9bb3c6cdc87a678b019da81",
+      "repository": "https://github.com/Quratulain-bilal/spec-kit-bugfix",
+      "documentation": "https://github.com/Quratulain-bilal/spec-kit-bugfix/blob/main/README.md",
+      "license": "MIT",
+      "category": "process",
+      "effect": "read-write",
+      "requires": {
+        "speckit_version": ">=0.4.0"
+      },
+      "provides": {
+        "commands": 4,
+        "hooks": 1
+      },
+      "tags": [
+        "bugfix",
+        "debugging",
+        "workflow",
+        "traceability",
+        "maintenance"
+      ],
+      "verified": false
+    }
+  }
+}

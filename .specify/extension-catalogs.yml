@@ -1,0 +1,6 @@
+catalogs:
+- name: cgjedrem-stack
+  url: https://raw.githubusercontent.com/enso-dev-beep/enso-skills-and-scripts/main/bundles/cgjedrem-spec-stack/catalogs/extensions.catalog.json
+  priority: 10
+  install_allowed: true
+  description: ''
