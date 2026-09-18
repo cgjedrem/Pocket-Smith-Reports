@@ -123,7 +123,7 @@ export function CommonSection({ report }: CommonSectionProps) {
                 c.partner_b_paid.some((v) => v)),
           )
           .sort((a, b) => sumArr(b.total) - sumArr(a.total))
-          .map((c, idx) => {
+          .map((c) => {
             const catPartnerA = months.map(
               (_, i) =>
                 (c.partner_a_paid[i] ?? 0) - (c.partner_a_received[i] ?? 0),

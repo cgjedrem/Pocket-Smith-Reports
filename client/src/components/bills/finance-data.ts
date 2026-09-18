@@ -270,6 +270,7 @@ function buildMonth(
       title: `Salary — ${partner.label}`,
       type: "bill",
       category: "Income",
+      account: "Checking",
       partner,
       amount: perPartner[partner.partner_id].salary,
     });
@@ -282,6 +283,7 @@ function buildMonth(
       title: `Savings transfer — ${partner.label}`,
       type: "bill",
       category: "Savings",
+      account: "Savings",
       partner,
       amount: -savings,
     });
@@ -304,6 +306,7 @@ function buildMonth(
       title,
       type: "bill",
       category: cat,
+      account: "Checking",
       partner,
       amount: -amount,
     });
@@ -324,6 +327,7 @@ function buildMonth(
       title,
       type: "buy",
       category: cat,
+      account: "Credit Card",
       partner,
       amount: -amount,
     });
@@ -430,6 +434,11 @@ function buildMonth(
       budget,
       ccUsage,
       estimatedCcBill,
+      // Mock is a forward-looking month — no real statement paid yet.
+      realCcBill: null,
+      realCcBillLabel: "",
+      realBills: null,
+      realBillsLabel: "",
       savingsBalance: savingsBalance,
       savingsContribution: savingsContribution,
       savingsPlanned,

@@ -48,7 +48,6 @@ export function StackedBarLineChart({
   width = 760,
   height = 240,
   showValueLabels = false,
-  showPct = false,
   partnerALabel = "Partner A",
   partnerBLabel = "Partner B",
 }: StackedBarLineChartProps) {
