@@ -23,7 +23,7 @@ Issues and pull requests are welcome. This is an open-source project: good-quali
 
 ## Local secret guard
 
-Once per clone: `pip install pre-commit` then `pre-commit install`. The hooks
+Once per clone: `uv tool install pre-commit` then `pre-commit install`. The hooks
 block accidental commits of secrets, private keys, and large files, and mirror
 the `Secret Scanning` CI job.
 
@@ -146,7 +146,7 @@ Capture `$LASTEXITCODE` immediately after **each** native command and gate every
 dependent step on that code, including dependency installation. For example:
 
 ```powershell
-python -m pytest src/budget_api/tests -q
+uv run pytest src/budget_api/tests -q
 $code = $LASTEXITCODE
 if ($code -ne 0) { exit $code }
 # Only now proceed to an authorized dependent step.
