@@ -181,7 +181,7 @@ def test_event_detail_full_event_body(client, tmp_private_dir):
         day=15,
         category="Salary",
         type="salary",
-        account="FxA Check Handelsbanken",
+        account="FxA Check Nordic Bank",
         partner="Fixture A",
         amount=42000.0,
         is_cc_payment=False,
@@ -207,7 +207,7 @@ def test_event_detail_full_event_body(client, tmp_private_dir):
     assert body["day"] == 15
     assert body["title"] == "Salary"
     assert body["type"] == "salary"
-    assert body["account"] == "FxA Check Handelsbanken"
+    assert body["account"] == "FxA Check Nordic Bank"
     assert body["partner"] == "Fixture A"
     assert body["amount"] == 42000.0
     assert body["is_cc_payment"] is False

@@ -189,7 +189,7 @@ class TestDeletePartner:
         assert "accounts still bound" in resp.json()["detail"]
 
     def test_ac18_no_accounts_204(self, client, write_mappings):
-        # partner_b has bound accounts in sample_mappings (5376190 = partner_b)
+        # partner_b has bound accounts in sample_mappings (1100007 = partner_b)
         # Create a new partner with no accounts.
         client.post("/api/partners", json={"label": "Lonely"})
         resp = client.delete("/api/partners/lonely")

@@ -66,7 +66,7 @@ class TestOwnerMigration:
     def test_migrates_owner_to_partner_id(self, sample_old_mappings):
         changed = sync_runner._migrate_owner_to_partner_id(sample_old_mappings)
         assert changed is True
-        acc = sample_old_mappings["accounts"]["4110210"]
+        acc = sample_old_mappings["accounts"]["1100001"]
         assert "owner" not in acc
         assert acc["partner_id"] == "partner_a"
 
@@ -93,7 +93,7 @@ class TestOwnerMigration:
 class TestAccountMerge:
     def test_new_account_added_unbound(self, sample_mappings):
         ps_accounts = [
-            {"id": 4110210, "name": "FxA Check Updated"},
+            {"id": 1100001, "name": "FxA Check Updated"},
             {"id": 9999999, "name": "New Bank Account"},
         ]
         sync_runner._merge_accounts_into_mappings(ps_accounts, sample_mappings)
@@ -104,30 +104,30 @@ class TestAccountMerge:
         assert new["name"] == "New Bank Account"
 
     def test_existing_account_preserved(self, sample_mappings):
-        ps_accounts = [{"id": 4110210, "name": "FxA Check New Name"}]
+        ps_accounts = [{"id": 1100001, "name": "FxA Check New Name"}]
         sync_runner._merge_accounts_into_mappings(ps_accounts, sample_mappings)
-        acc = sample_mappings["accounts"]["4110210"]
+        acc = sample_mappings["accounts"]["1100001"]
         assert acc["partner_id"] == "partner_a"
         assert acc["type"] == "checking"
         assert acc["name"] == "FxA Check New Name"
 
     def test_gone_account_excluded(self, sample_mappings):
-        # 4110213 not in fresh PS catalog → excluded.
-        ps_accounts = [{"id": 4110210, "name": "FxA Check"}]
+        # 1100002 not in fresh PS catalog → excluded.
+        ps_accounts = [{"id": 1100001, "name": "FxA Check"}]
         sync_runner._merge_accounts_into_mappings(ps_accounts, sample_mappings)
-        gone = sample_mappings["accounts"]["4110213"]
+        gone = sample_mappings["accounts"]["1100002"]
         assert gone["excluded"] is True
         # Binding preserved.
         assert gone["partner_id"] == "partner_a"
 
     def test_reactivated_account(self, sample_mappings):
         # Mark excluded, then re-merge with PS catalog including it.
-        sample_mappings["accounts"]["4110210"]["excluded"] = True
-        ps_accounts = [{"id": 4110210, "name": "FxA Check"}]
+        sample_mappings["accounts"]["1100001"]["excluded"] = True
+        ps_accounts = [{"id": 1100001, "name": "FxA Check"}]
         sync_runner._merge_accounts_into_mappings(ps_accounts, sample_mappings)
         # Merge does NOT auto-unexclude — preserves existing excluded flag.
         # (Existing entry updated name only, excluded stays as-is.)
-        acc = sample_mappings["accounts"]["4110210"]
+        acc = sample_mappings["accounts"]["1100001"]
         assert acc["name"] == "FxA Check"
 
     def test_empty_ps_accounts_all_excluded(self, sample_mappings):
@@ -137,12 +137,12 @@ class TestAccountMerge:
 
     def test_skips_invalid_ps_account(self, sample_mappings):
         ps_accounts = [
-            {"id": 4110210, "name": "ok"},
+            {"id": 1100001, "name": "ok"},
             {"no_id": True},
             "not a dict",
         ]
         sync_runner._merge_accounts_into_mappings(ps_accounts, sample_mappings)
-        assert "4110210" in sample_mappings["accounts"]
+        assert "1100001" in sample_mappings["accounts"]
 
 
 # --------------------------------------------------------------------------- #
@@ -309,7 +309,7 @@ class TestSyncAll:
             "schema_version": 1,
             "partners": {"partner_a": {"label": "Fixture A"}},
             "accounts": {
-                "4110210": {
+                "1100001": {
                     "name": "old name",
                     "partner_id": "partner_a",
                     "type": "checking",
@@ -327,10 +327,10 @@ class TestSyncAll:
             (tmp_private_dir / "account_mappings.json").read_text(encoding="utf-8")
         )
         # Existing preserved + new added.
-        assert "4110210" in updated["accounts"]
-        assert updated["accounts"]["4110210"]["partner_id"] == "partner_a"
-        assert "4110213" in updated["accounts"]
-        assert updated["accounts"]["4110213"]["partner_id"] is None
+        assert "1100001" in updated["accounts"]
+        assert updated["accounts"]["1100001"]["partner_id"] == "partner_a"
+        assert "1100002" in updated["accounts"]
+        assert updated["accounts"]["1100002"]["partner_id"] is None
 
     def test_migrates_owner_on_sync(
         self, tmp_private_dir, tmp_env_file, mock_ps_client
@@ -341,7 +341,7 @@ class TestSyncAll:
             "schema_version": 1,
             "partners": {"partner_a": {"label": "Fixture A"}},
             "accounts": {
-                "4110210": {"name": "old", "owner": "partner_a", "excluded": False}
+                "1100001": {"name": "old", "owner": "partner_a", "excluded": False}
             },
         }
         (tmp_private_dir / "account_mappings.json").write_text(
@@ -353,7 +353,7 @@ class TestSyncAll:
         updated = json.loads(
             (tmp_private_dir / "account_mappings.json").read_text(encoding="utf-8")
         )
-        acc = updated["accounts"]["4110210"]
+        acc = updated["accounts"]["1100001"]
         assert "owner" not in acc
         assert acc["partner_id"] == "partner_a"
 

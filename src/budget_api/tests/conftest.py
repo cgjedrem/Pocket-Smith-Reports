@@ -68,20 +68,20 @@ def sample_mappings() -> dict[str, Any]:
             "partner_b": {"label": "Fixture B"},
         },
         "accounts": {
-            "4110210": {
-                "name": "FxA Check Handelsbanken",
+            "1100001": {
+                "name": "FxA Check Nordic Bank",
                 "partner_id": "partner_a",
                 "type": "checking",
                 "excluded": False,
             },
-            "4110213": {
-                "name": "FxA Savings Handelsbanken",
+            "1100002": {
+                "name": "FxA Savings Nordic Bank",
                 "partner_id": "partner_a",
                 "type": "savings",
                 "excluded": False,
             },
-            "5376190": {
-                "name": "FxB Check Handelsbanken",
+            "1100007": {
+                "name": "FxB Check Nordic Bank",
                 "partner_id": "partner_b",
                 "type": "checking",
                 "excluded": False,
@@ -100,7 +100,7 @@ def sample_old_mappings() -> dict[str, Any]:
             "partner_b": {"label": "Fixture B"},
         },
         "accounts": {
-            "4110210": {
+            "1100001": {
                 "name": "FxA Check",
                 "owner": "partner_a",
                 "excluded": False,
@@ -116,9 +116,9 @@ def sample_catalog() -> dict[str, Any]:
         "start": "2026-07",
         "end": "2026-07",
         "accounts": [
-            {"id": 4110210, "name": "FxA Check Handelsbanken"},
-            {"id": 4110213, "name": "FxA Savings Handelsbanken"},
-            {"id": 5376190, "name": "FxB Check Handelsbanken"},
+            {"id": 1100001, "name": "FxA Check Nordic Bank"},
+            {"id": 1100002, "name": "FxA Savings Nordic Bank"},
+            {"id": 1100007, "name": "FxB Check Nordic Bank"},
         ],
     }
 
@@ -202,8 +202,8 @@ def mock_ps_client(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     mock_instance.get_me.return_value = {"id": 12345}
     mock_instance.get_accounts.return_value = [{"id": 1, "name": "Acc1"}]
     mock_instance.get_transaction_accounts.return_value = [
-        {"id": 4110210, "name": "FxA Check"},
-        {"id": 4110213, "name": "FxA Savings"},
+        {"id": 1100001, "name": "FxA Check"},
+        {"id": 1100002, "name": "FxA Savings"},
     ]
     mock_instance.get_transactions.return_value = [{"id": "tx1"}]
     mock_instance.get_transactions_for_account.return_value = []

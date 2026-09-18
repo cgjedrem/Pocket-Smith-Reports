@@ -248,7 +248,7 @@ class TestSyncEdgeCases:
             (tmp_private_dir / "account_mappings.json").read_text(encoding="utf-8")
         )
         # mock_ps_client returns 2 transaction_accounts.
-        for acc_id in ("4110210", "4110213"):
+        for acc_id in ("1100001", "1100002"):
             assert acc_id in updated["accounts"]
             assert updated["accounts"][acc_id]["partner_id"] is None
             assert updated["accounts"][acc_id]["type"] is None
@@ -274,7 +274,7 @@ class TestSyncEdgeCases:
         (tmp_private_dir / "account_mappings.json").write_text(
             json.dumps(mappings), encoding="utf-8"
         )
-        # mock returns 4110210 + 4110213, not 7777777.
+        # mock returns 1100001 + 1100002, not 7777777.
         sync_runner.sync_all("2026-07", "2026-07")
         updated = json.loads(
             (tmp_private_dir / "account_mappings.json").read_text(encoding="utf-8")

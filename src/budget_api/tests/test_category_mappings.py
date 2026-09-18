@@ -164,7 +164,7 @@ class TestUpdateMapping:
         """PUT preserves account_roles in detailed_section_mapping.json."""
         # Add account_roles to sections.
         sections = _mock_sections()
-        sections["account_roles"] = {"4110213": "savings_partner_a"}
+        sections["account_roles"] = {"1100002": "savings_partner_a"}
         (storage.DETAILED_SECTION_MAPPING_PATH).write_text(
             json.dumps(sections), encoding="utf-8"
         )
@@ -177,7 +177,7 @@ class TestUpdateMapping:
             (storage.DETAILED_SECTION_MAPPING_PATH).read_text(encoding="utf-8")
         )
         # account_roles preserved.
-        assert updated["account_roles"]["4110213"] == "savings_partner_a"
+        assert updated["account_roles"]["1100002"] == "savings_partner_a"
         assert updated["category_sections"]["100"] == "savings"
 
     def test_update_no_existing_roles_file(self, client, tmp_private_dir):

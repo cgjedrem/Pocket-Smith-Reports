@@ -50,8 +50,8 @@ Status file: `.sync_status.json` with `pending → running → success | failed`
 
 | Partner | Bills accounts | Savings accounts | CC accounts |
 |---|---|---|---|
-| Fixture A | 1: `A-Check Handelsbanken` | 2: `A-Savings HB`, `A-Saving Morrow` | 3: `A-CC HB`, `A-CC SR Bank`, `A-CC Morrow` |
-| Fixture B | 1: `B-Check Handelsbanken` | 1: `B-Savings HB` | 1: `B-CC HB` |
+| Fixture A | 1: `A-Check Nordic Bank` | 2: `A-Savings NB`, `A-Saving Bank B` | 3: `A-CC NB`, `A-CC Bank C`, `A-CC Bank B` |
+| Fixture B | 1: `B-Check Nordic Bank` | 1: `B-Savings NB` | 1: `B-CC NB` |
 
 Plus 8 excluded accounts (pensions, mortgages, stocks, property, loans) — invisible to F2-BE. Use `account_mappings.json` (NOT `account_owners.json` — that file has a dangling `5245500` reference and isn't written by sync).
 

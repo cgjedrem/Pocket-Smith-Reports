@@ -16,7 +16,7 @@ class BillsEvent(BaseModel):
 
     Contract:
     - title = category name (e.g. "Mortgage", "Salary (Fixture B)")
-    - account = bank account name (e.g. "FxA Check Handelsbanken")
+    - account = bank account name (e.g. "A-Check Nordic Bank")
     """
 
     id: str

@@ -30,18 +30,18 @@ from budget_api.services.bills_derivations import (
 
 ACCOUNT_MAPPINGS = {
     "accounts": {
-        "4110210": {"type": "checking", "excluded": False},  # FxA Check
-        "4110216": {"type": "cc", "excluded": False},  # FxA CC
-        "4110213": {"type": "savings", "excluded": False},  # FxA Savings
-        "5376190": {"type": "checking", "excluded": False},  # FxB Check
+        "1100001": {"type": "checking", "excluded": False},  # FxA Check
+        "1100003": {"type": "cc", "excluded": False},  # FxA CC
+        "1100002": {"type": "savings", "excluded": False},  # FxA Savings
+        "1100007": {"type": "checking", "excluded": False},  # FxB Check
     },
 }
 
 # Constants used across compute_real_cc_spend + compute_cc_usage new tests.
-CC_PAYMENT_CAT_CC = 34025345
-EXCLUDE_CAT_CC = 34028575  # Personal Transfer (Fixture A)
-GROCERIES_CAT = 34025250
-DINING_CAT = 34025260
+CC_PAYMENT_CAT_CC = 2100011
+EXCLUDE_CAT_CC = 2100016  # Personal Transfer (Fixture A)
+GROCERIES_CAT = 2100004
+DINING_CAT = 2100006
 
 
 def _classified_events(partner="Fixture A"):
@@ -112,20 +112,20 @@ def test_compute_planned_cc_buys_falls_back_to_zero():
 
 MAPPINGS_WITH_PARTNERS = {
     "accounts": {
-        "4110210": {"partner_id": "partner_a", "type": "checking", "excluded": False},
-        "4110213": {"partner_id": "partner_a", "type": "savings", "excluded": False},
+        "1100001": {"partner_id": "partner_a", "type": "checking", "excluded": False},
+        "1100002": {"partner_id": "partner_a", "type": "savings", "excluded": False},
         "4716715": {"partner_id": "partner_a", "type": "savings", "excluded": False},
-        "4110216": {"partner_id": "partner_a", "type": "cc", "excluded": False},
-        "5376190": {"partner_id": "partner_b", "type": "checking", "excluded": False},
+        "1100003": {"partner_id": "partner_a", "type": "cc", "excluded": False},
+        "1100007": {"partner_id": "partner_b", "type": "checking", "excluded": False},
     },
 }
 
 CATALOG_LIVE = [
-    {"id": 4110210, "current_balance": 13886.31},
-    {"id": 4110213, "current_balance": 2.0},
+    {"id": 1100001, "current_balance": 13886.31},
+    {"id": 1100002, "current_balance": 2.0},
     {"id": 4716715, "current_balance": 28.71},
-    {"id": 4110216, "current_balance": -5000.0},  # cc â€” must not count
-    {"id": 5376190, "current_balance": 32148.76},
+    {"id": 1100003, "current_balance": -5000.0},  # cc â€” must not count
+    {"id": 1100007, "current_balance": 32148.76},
 ]
 
 
@@ -133,7 +133,7 @@ def test_compute_savings_balance_current_returns_none_when_no_bills():
     # partner with no checking account mapped â†’ None (caller falls back to lag)
     mappings = {
         "accounts": {
-            "4110213": {
+            "1100002": {
                 "partner_id": "partner_a",
                 "type": "savings",
                 "excluded": False,
@@ -187,13 +187,13 @@ def test_compute_estimated_cc_bill_future_ignores_events():
     amounts as posted txns must NOT change the result â€” the old bug shape
     (Sep 2026: estimate 44,095 vs real ~30,620)."""
     prior_txns = [
-        {"amount": -500, "status": "posted", "transaction_account": {"id": 4110216}},
-        {"amount": -300, "status": "posted", "transaction_account": {"id": 4110216}},
-        {"amount": -100, "status": "pending", "transaction_account": {"id": 4110216}},
+        {"amount": -500, "status": "posted", "transaction_account": {"id": 1100003}},
+        {"amount": -300, "status": "posted", "transaction_account": {"id": 1100003}},
+        {"amount": -100, "status": "pending", "transaction_account": {"id": 1100003}},
     ]
     events = [
-        {"amount": -500, "date": "2026-08-05", "transaction_account": {"id": 4110216}},
-        {"amount": -200, "date": "2026-08-20", "transaction_account": {"id": 4110216}},
+        {"amount": -500, "date": "2026-08-05", "transaction_account": {"id": 1100003}},
+        {"amount": -200, "date": "2026-08-20", "transaction_account": {"id": 1100003}},
     ]
     result = compute_estimated_cc_bill(
         "Fixture A",
@@ -218,12 +218,12 @@ def test_compute_estimated_cc_bill_current_posted_plus_remaining_envelope():
             "amount": -10000,
             "date": "2026-08-09",
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
         },
     ]
     events = [
-        {"amount": -1000, "date": "2026-08-10", "transaction_account": {"id": 4110216}},
-        {"amount": -1500, "date": "2026-08-20", "transaction_account": {"id": 4110216}},
+        {"amount": -1000, "date": "2026-08-10", "transaction_account": {"id": 1100003}},
+        {"amount": -1500, "date": "2026-08-20", "transaction_account": {"id": 1100003}},
     ]
     result = compute_estimated_cc_bill(
         "Fixture A",
@@ -243,13 +243,13 @@ def test_compute_estimated_cc_bill_current_no_future_events():
             "amount": -10000,
             "date": "2026-08-09",
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
         },
     ]
     events = [
         # Past + today-dated: both ignored (<= today).
-        {"amount": -1000, "date": "2026-08-10", "transaction_account": {"id": 4110216}},
-        {"amount": -500, "date": "2026-08-15", "transaction_account": {"id": 4110216}},
+        {"amount": -1000, "date": "2026-08-10", "transaction_account": {"id": 1100003}},
+        {"amount": -500, "date": "2026-08-15", "transaction_account": {"id": 1100003}},
     ]
     result = compute_estimated_cc_bill(
         "Fixture A",
@@ -272,26 +272,26 @@ def test_compute_real_cc_bill_from_cc_payment_events():
     PS). The bills-side (negative on checking) is the paydown transfer â€”
     same flow, different account, NOT counted.
     """
-    CC_PAYMENT_CAT = 34025345
+    CC_PAYMENT_CAT = 2100011
     txns = [
         {
             "amount": 5000,  # positive on CC side
             "status": "posted",
-            "transaction_account": {"id": 4110216},  # CC account
+            "transaction_account": {"id": 1100003},  # CC account
             "category": {"id": CC_PAYMENT_CAT},
         },
         {
             "amount": -3000,  # not CC payment category
             "status": "posted",
-            "transaction_account": {"id": 4110216},
-            "category": {"id": 34025245},
+            "transaction_account": {"id": 1100003},
+            "category": {"id": 2100003},
         },
         {
             # Bills-side paired txn (negative on checking) â€” must be excluded
             # because it's on a checking account, not a CC account.
             "amount": -5000,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
+            "transaction_account": {"id": 1100001},
             "category": {"id": CC_PAYMENT_CAT},
         },
     ]
@@ -307,18 +307,18 @@ def test_compute_real_cc_bill_handles_null_category():
     because .get("category", {}) returns None (not {}) when key exists
     with explicit null value.
     """
-    CC_PAYMENT_CAT = 34025345
+    CC_PAYMENT_CAT = 2100011
     txns = [
         {
             "amount": 5000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": None,  # PS sends explicit null
         },
         {
             "amount": 3000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": CC_PAYMENT_CAT},
         },
     ]
@@ -340,19 +340,19 @@ def test_compute_cc_usage_current_month_only():
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
         {
             "amount": -300,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
         {
             "amount": -100,
             "status": "pending",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
     ]
@@ -377,7 +377,7 @@ def test_compute_real_cc_spend_empty_when_no_cc_txns():
     """No txns â†’ empty map."""
     assert (
         compute_real_cc_spend(
-            "Fixture A", [], ACCOUNT_MAPPINGS, {"4110216"}, CC_PAYMENT_CAT_CC
+            "Fixture A", [], ACCOUNT_MAPPINGS, {"1100003"}, CC_PAYMENT_CAT_CC
         )
         == {}
     )
@@ -389,24 +389,24 @@ def test_compute_real_cc_spend_groups_by_category():
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
         {
             "amount": -300,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
         {
             "amount": -1200,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": DINING_CAT, "is_transfer": False},
         },
     ]
     result = compute_real_cc_spend(
-        "Fixture A", txns, ACCOUNT_MAPPINGS, {"4110216"}, CC_PAYMENT_CAT_CC
+        "Fixture A", txns, ACCOUNT_MAPPINGS, {"1100003"}, CC_PAYMENT_CAT_CC
     )
     assert result == {GROCERIES_CAT: 800, DINING_CAT: 1200}
 
@@ -417,18 +417,18 @@ def test_compute_real_cc_spend_excludes_is_transfer():
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": True},
         },
         {
             "amount": -1000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": DINING_CAT, "is_transfer": False},
         },
     ]
     result = compute_real_cc_spend(
-        "Fixture A", txns, ACCOUNT_MAPPINGS, {"4110216"}, CC_PAYMENT_CAT_CC
+        "Fixture A", txns, ACCOUNT_MAPPINGS, {"1100003"}, CC_PAYMENT_CAT_CC
     )
     # Only dining counts.
     assert result == {DINING_CAT: 1000}
@@ -440,13 +440,13 @@ def test_compute_real_cc_spend_excludes_exclude_role_category():
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": EXCLUDE_CAT_CC, "is_transfer": False},
         },
         {
             "amount": -1000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": DINING_CAT, "is_transfer": False},
         },
     ]
@@ -454,7 +454,7 @@ def test_compute_real_cc_spend_excludes_exclude_role_category():
         "Fixture A",
         txns,
         ACCOUNT_MAPPINGS,
-        {"4110216"},
+        {"1100003"},
         CC_PAYMENT_CAT_CC,
         exclude_category_ids={EXCLUDE_CAT_CC},
     )
@@ -468,18 +468,18 @@ def test_compute_real_cc_spend_excludes_cc_payment_category():
         {
             "amount": -5000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": CC_PAYMENT_CAT_CC, "is_transfer": False},
         },
         {
             "amount": -800,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
     ]
     result = compute_real_cc_spend(
-        "Fixture A", txns, ACCOUNT_MAPPINGS, {"4110216"}, CC_PAYMENT_CAT_CC
+        "Fixture A", txns, ACCOUNT_MAPPINGS, {"1100003"}, CC_PAYMENT_CAT_CC
     )
     assert result == {GROCERIES_CAT: 800}
 
@@ -487,31 +487,31 @@ def test_compute_real_cc_spend_excludes_cc_payment_category():
 def test_compute_real_cc_spend_is_partner_scoped():
     """With partner_account_ids set, only txns on those accounts are summed.
 
-    FxA CC 4110216 vs FxB CC 5376195 – both type=cc. Fixture A helper
+    FxA CC 1100003 vs FxB CC 1100008 – both type=cc. Fixture A helper
     must NOT see Fixture B's txns.
     """
     two_partner_mappings = {
         "accounts": {
-            "4110216": {"type": "cc", "excluded": False},
-            "5376195": {"type": "cc", "excluded": False},
+            "1100003": {"type": "cc", "excluded": False},
+            "1100008": {"type": "cc", "excluded": False},
         },
     }
     txns = [
         {
             "amount": -800,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 5376195},
+            "transaction_account": {"id": 1100008},
             "category": {"id": DINING_CAT, "is_transfer": False},
         },
     ]
     result = compute_real_cc_spend(
-        "Fixture A", txns, two_partner_mappings, {"4110216"}, CC_PAYMENT_CAT_CC
+        "Fixture A", txns, two_partner_mappings, {"1100003"}, CC_PAYMENT_CAT_CC
     )
     # Only FxA CC, only groceries.
     assert result == {GROCERIES_CAT: 800}
@@ -531,7 +531,7 @@ def test_compute_cc_usage_planned_covers_real_still_returns_full_real():
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
     ]
@@ -539,7 +539,7 @@ def test_compute_cc_usage_planned_covers_real_still_returns_full_real():
         "Fixture A",
         txns,
         ACCOUNT_MAPPINGS,
-        {"4110216"},
+        {"1100003"},
         CC_PAYMENT_CAT_CC,
     )
     assert result == 500.0
@@ -555,14 +555,14 @@ def test_compute_cc_usage_august_shape_returns_full_total():
         {
             "amount": -planned,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
         # Unplanned-category spend: also full real.
         {
             "amount": -(total - planned),
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": DINING_CAT, "is_transfer": False},
         },
     ]
@@ -570,7 +570,7 @@ def test_compute_cc_usage_august_shape_returns_full_total():
         "Fixture A",
         txns,
         ACCOUNT_MAPPINGS,
-        {"4110216"},
+        {"1100003"},
         CC_PAYMENT_CAT_CC,
     )
     assert result == 30_620.0
@@ -582,7 +582,7 @@ def test_compute_cc_usage_no_real_txns_returns_none():
         "Fixture A",
         [],
         ACCOUNT_MAPPINGS,
-        {"4110216"},
+        {"1100003"},
         CC_PAYMENT_CAT_CC,
     )
     assert result is None
@@ -592,8 +592,8 @@ def test_compute_cc_usage_partner_scoped_ignores_other_partner_cc_txns():
     """FxA CC txns must not leak into Fixture B's cc_usage."""
     two_partner_mappings = {
         "accounts": {
-            "4110216": {"type": "cc", "excluded": False},  # FxA CC
-            "5376195": {"type": "cc", "excluded": False},  # FxB CC
+            "1100003": {"type": "cc", "excluded": False},  # FxA CC
+            "1100008": {"type": "cc", "excluded": False},  # FxB CC
         },
     }
     txns = [
@@ -601,14 +601,14 @@ def test_compute_cc_usage_partner_scoped_ignores_other_partner_cc_txns():
         {
             "amount": -1000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
         # FxB real: 500 dining (must NOT count for Fixture A).
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 5376195},
+            "transaction_account": {"id": 1100008},
             "category": {"id": DINING_CAT, "is_transfer": False},
         },
     ]
@@ -616,7 +616,7 @@ def test_compute_cc_usage_partner_scoped_ignores_other_partner_cc_txns():
         "Fixture A",
         txns,
         two_partner_mappings,
-        {"4110216"},
+        {"1100003"},
         CC_PAYMENT_CAT_CC,
     )
     # FxA total: 1000. Fixture B's 500 excluded.
@@ -629,13 +629,13 @@ def test_compute_cc_usage_excludes_cc_payment_from_real_spend():
         {
             "amount": -5000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": CC_PAYMENT_CAT_CC, "is_transfer": False},
         },
         {
             "amount": -300,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
     ]
@@ -643,7 +643,7 @@ def test_compute_cc_usage_excludes_cc_payment_from_real_spend():
         "Fixture A",
         txns,
         ACCOUNT_MAPPINGS,
-        {"4110216"},
+        {"1100003"},
         CC_PAYMENT_CAT_CC,
     )
     # Only groceries (300) counts; CC-paydown (5000) excluded.
@@ -664,7 +664,7 @@ def test_compute_cc_usage_by_category_no_real_txns_returns_none():
         "Fixture A",
         [],
         ACCOUNT_MAPPINGS,
-        {"4110216"},
+        {"1100003"},
         CC_PAYMENT_CAT_CC,
     )
     assert result is None
@@ -676,25 +676,25 @@ def test_compute_cc_usage_by_category_groups_by_title():
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "title": "Groceries", "is_transfer": False},
         },
         {
             "amount": -300,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "title": "Groceries", "is_transfer": False},
         },
         {
             "amount": -1200,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": DINING_CAT, "title": "Dining", "is_transfer": False},
         },
     ]
     kwargs = {
         "account_mappings": ACCOUNT_MAPPINGS,
-        "partner_account_ids": {"4110216"},
+        "partner_account_ids": {"1100003"},
         "cc_payment_category_id": CC_PAYMENT_CAT_CC,
     }
     result = compute_cc_usage_by_category("Fixture A", txns, **kwargs)
@@ -709,25 +709,25 @@ def test_compute_cc_usage_by_category_applies_same_filters():
         {
             "amount": -5000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": CC_PAYMENT_CAT_CC, "title": "CC Payment (paired)", "is_transfer": False},
         },
         {
             "amount": -700,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "title": "Groceries", "is_transfer": True},
         },
         {
             "amount": -200,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": EXCLUDE_CAT_CC, "title": "Personal Transfer", "is_transfer": False},
         },
         {
             "amount": -800,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "title": "Groceries", "is_transfer": False},
         },
     ]
@@ -735,7 +735,7 @@ def test_compute_cc_usage_by_category_applies_same_filters():
         "Fixture A",
         txns,
         ACCOUNT_MAPPINGS,
-        {"4110216"},
+        {"1100003"},
         CC_PAYMENT_CAT_CC,
         exclude_category_ids={EXCLUDE_CAT_CC},
     )
@@ -746,29 +746,29 @@ def test_compute_cc_usage_by_category_partner_scoped():
     """FxA CC txns must not leak into Fixture B's per-category map (and vice versa)."""
     two_partner_mappings = {
         "accounts": {
-            "4110216": {"type": "cc", "excluded": False},  # FxA CC
-            "5376195": {"type": "cc", "excluded": False},  # FxB CC
+            "1100003": {"type": "cc", "excluded": False},  # FxA CC
+            "1100008": {"type": "cc", "excluded": False},  # FxB CC
         },
     }
     txns = [
         {
             "amount": -1000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "title": "Groceries", "is_transfer": False},
         },
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 5376195},
+            "transaction_account": {"id": 1100008},
             "category": {"id": DINING_CAT, "title": "Dining", "is_transfer": False},
         },
     ]
     partner_a = compute_cc_usage_by_category(
-        "Fixture A", txns, two_partner_mappings, {"4110216"}, CC_PAYMENT_CAT_CC
+        "Fixture A", txns, two_partner_mappings, {"1100003"}, CC_PAYMENT_CAT_CC
     )
     partner_b = compute_cc_usage_by_category(
-        "Fixture B", txns, two_partner_mappings, {"5376195"}, CC_PAYMENT_CAT_CC
+        "Fixture B", txns, two_partner_mappings, {"1100008"}, CC_PAYMENT_CAT_CC
     )
     assert partner_a == {"Groceries": 1000}
     assert partner_b == {"Dining": 500}
@@ -780,12 +780,12 @@ def test_compute_cc_usage_by_category_title_fallback_to_id():
         {
             "amount": -250,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "is_transfer": False},
         },
     ]
     result = compute_cc_usage_by_category(
-        "Fixture A", txns, ACCOUNT_MAPPINGS, {"4110216"}, CC_PAYMENT_CAT_CC
+        "Fixture A", txns, ACCOUNT_MAPPINGS, {"1100003"}, CC_PAYMENT_CAT_CC
     )
     assert result == {str(GROCERIES_CAT): 250}
 
@@ -798,20 +798,20 @@ def test_compute_budget_usage_excludes_cc_and_savings():
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
-            "category": {"id": 34025245},
+            "transaction_account": {"id": 1100001},
+            "category": {"id": 2100003},
         },
         {
             "amount": -300,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
-            "category": {"id": 34025245},
+            "transaction_account": {"id": 1100003},
+            "category": {"id": 2100003},
         },
         {
             "amount": -200,
             "status": "posted",
-            "transaction_account": {"id": 4110213},
-            "category": {"id": 34025235},
+            "transaction_account": {"id": 1100002},
+            "category": {"id": 2100001},
         },
     ]
     result = compute_budget_usage("Fixture A", txns, ACCOUNT_MAPPINGS)
@@ -828,14 +828,14 @@ def test_compute_budget_usage_handles_null_category():
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
+            "transaction_account": {"id": 1100001},
             "category": None,  # PS sends explicit null
         },
         {
             "amount": -300,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
-            "category": {"id": 34025245},
+            "transaction_account": {"id": 1100001},
+            "category": {"id": 2100003},
         },
     ]
     # null-category txn: not CC-paydown (no id), not transfer â†’ counted as debit.
@@ -852,7 +852,7 @@ def test_compute_budget_usage_handles_null_category():
 # function only sums txns whose transaction_account.id is in the set.
 
 
-CC_PAYMENT_CAT = 34025345
+CC_PAYMENT_CAT = 2100011
 
 
 def test_compute_real_cc_bill_filters_by_partner_account_ids():
@@ -864,20 +864,20 @@ def test_compute_real_cc_bill_filters_by_partner_account_ids():
         {
             "amount": 1000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},  # FxA CC
+            "transaction_account": {"id": 1100003},  # FxA CC
             "category": {"id": CC_PAYMENT_CAT},
         },
         {
             "amount": 2000,
             "status": "posted",
-            "transaction_account": {"id": 5376195},  # FxB CC
+            "transaction_account": {"id": 1100008},  # FxB CC
             "category": {"id": CC_PAYMENT_CAT},
         },
     ]
     two_partner_mappings = {
         "accounts": {
-            "4110216": {"type": "cc", "excluded": False},
-            "5376195": {"type": "cc", "excluded": False},
+            "1100003": {"type": "cc", "excluded": False},
+            "1100008": {"type": "cc", "excluded": False},
         },
     }
     # Without partner filter: 1000 + 2000 = 3000 (old buggy behavior).
@@ -892,7 +892,7 @@ def test_compute_real_cc_bill_filters_by_partner_account_ids():
             txns,
             two_partner_mappings,
             CC_PAYMENT_CAT,
-            partner_account_ids={"4110216"},
+            partner_account_ids={"1100003"},
         )
         == 1000
     )
@@ -903,7 +903,7 @@ def test_compute_real_cc_bill_filters_by_partner_account_ids():
             txns,
             two_partner_mappings,
             CC_PAYMENT_CAT,
-            partner_account_ids={"5376195"},
+            partner_account_ids={"1100008"},
         )
         == 2000
     )
@@ -912,20 +912,20 @@ def test_compute_real_cc_bill_filters_by_partner_account_ids():
 def test_compute_estimated_cc_bill_filters_by_partner_account_ids():
     """Same fix applies to the estimator â€” txns (both kinds) and the
     current-month envelope events must be filtered by partner."""
-    # FxA CC 4110216, FxB CC 5376195, both type=cc.
+    # FxA CC 1100003, FxB CC 1100008, both type=cc.
     two_partner_mappings = {
         "accounts": {
-            "4110216": {"type": "cc", "excluded": False},
-            "5376195": {"type": "cc", "excluded": False},
+            "1100003": {"type": "cc", "excluded": False},
+            "1100008": {"type": "cc", "excluded": False},
         },
     }
     prior_txns = [
-        {"amount": -800, "status": "posted", "transaction_account": {"id": 4110216}},
-        {"amount": -500, "status": "posted", "transaction_account": {"id": 5376195}},
+        {"amount": -800, "status": "posted", "transaction_account": {"id": 1100003}},
+        {"amount": -500, "status": "posted", "transaction_account": {"id": 1100008}},
     ]
     prior_events = [
-        {"amount": -200, "transaction_account": {"id": 4110216}},
-        {"amount": -100, "transaction_account": {"id": 5376195}},
+        {"amount": -200, "transaction_account": {"id": 1100003}},
+        {"amount": -100, "transaction_account": {"id": 1100008}},
     ]
     # Future kind: events ignored entirely. Without filter: 800+500 = 1300
     # (old buggy behavior).
@@ -948,7 +948,7 @@ def test_compute_estimated_cc_bill_filters_by_partner_account_ids():
             prior_events,
             two_partner_mappings,
             None,
-            {"4110216"},
+            {"1100003"},
             month_kind="future",
             today=date(2026, 9, 1),
         )
@@ -962,7 +962,7 @@ def test_compute_estimated_cc_bill_filters_by_partner_account_ids():
             prior_events,
             two_partner_mappings,
             None,
-            {"5376195"},
+            {"1100008"},
             month_kind="future",
             today=date(2026, 9, 1),
         )
@@ -975,12 +975,12 @@ def test_compute_estimated_cc_bill_filters_by_partner_account_ids():
             "Fixture A",
             prior_txns,
             [
-                {"amount": -200, "date": "2026-08-20", "transaction_account": {"id": 4110216}},
-                {"amount": -100, "date": "2026-08-20", "transaction_account": {"id": 5376195}},
+                {"amount": -200, "date": "2026-08-20", "transaction_account": {"id": 1100003}},
+                {"amount": -100, "date": "2026-08-20", "transaction_account": {"id": 1100008}},
             ],
             two_partner_mappings,
             None,
-            {"4110216"},
+            {"1100003"},
             month_kind="current",
             today=date(2026, 8, 15),
         )
@@ -992,8 +992,8 @@ def test_compute_estimated_cc_bill_excludes_cc_payment_category():
     """CC-paydown txns (category "CC Payment (paired)") are cash moving
     from checking to card â€” not card spend. Excluding them keeps
     cc_spend = actual card purchases only."""
-    # FxA CC 4110216, only one CC. Mapping keys it as cc.
-    mappings = {"accounts": {"4110216": {"type": "cc", "excluded": False}}}
+    # FxA CC 1100003, only one CC. Mapping keys it as cc.
+    mappings = {"accounts": {"1100003": {"type": "cc", "excluded": False}}}
     # Card purchase: category=Spend, abs=1000.
     # CC-paydown: category=CC Payment (paired), abs=5000.
     # Without exclusion: 1000 + 5000 = 6000.
@@ -1002,19 +1002,19 @@ def test_compute_estimated_cc_bill_excludes_cc_payment_category():
         {
             "amount": -1000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": 99, "title": "Spend"},
         },
         {
             "amount": -5000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": CC_PAYMENT_CAT, "title": "CC Payment (paired)"},
         },
     ]
     # Envelope event on the CC account, future-dated (for current-kind leg).
     prior_events = [
-        {"amount": -200, "date": "2026-08-20", "transaction_account": {"id": 4110216}},
+        {"amount": -200, "date": "2026-08-20", "transaction_account": {"id": 1100003}},
     ]
     # Without exclusion filter â€” old behavior (or category not yet known).
     assert (
@@ -1024,7 +1024,7 @@ def test_compute_estimated_cc_bill_excludes_cc_payment_category():
             prior_events,
             mappings,
             None,
-            {"4110216"},
+            {"1100003"},
             month_kind="future",
             today=date(2026, 9, 1),
         )
@@ -1039,7 +1039,7 @@ def test_compute_estimated_cc_bill_excludes_cc_payment_category():
             prior_events,
             mappings,
             None,
-            {"4110216"},
+            {"1100003"},
             CC_PAYMENT_CAT,
             month_kind="future",
             today=date(2026, 9, 1),
@@ -1054,7 +1054,7 @@ def test_compute_estimated_cc_bill_excludes_cc_payment_category():
             prior_events,
             mappings,
             None,
-            {"4110216"},
+            {"1100003"},
             CC_PAYMENT_CAT,
             month_kind="current",
             today=date(2026, 8, 15),
@@ -1085,31 +1085,31 @@ def test_compute_estimated_cc_bill_future_ignores_matched_and_unmatched_buys():
     Posted 30,000 + event 5,000 (same date+amount as a posted txn) +
     event 2,000 (no posted txn) â†’ 30,000.
     """
-    mappings = {"accounts": {"4110216": {"type": "cc", "excluded": False}}}
+    mappings = {"accounts": {"1100003": {"type": "cc", "excluded": False}}}
     prior_txns = [
         {
             "amount": -25000,
             "date": "2026-08-05",
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
         {
             "amount": -5000,
             "date": "2026-08-12",
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     prior_events = [
         {
             "amount": -5000,
             "date": "2026-08-12",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
         {
             "amount": -2000,
             "date": "2026-08-20",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     result = compute_estimated_cc_bill(
@@ -1118,7 +1118,7 @@ def test_compute_estimated_cc_bill_future_ignores_matched_and_unmatched_buys():
         prior_events,
         mappings,
         None,
-        {"4110216"},
+        {"1100003"},
         month_kind="future",
         today=date(2026, 9, 1),
     )
@@ -1129,14 +1129,14 @@ def test_compute_estimated_cc_bill_future_ignores_matched_and_unmatched_buys():
 def test_compute_estimated_cc_bill_hello_fresh_weekly_posts_all_ignored():
     """Realistic fixture: Hello Fresh scheduled 4x1,300 with 4 posted 1,300
     CC charges on the same dates â†’ future estimate = posted spend only."""
-    mappings = {"accounts": {"4110216": {"type": "cc", "excluded": False}}}
+    mappings = {"accounts": {"1100003": {"type": "cc", "excluded": False}}}
     dates = ["2026-08-03", "2026-08-10", "2026-08-17", "2026-08-24"]
     prior_txns = [
         {
             "amount": -1300,
             "date": d,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         }
         for d in dates
     ]
@@ -1144,7 +1144,7 @@ def test_compute_estimated_cc_bill_hello_fresh_weekly_posts_all_ignored():
         {
             "amount": -1300,
             "date": d,
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         }
         for d in dates
     ]
@@ -1154,7 +1154,7 @@ def test_compute_estimated_cc_bill_hello_fresh_weekly_posts_all_ignored():
         prior_events,
         mappings,
         None,
-        {"4110216"},
+        {"1100003"},
         month_kind="future",
         today=date(2026, 9, 1),
     )
@@ -1171,21 +1171,21 @@ def _future_est_txns():
         {
             "amount": -3000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "title": "Groceries", "is_transfer": False},
         },
         # Hello Fresh real spend 9,000 beats its 5,200 envelope (max wins).
         {
             "amount": -9000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
-            "category": {"id": 34025280, "title": "Hello Fresh", "is_transfer": False},
+            "transaction_account": {"id": 1100003},
+            "category": {"id": 2100007, "title": "Hello Fresh", "is_transfer": False},
         },
         # CC paydown â†’ excluded.
         {
             "amount": -20000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {
                 "id": CC_PAYMENT_CAT_CC,
                 "title": "CC Payment (paired)",
@@ -1196,14 +1196,14 @@ def _future_est_txns():
         {
             "amount": 2500,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": GROCERIES_CAT, "title": "Groceries", "is_transfer": False},
         },
         # Uncategorized â†’ counts under the "Uncategorized" title.
         {
             "amount": -1200,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": None,
         },
     ]
@@ -1215,7 +1215,7 @@ def _future_est_events():
         {
             "type": "buy",
             "amount": -5200,
-            "category": {"id": 34025280, "title": "Hello Fresh", "is_transfer": False},
+            "category": {"id": 2100007, "title": "Hello Fresh", "is_transfer": False},
         },
     ]
 
@@ -1226,7 +1226,7 @@ def test_future_estimated_cc_bill_per_category_max_plus_free():
         _future_est_events(),
         _future_est_txns(),
         ACCOUNT_MAPPINGS,
-        partner_account_ids={"4110216"},
+        partner_account_ids={"1100003"},
         cc_payment_category_id=CC_PAYMENT_CAT_CC,
     )
     # max(5,200 envelope, 9,000 real) + 3,000 Groceries + 1,200 Uncategorized
@@ -1239,7 +1239,7 @@ def test_future_estimated_cc_bill_no_txns_envelopes_only():
         _future_est_events(),
         [],
         ACCOUNT_MAPPINGS,
-        partner_account_ids={"4110216"},
+        partner_account_ids={"1100003"},
         cc_payment_category_id=CC_PAYMENT_CAT_CC,
     )
     # mâˆ’1 has no posted txns â†’ real terms 0, envelopes carry the estimate.
@@ -1252,7 +1252,7 @@ def test_future_estimated_cc_bill_no_events_real_spend_only():
         [],
         _future_est_txns(),
         ACCOUNT_MAPPINGS,
-        partner_account_ids={"4110216"},
+        partner_account_ids={"1100003"},
         cc_payment_category_id=CC_PAYMENT_CAT_CC,
     )
     # 3,000 + 9,000 + 1,200 (refund + paydown excluded).
@@ -1286,14 +1286,14 @@ def _paydown_txns_paired():
         {
             "status": "posted",
             "amount": -5000,
-            "transaction_account": {"id": 4110210},
+            "transaction_account": {"id": 1100001},
             "category": {"id": CC_PAYMENT_CAT_CC},
         },
         # card leg of the same pair (must NOT double-count)
         {
             "status": "posted",
             "amount": 5000,
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": CC_PAYMENT_CAT_CC},
         },
     ]
@@ -1305,7 +1305,7 @@ def test_current_cc_bill_posted_counts_paired_payment_once():
         _paydown_txns_paired(),
         ACCOUNT_MAPPINGS,
         CC_PAYMENT_CAT_CC,
-        partner_account_ids={"4110210", "4110216"},
+        partner_account_ids={"1100001", "1100003"},
     )
     assert result == 5000
 
@@ -1316,7 +1316,7 @@ def test_current_cc_bill_posted_skips_positive_reversal_on_checking():
         {
             "status": "posted",
             "amount": 700,
-            "transaction_account": {"id": 4110210},
+            "transaction_account": {"id": 1100001},
             "category": {"id": CC_PAYMENT_CAT_CC},
         },
     ]
@@ -1325,7 +1325,7 @@ def test_current_cc_bill_posted_skips_positive_reversal_on_checking():
         txns,
         ACCOUNT_MAPPINGS,
         CC_PAYMENT_CAT_CC,
-        partner_account_ids={"4110210"},
+        partner_account_ids={"1100001"},
     )
     assert result == 5000
 
@@ -1341,13 +1341,13 @@ def test_current_cc_bill_posted_skips_pending_wrong_cat_excluded_account():
         {
             "status": "pending",
             "amount": -900,
-            "transaction_account": {"id": 4110210},
+            "transaction_account": {"id": 1100001},
             "category": {"id": CC_PAYMENT_CAT_CC},
         },
         {
             "status": "posted",
             "amount": -900,
-            "transaction_account": {"id": 4110210},
+            "transaction_account": {"id": 1100001},
             "category": {"id": GROCERIES_CAT},
         },
         {
@@ -1433,8 +1433,8 @@ def test_compute_status_shortfall():
 # - transfer categories (is_transfer=True)
 # Restricted to partner_account_ids when provided.
 
-CC_PAYMENT_CAT = 34025345
-EXCLUDE_CAT = 34028575  # Personal Transfer (Fixture A)
+CC_PAYMENT_CAT = 2100011
+EXCLUDE_CAT = 2100016  # Personal Transfer (Fixture A)
 
 
 def test_compute_real_bills_sums_posted_checking_debits():
@@ -1443,14 +1443,14 @@ def test_compute_real_bills_sums_posted_checking_debits():
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001},
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "amount": -1200,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     result = compute_real_bills(
@@ -1466,20 +1466,20 @@ def test_compute_real_bills_drops_credits_and_excluded_accounts():
         {
             "amount": 1000,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         # Debit on excluded account.
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     mappings = {
         "accounts": {
-            "4110210": {"type": "checking", "excluded": True},  # excluded
+            "1100001": {"type": "checking", "excluded": True},  # excluded
         },
     }
     result = compute_real_bills(
@@ -1490,19 +1490,19 @@ def test_compute_real_bills_drops_credits_and_excluded_accounts():
 
 
 def test_compute_real_bills_excludes_cc_payment_category():
-    """Bills-side CC paydown (cat 34025345) is a transfer to card, not a bill."""
+    """Bills-side CC paydown (cat 2100011) is a transfer to card, not a bill."""
     txns = [
         {
             "amount": -5000,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
+            "transaction_account": {"id": 1100001},
             "category": {"id": CC_PAYMENT_CAT, "is_transfer": False},
         },
         {
             "amount": -800,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     result = compute_real_bills(
@@ -1528,14 +1528,14 @@ def test_compute_real_bills_excludes_exclude_role_categories():
         {
             "amount": -700,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
+            "transaction_account": {"id": 1100001},
             "category": {"id": EXCLUDE_CAT, "is_transfer": False},
         },
         {
             "amount": -300,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     result = compute_real_bills(
@@ -1555,14 +1555,14 @@ def test_compute_real_bills_excludes_transfers():
         {
             "amount": -2000,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
-            "category": {"id": 34025235, "is_transfer": True},  # Savings
+            "transaction_account": {"id": 1100001},
+            "category": {"id": 2100001, "is_transfer": True},  # Savings
         },
         {
             "amount": -150,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     result = compute_real_bills(
@@ -1579,15 +1579,15 @@ def test_compute_real_bills_filters_by_partner():
         {
             "amount": -1000,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001},
+            "category": {"id": 2100003, "is_transfer": False},
         },
         # FxB Checking debit.
         {
             "amount": -2500,
             "status": "posted",
-            "transaction_account": {"id": 5376190},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100007},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     # Fixture A: 1000 only.
@@ -1597,7 +1597,7 @@ def test_compute_real_bills_filters_by_partner():
             txns,
             ACCOUNT_MAPPINGS,
             cc_payment_category_id=CC_PAYMENT_CAT,
-            partner_account_ids={"4110210"},
+            partner_account_ids={"1100001"},
         )
         == 1000
     )
@@ -1608,7 +1608,7 @@ def test_compute_real_bills_filters_by_partner():
             txns,
             ACCOUNT_MAPPINGS,
             cc_payment_category_id=CC_PAYMENT_CAT,
-            partner_account_ids={"5376190"},
+            partner_account_ids={"1100007"},
         )
         == 2500
     )
@@ -1628,24 +1628,24 @@ def test_compute_budget_usage_partner_isolation():
         {
             "amount": -1000,
             "status": "posted",
-            "transaction_account": {"id": 4110210},  # FxA Check
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001},  # FxA Check
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "amount": -250,
             "status": "posted",
-            "transaction_account": {"id": 4110210},  # FxA Check
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001},  # FxA Check
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "amount": -7000,
             "status": "posted",
-            "transaction_account": {"id": 5376190},  # FxB Check
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100007},  # FxB Check
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
-    fxa_ids = {"4110210", "4110213", "4110216"}
-    fxb_ids = {"5376190"}
+    fxa_ids = {"1100001", "1100002", "1100003"}
+    fxb_ids = {"1100007"}
     fxa_result = compute_budget_usage(
         "Fixture A", txns, ACCOUNT_MAPPINGS, None, fxa_ids
     )
@@ -1662,14 +1662,14 @@ def test_compute_budget_usage_no_partner_scope_is_household():
         {
             "amount": -1000,
             "status": "posted",
-            "transaction_account": {"id": 4110210},  # FxA Check
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001},  # FxA Check
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "amount": -7000,
             "status": "posted",
-            "transaction_account": {"id": 5376190},  # FxB Check
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100007},  # FxB Check
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     result = compute_budget_usage("Fixture A", txns, ACCOUNT_MAPPINGS)

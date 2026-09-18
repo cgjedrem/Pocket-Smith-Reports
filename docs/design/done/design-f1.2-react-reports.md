@@ -642,7 +642,7 @@ From `_category_highlights()`: top 5 root categories by abs(net), sorted descend
 [
   {
     "root_title": "Groceries",
-    "root_id": "34025245",
+    "root_id": "2100003",
     "children": [
       {
         "title": "Supermarket",
@@ -664,8 +664,8 @@ From `_subcategory_overviews()`: per root category with children, children sorte
 ```json
 [
   {
-    "root": {"id": "34025245", "title": "Groceries"},
-    "leaf": {"id": "34025255", "title": "Supermarket"},
+    "root": {"id": "2100003", "title": "Groceries"},
+    "leaf": {"id": "2100005", "title": "Supermarket"},
     "title": "Groceries / Supermarket",
     "records": [
       {
@@ -703,8 +703,8 @@ From `_transaction_drilldowns()`: grouped by (root_id, leaf_id). `title` = leaf 
     "account_name": "Checking",
     "owner": "partner_a",
     "category_path": [
-      {"id": "34025245", "title": "Groceries"},
-      {"id": "34025255", "title": "Supermarket"}
+      {"id": "2100003", "title": "Groceries"},
+      {"id": "2100005", "title": "Supermarket"}
     ],
     "is_transfer": false
   }
@@ -715,10 +715,10 @@ From `_transaction_drilldowns()`: grouped by (root_id, leaf_id). `title` = leaf 
 ```json
 [
   {
-    "id": "34025245",
+    "id": "2100003",
     "title": "Groceries",
     "parent_id": null,
-    "path": [{"id": "34025245", "title": "Groceries"}],
+    "path": [{"id": "2100003", "title": "Groceries"}],
     "paid": 4500.00,
     "received": 0.00,
     "net": -4500.00,

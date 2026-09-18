@@ -1,4 +1,4 @@
-"""Re-sync July 2026 bills snapshot from disk cache.
+﻿"""Re-sync July 2026 bills snapshot from disk cache.
 
 Loads events + raw txns for 2026-07 + 2026-06 (m-1) from data/private/,
 calls build_bills_snapshot, overwrites bills_dashboard_2026-07.json.
@@ -90,16 +90,16 @@ def main() -> None:
         )
 
     # 6. Independent HelloFresh breakdown for Fixture A.
-    #    Walk raw txns on Fixture A's CC accounts, isolate category 34025420,
+    #    Walk raw txns on Fixture A's CC accounts, isolate category 2100012,
     #    and compute overage vs planned buys for that category only.
     fxa_acct_ids = {
         aid
         for aid, m in account_mappings.get("accounts", {}).items()
         if m.get("partner_id") == "partner_a" and m.get("type") == "cc"
     }
-    hellofresh_cat_id = 34025420
+    hellofresh_cat_id = 2100012
     hellofresh_real = 0.0
-    morrow_hellofresh_real = 0.0
+    card_b_hellofresh_real = 0.0
     other_cc_real_by_cat: dict[int, float] = {}
     for t in txns:
         if t.get("status") != "posted":
@@ -119,8 +119,8 @@ def main() -> None:
         amt = abs(t.get("amount", 0))
         if cat_id == hellofresh_cat_id:
             hellofresh_real += amt
-            if str(acct) == "4425096":  # Morrow
-                morrow_hellofresh_real += amt
+            if str(acct) == "1100005":  # Card B
+                card_b_hellofresh_real += amt
         else:
             other_cc_real_by_cat[cat_id] = other_cc_real_by_cat.get(cat_id, 0.0) + amt
 
@@ -177,7 +177,7 @@ def main() -> None:
         f"  real={hellofresh_real:.2f}  planned={hellofresh_planned:.2f}  "
         f"overage={hellofresh_overage:.2f}"
     )
-    print(f"  Morrow HelloFresh real (acct 4425096)={morrow_hellofresh_real:.2f}")
+    print(f"  Card B HelloFresh real (acct 1100005)={card_b_hellofresh_real:.2f}")
     print(
         f"Other CC cats (Fixture A): real={other_cc_excl_ccpay:.2f}  "
         f"overage={other_cc_overage:.2f}"

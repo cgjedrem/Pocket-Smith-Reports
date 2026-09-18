@@ -134,7 +134,7 @@ export interface FinanceEvent {
   day: number;
   title: string; // category name (e.g. "Mortgage", "Salary (Partner B)")
   type: F2EventType;
-  account: string; // bank account name (e.g. "FxA Check Handelsbanken")
+  account: string; // bank account name (e.g. "A-Check Nordic Bank")
   partner: F2PartnerIdentity;
   amount: number; // positive = income, negative = expense
   /** Mock-data only: original category label (e.g. "Income", "Savings").

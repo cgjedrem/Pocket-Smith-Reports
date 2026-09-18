@@ -321,8 +321,8 @@ def test_savings_section_uses_historical_table_and_account_cards():
         _transaction(2, -25, savings, "account-a", payee="Transfer in"),
         _transaction(3, 5, savings, "account-a", payee="Transfer out"),
     ]
-    transactions[1]["account"]["name"] = "FxA Check Handelsbanken"
-    transactions[2]["account"]["name"] = "FxA Check Handelsbanken"
+    transactions[1]["account"]["name"] = "FxA Check Nordic Bank"
+    transactions[2]["account"]["name"] = "FxA Check Nordic Bank"
     contract = build_month_contract(
         transactions,
         OWNERS,
@@ -337,7 +337,7 @@ def test_savings_section_uses_historical_table_and_account_cards():
     assert "Savings rate" in html
     assert "Household" in html
     assert "Sparekonto (Fixture A) - 30.00 NOK - 2 txns" in html
-    assert "FxA Check Handelsbanken" in html
+    assert "FxA Check Nordic Bank" in html
 
 
 def test_home_section_nets_paired_reimbursement_marked_as_transfer():
@@ -462,7 +462,7 @@ def test_common_section_renders_multiple_paired_reimbursements_in_one_table():
 
 
 def test_cc_payments_use_private_stable_leaf_category_id():
-    cc_payment = {"id": "34025345", "title": "CC Payment (paired)"}
+    cc_payment = {"id": "2100011", "title": "CC Payment (paired)"}
     transactions = [
         _transaction(1, -600, cc_payment, "account-a", payee="Fixture A CC payment"),
         _transaction(2, -900, cc_payment, "account-b", payee="Fixture B CC payment"),
@@ -488,7 +488,7 @@ def test_cc_payments_use_private_stable_leaf_category_id():
         OWNERS,
         detailed_section_mapping={
             "category_sections": {
-                "34025345": "cc_payments",
+                "2100011": "cc_payments",
                 "common": "common",
                 "excluded": "excluded",
             },
@@ -526,7 +526,7 @@ def test_credit_card_purchases_stay_in_their_mapped_sections(tmp_path):
                     "common": "common",
                     "personal_a": "personal_partner_a",
                     "excluded": "excluded",
-                    "34025345": "cc_payments",
+                    "2100011": "cc_payments",
                 },
                 "account_roles": {"credit-card": "credit_card"},
             }
@@ -567,14 +567,14 @@ def test_credit_card_purchases_stay_in_their_mapped_sections(tmp_path):
             _transaction(
                 5,
                 -50,
-                {"id": "34025345", "title": "CC Payment (paired)"},
+                {"id": "2100011", "title": "CC Payment (paired)"},
                 "account-a",
                 payee="CC payment",
             ),
             _transaction(
                 6,
                 50,
-                {"id": "34025345", "title": "CC Payment (paired)"},
+                {"id": "2100011", "title": "CC Payment (paired)"},
                 "credit-card",
                 payee="Paired CC receiving leg",
             ),
@@ -632,10 +632,10 @@ def test_normalized_credit_card_credit_does_not_route_to_cc_payments(tmp_path):
     mapping_path.write_text(
         json.dumps(
             {
-                "category_sections": {"common": "common", "34025345": "excluded"},
+                "category_sections": {"common": "common", "2100011": "excluded"},
                 "account_roles": {
                     "5245500": "credit_card",
-                    "5376195": "credit_card",
+                    "1100008": "credit_card",
                 },
             }
         ),
@@ -649,7 +649,7 @@ def test_normalized_credit_card_credit_does_not_route_to_cc_payments(tmp_path):
             "date": "2030-04-01",
             "amount": 100,
             "transaction_account": {
-                "id": "5376195",
+                "id": "1100008",
                 "account_id": "5245500",
                 "name": "Renamed Fixture B account",
             },
@@ -657,7 +657,7 @@ def test_normalized_credit_card_credit_does_not_route_to_cc_payments(tmp_path):
             "payee": "Fixture B arbitrary CC credit",
         }
     ]
-    account_owners = {"5376195": "partner_b"}
+    account_owners = {"1100008": "partner_b"}
     contract = build_month_contract(
         transactions,
         account_owners,
@@ -668,7 +668,7 @@ def test_normalized_credit_card_credit_does_not_route_to_cc_payments(tmp_path):
 
     assert (
         normalize_transactions(transactions, account_owners)[0]["account_id"]
-        == "5376195"
+        == "1100008"
     )
     cc_start = html.index("8. CC Payments")
     excluded_start = html.index("9. Excluded (Internal transfers)")

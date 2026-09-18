@@ -20,7 +20,7 @@ PS exposes two account levels. We need both.
 | Institution (top-level) | `Account.type` | `bank \| credits \| cash \| stocks \| mortgage \| loans \| vehicle \| property \| insurance \| other_asset \| other_liability` | Top-level grouping. |
 | Transaction account (sub-level) | `TransactionAccount.type` | **same 11-value enum** | **This is the filter key.** See bucketing rule. |
 
-> **Correction vs. earlier design.** The earlier design listed `transaction_account.type` as `"checking" \| "savings" \| "credits"`. That's **wrong**. PS has no `"checking"` or `"savings"` `type` values — both are `type=bank`, distinguished by the account's `name` string (e.g. "Chr Check Handelsbanken" vs "Chr Savings Handelsbanken"). The local `account_mappings.json` uses `type: "checking" \| "cc" \| "savings"` as a **local override**, not a PS enum value.
+> **Correction vs. earlier design.** The earlier design listed `transaction_account.type` as `"checking" \| "savings" \| "credits"`. That's **wrong**. PS has no `"checking"` or `"savings"` `type` values — both are `type=bank`, distinguished by the account's `name` string (e.g. "A-Check Nordic Bank" vs "A-Savings Nordic Bank"). The local `account_mappings.json` uses `type: "checking" \| "cc" \| "savings"` as a **local override**, not a PS enum value.
 
 The `account_catalog.json` snapshot stores institution-level accounts. The
 `account_mappings.json` is the per-account user binding (`partner_id`, local
@@ -66,7 +66,7 @@ Both APIs use the same signed-amount convention:
 | API | Sign for income | Sign for expense |
 |---|---|---|
 | `/events` | positive | negative (verified — see existing report code) |
-| `/transactions` | positive | negative (verified — live `2026-07_ps_raw.json` shows `-424.55` for a Hello Fresh debit on Chr CC Handelsbanken) |
+| `/transactions` | positive | negative (verified — live `2026-07_ps_raw.json` shows `-424.55` for a Hello Fresh debit on A-CC Nordic Bank) |
 
 > **Correction vs. earlier design.** The earlier design marked `/transactions` sign as "CONFIRMING". It is now verified — both APIs use negative-for-expense.
 

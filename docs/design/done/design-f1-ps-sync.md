@@ -434,8 +434,8 @@ class AccountList(BaseModel):
 #### `data/private/account_mappings.json`
 ```json
 {
-  "4110210": {
-    "name": "A-Check Handelsbanken",
+  "1100001": {
+    "name": "A-Check Nordic Bank",
     "partner_id": "partner_a",
     "type": "checking",
     "excluded": false
@@ -495,9 +495,9 @@ All non-2xx responses return `{"detail": "message"}`.
 | AC12 | DELETE /api/partners/partner_b (no accounts bound) | 204 |
 | AC13 | DELETE /api/partners/{last remaining id} | 409, "cannot delete last partner" |
 | AC14 | GET /api/accounts | 200, AccountList with all PS accounts + bindings |
-| AC15 | PUT /api/accounts/4110210/binding {partner_id: "partner_a", type: "checking", excluded: false} | 200, updated Account |
-| AC16 | PUT /api/accounts/4110210/binding {partner_id: "nonexistent", type: "checking"} | 400, "invalid partner_id" |
-| AC17 | PUT /api/accounts/4110210/binding {partner_id: null, type: "invalid"} | 400, "invalid type" |
+| AC15 | PUT /api/accounts/1100001/binding {partner_id: "partner_a", type: "checking", excluded: false} | 200, updated Account |
+| AC16 | PUT /api/accounts/1100001/binding {partner_id: "nonexistent", type: "checking"} | 400, "invalid partner_id" |
+| AC17 | PUT /api/accounts/1100001/binding {partner_id: null, type: "invalid"} | 400, "invalid type" |
 | AC18 | PUT /api/accounts/nonexistent/binding {...} | 404, "account not found" |
 | AC19 | Sync with no events in date range | 200, events row_count = 0 |
 | AC20 | Sync with bad API key | 502, "PS API auth failed" |

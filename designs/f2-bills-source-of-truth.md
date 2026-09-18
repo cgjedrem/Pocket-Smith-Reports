@@ -35,7 +35,7 @@ The contract between FE and BE. L1 below defines what the solution must do, grou
 
 PocketSmith models the world as:
 
-- **Transaction accounts** — the per-institution accounts the user transacts against (checking, savings, credit card). 11-value `type` enum: `bank | credits | cash | stocks | mortgage | loans | vehicle | property | insurance | other_asset | other_liability`. **There is no separate "checking" or "savings" sub-type — both live under `type=bank`** and are distinguished by the account's `name` (e.g. "Chr Check Handelsbanken" vs "Chr Savings Handelsbanken").
+- **Transaction accounts** — the per-institution accounts the user transacts against (checking, savings, credit card). 11-value `type` enum: `bank | credits | cash | stocks | mortgage | loans | vehicle | property | insurance | other_asset | other_liability`. **There is no separate "checking" or "savings" sub-type — both live under `type=bank`** and are distinguished by the account's `name` (e.g. "A-Check Nordic Bank" vs "A-Savings Nordic Bank").
 - **Scenarios** — PS's "budget" concept. Every account has a `primary_scenario` (and may have more). Events are created **on a scenario**, not directly on a transaction account.
 - **Events** — scheduled future entries. Either a one-off (`repeat_type: "once"`) or a recurring series. `repeat_type` enum: `once | daily | weekly | fortnightly | monthly | yearly | each weekday`. `repeat_interval` is a multiplier (e.g. `weekly + repeat_interval: 2` = every 2 weeks).
 - **Transactions** — actual posted entries with a signed amount. Pay against a `transaction_account`. Carry `category`, `payee`, `note`, `is_transfer`, `status: "pending" | "posted"`.

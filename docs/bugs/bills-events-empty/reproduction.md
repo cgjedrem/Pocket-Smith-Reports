@@ -55,8 +55,8 @@ print(snap["partners"][0]["events"])  # []
 
 ## Environment
 - PocketSmith events: real `/users/{id}/events` response (Aug 2026)
-- account_mappings keys: transaction_account.id (e.g. `4110216`)
+- account_mappings keys: transaction_account.id (e.g. `1100003`)
 - account_catalog `account_id`: underlying bank account (e.g. `4004544`)
-- account_catalog `id`: transaction_account.id (e.g. `4110216`)
+- account_catalog `id`: transaction_account.id (e.g. `1100003`)
 - Event `scenario.account_id`: underlying bank account (e.g. `4004544`)
 - Mapping chain: event.scenario.account_id → catalog[account_id==X].id → mappings

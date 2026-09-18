@@ -28,37 +28,37 @@ TWO_PARTNER_MAPPINGS = {
         "partner_b": {"label": "Fixture B"},
     },
     "accounts": {
-        "4110210": {
+        "1100001": {
             "name": "FxA Check",
             "partner_id": "partner_a",
             "type": "checking",
             "excluded": False,
         },
-        "4110213": {
+        "1100002": {
             "name": "FxA Savings",
             "partner_id": "partner_a",
             "type": "savings",
             "excluded": False,
         },
-        "4110216": {
+        "1100003": {
             "name": "FxA CC",
             "partner_id": "partner_a",
             "type": "cc",
             "excluded": False,
         },
-        "5376190": {
+        "1100007": {
             "name": "FxB Check",
             "partner_id": "partner_b",
             "type": "checking",
             "excluded": False,
         },
-        "5376185": {
+        "1100006": {
             "name": "FxB Savings",
             "partner_id": "partner_b",
             "type": "savings",
             "excluded": False,
         },
-        "5376195": {
+        "1100008": {
             "name": "Fixture B CC",
             "partner_id": "partner_b",
             "type": "cc",
@@ -68,30 +68,30 @@ TWO_PARTNER_MAPPINGS = {
 }
 
 CATEGORY_ROLES = {
-    "34025485": "income",
-    "34025245": "spend",
-    "34025235": "savings",
+    "2100013": "income",
+    "2100003": "spend",
+    "2100001": "savings",
 }
 
 CATEGORY_CATALOG = [
-    {"id": 34025245, "title": "Common", "children": []},
-    {"id": 34025235, "title": "Savings", "children": []},
+    {"id": 2100003, "title": "Common", "children": []},
+    {"id": 2100001, "title": "Savings", "children": []},
     {
-        "id": 34025240,
+        "id": 2100002,
         "title": "Transfers",
         "children": [
-            {"id": 34025345, "title": "CC Payment (paired)", "children": []},
+            {"id": 2100011, "title": "CC Payment (paired)", "children": []},
         ],
     },
 ]
 
 ACCOUNT_CATALOG = [
-    {"id": 4110210, "current_balance": 9886.31, "starting_balance": 97740.37},
-    {"id": 4110213, "current_balance": 32000, "starting_balance": 28000},
-    {"id": 4110216, "current_balance": 27657.91, "starting_balance": 26837.2},
-    {"id": 5376190, "current_balance": 5000, "starting_balance": 4000},
-    {"id": 5376185, "current_balance": 61000, "starting_balance": 55000},
-    {"id": 5376195, "current_balance": 3000, "starting_balance": 2000},
+    {"id": 1100001, "current_balance": 9886.31, "starting_balance": 97740.37},
+    {"id": 1100002, "current_balance": 32000, "starting_balance": 28000},
+    {"id": 1100003, "current_balance": 27657.91, "starting_balance": 26837.2},
+    {"id": 1100007, "current_balance": 5000, "starting_balance": 4000},
+    {"id": 1100006, "current_balance": 61000, "starting_balance": 55000},
+    {"id": 1100008, "current_balance": 3000, "starting_balance": 2000},
 ]
 
 
@@ -131,19 +131,19 @@ def test_estimated_cc_bill_future_uses_prior_txns_events_ignored():
     budget envelopes, never matched (envelope model, grill-me round 6)."""
     mappings = {
         "accounts": {
-            "4110216": {"type": "cc", "excluded": False},
+            "1100003": {"type": "cc", "excluded": False},
         }
     }
     prior_txns = [
-        {"amount": -500, "status": "posted", "transaction_account": {"id": 4110216}},
+        {"amount": -500, "status": "posted", "transaction_account": {"id": 1100003}},
     ]
     prior_events = [
-        {"amount": -200, "transaction_account": {"id": 4110216}},
+        {"amount": -200, "transaction_account": {"id": 1100003}},
     ]
     current_events = [
         {
             "amount": -9999,
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
         },  # should NOT be included
     ]
 
@@ -167,8 +167,8 @@ def test_build_bills_snapshot_m2_estimate_scheduled_buys_only():
             "id": "evt-salary",
             "date": "2026-12-25",
             "note": "Salary",
-            "category": {"id": 34025485, "title": "Income", "is_transfer": False},
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "category": {"id": 2100013, "title": "Income", "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "amount": 42000,
         },
         # December scheduled buys on FxA CC.
@@ -176,16 +176,16 @@ def test_build_bills_snapshot_m2_estimate_scheduled_buys_only():
             "id": "buy-1",
             "date": "2026-12-05",
             "note": "Laptop",
-            "category": {"id": 34025245, "title": "Electronics", "is_transfer": False},
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "category": {"id": 2100003, "title": "Electronics", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
             "amount": -5000,
         },
         {
             "id": "buy-2",
             "date": "2026-12-12",
             "note": "Chair",
-            "category": {"id": 34025291, "title": "Home", "is_transfer": False},
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "category": {"id": 2100009, "title": "Home", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
             "amount": -2200,
         },
     ]
@@ -194,8 +194,8 @@ def test_build_bills_snapshot_m2_estimate_scheduled_buys_only():
             "id": "prior-buy",
             "date": "2026-11-15",
             "note": "Laptop",
-            "category": {"id": 34025245, "title": "Electronics", "is_transfer": False},
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "category": {"id": 2100003, "title": "Electronics", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
             "amount": -5000,
         },
     ]
@@ -203,7 +203,7 @@ def test_build_bills_snapshot_m2_estimate_scheduled_buys_only():
         {
             "amount": -3000,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
 
@@ -237,16 +237,16 @@ def test_build_bills_snapshot_m2_estimate_excludes_cc_paydown_events():
             "id": "evt-salary",
             "date": "2026-12-25",
             "note": "Salary",
-            "category": {"id": 34025485, "title": "Income", "is_transfer": False},
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "category": {"id": 2100013, "title": "Income", "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "amount": 42000,
         },
         {
             "id": "evt-rent",
             "date": "2026-12-01",
             "note": "Rent",
-            "category": {"id": 34025290, "title": "Rent", "is_transfer": False},
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "category": {"id": 2100008, "title": "Rent", "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "amount": -15500,
         },
         {
@@ -254,16 +254,16 @@ def test_build_bills_snapshot_m2_estimate_excludes_cc_paydown_events():
             "id": "buy-hf",
             "date": "2026-12-05",
             "note": "Hello Fresh",
-            "category": {"id": 34025280, "title": "Hello Fresh", "is_transfer": False},
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "category": {"id": 2100007, "title": "Hello Fresh", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
             "amount": -5200,
         },
         {
             "id": "buy-groc",
             "date": "2026-12-07",
             "note": "Groceries",
-            "category": {"id": 34025291, "title": "Groceries", "is_transfer": False},
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "category": {"id": 2100009, "title": "Groceries", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
             "amount": -3000,
         },
         {
@@ -273,11 +273,11 @@ def test_build_bills_snapshot_m2_estimate_excludes_cc_paydown_events():
             "date": "2026-12-20",
             "note": "CC Payment",
             "category": {
-                "id": 34025345,
+                "id": 2100011,
                 "title": "CC Payment (paired)",
                 "is_transfer": True,
             },
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
             "amount": -30000,
         },
     ]
@@ -286,8 +286,8 @@ def test_build_bills_snapshot_m2_estimate_excludes_cc_paydown_events():
             "id": "buy-hf-nov",
             "date": "2026-11-05",
             "note": "Hello Fresh",
-            "category": {"id": 34025280, "title": "Hello Fresh", "is_transfer": False},
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "category": {"id": 2100007, "title": "Hello Fresh", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
             "amount": -5200,
         },
     ]
@@ -295,8 +295,8 @@ def test_build_bills_snapshot_m2_estimate_excludes_cc_paydown_events():
         {
             "amount": -9000,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025280, "title": "Hello Fresh", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100007, "title": "Hello Fresh", "is_transfer": False},
         },
     ]
 
@@ -334,7 +334,7 @@ def test_chain_warnings_do_not_leak_into_later_snapshots():
         "amount": -500,
         "status": "posted",
         "date": "2026-07-10",
-        "transaction_account": {"id": 4110210, "type": "bank"},
+        "transaction_account": {"id": 1100001, "type": "bank"},
         "category": None,
     }
     events = {m: [] for m in months}
@@ -403,9 +403,9 @@ def test_events_not_duplicated_across_parters():
             "id": "evt-chr-salary",
             "date": "2026-07-25",
             "note": "Salary",
-            "category": {"id": 34025485, "title": "Income", "is_transfer": False},
+            "category": {"id": 2100013, "title": "Income", "is_transfer": False},
             "transaction_account": {
-                "id": 4110210,
+                "id": 1100001,
                 "type": "bank",
             },  # Fixture A's checking
             "amount": 42000,
@@ -414,17 +414,17 @@ def test_events_not_duplicated_across_parters():
             "id": "evt-fxb-salary",
             "date": "2026-07-25",
             "note": "Salary",
-            "category": {"id": 34025485, "title": "Income", "is_transfer": False},
-            "transaction_account": {"id": 5376190, "type": "bank"},  # Fixture B's checking
+            "category": {"id": 2100013, "title": "Income", "is_transfer": False},
+            "transaction_account": {"id": 1100007, "type": "bank"},  # Fixture B's checking
             "amount": 38000,
         },
         {
             "id": "evt-chr-bill",
             "date": "2026-07-10",
             "note": "Rent",
-            "category": {"id": 34025245, "title": "Common", "is_transfer": False},
+            "category": {"id": 2100003, "title": "Common", "is_transfer": False},
             "transaction_account": {
-                "id": 4110210,
+                "id": 1100001,
                 "type": "bank",
             },  # Fixture A's checking
             "amount": -15500,
@@ -467,16 +467,16 @@ def test_bills_count_does_not_double_count_across_parters():
             "id": "evt-1",
             "date": "2026-12-10",
             "note": "Rent",
-            "category": {"id": 34025245, "title": "Common", "is_transfer": False},
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "category": {"id": 2100003, "title": "Common", "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "amount": -15500,
         },
         {
             "id": "evt-2",
             "date": "2026-12-15",
             "note": "Laptop",
-            "category": {"id": 34025245, "title": "Electronics", "is_transfer": False},
-            "transaction_account": {"id": 5376195, "type": "credits"},
+            "category": {"id": 2100003, "title": "Electronics", "is_transfer": False},
+            "transaction_account": {"id": 1100008, "type": "credits"},
             "amount": -5000,
         },
     ]
@@ -525,8 +525,8 @@ def test_catalogs_fetched_before_per_month_loop_on_fresh_run(
             "id": "evt-1",
             "date": "2026-07-25",
             "note": "Salary",
-            "category": {"id": 34025485, "title": "Income", "is_transfer": False},
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "category": {"id": 2100013, "title": "Income", "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "amount": 42000,
         },
     ]

@@ -23,19 +23,19 @@ GOOD_MAPPINGS = {
         "partner_a": {"label": "Fixture A"},
     },
     "accounts": {
-        "4110210": {
+        "1100001": {
             "name": "FxA Check",
             "partner_id": "partner_a",
             "type": "checking",
             "excluded": False,
         },
-        "4110213": {
+        "1100002": {
             "name": "FxA Savings",
             "partner_id": "partner_a",
             "type": "savings",
             "excluded": False,
         },
-        "4110216": {
+        "1100003": {
             "name": "FxA CC",
             "partner_id": "partner_a",
             "type": "cc",
@@ -45,22 +45,22 @@ GOOD_MAPPINGS = {
 }
 
 GOOD_ROLES = {
-    "34025485": "income",
-    "34025245": "spend",
-    "34025235": "savings",
+    "2100013": "income",
+    "2100003": "spend",
+    "2100001": "savings",
 }
 
 GOOD_CATEGORY_CATALOG = {
     "start": "2026-06",
     "end": "2026-07",
     "categories": [
-        {"id": 34025245, "title": "Common", "children": []},
-        {"id": 34025235, "title": "Savings", "children": []},
+        {"id": 2100003, "title": "Common", "children": []},
+        {"id": 2100001, "title": "Savings", "children": []},
         {
-            "id": 34025240,
+            "id": 2100002,
             "title": "Transfers",
             "children": [
-                {"id": 34025345, "title": "CC Payment (paired)", "children": []},
+                {"id": 2100011, "title": "CC Payment (paired)", "children": []},
             ],
         },
     ],
@@ -71,21 +71,21 @@ GOOD_ACCOUNT_CATALOG = {
     "end": "2026-07",
     "accounts": [
         {
-            "id": 4110210,
+            "id": 1100001,
             "name": "FxA Check",
             "type": "bank",
             "current_balance": 9886.31,
             "starting_balance": 97740.37,
         },
         {
-            "id": 4110213,
+            "id": 1100002,
             "name": "FxA Savings",
             "type": "bank",
             "current_balance": 32000,
             "starting_balance": 28000,
         },
         {
-            "id": 4110216,
+            "id": 1100003,
             "name": "FxA CC",
             "type": "credits",
             "current_balance": 27657.91,
@@ -138,8 +138,8 @@ def test_sync_writes_bills_dashboard_for_month(
             "id": "evt-1",
             "date": "2026-07-25",
             "note": "Salary",
-            "category": {"id": 34025485, "title": "Income", "is_transfer": False},
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "category": {"id": 2100013, "title": "Income", "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "amount": 42000,
         },
     ]
@@ -182,7 +182,7 @@ def test_no_bills_account_appends_warning_sync_continues(
 
     # Mappings with no checking account.
     bad_mappings = json.loads(json.dumps(GOOD_MAPPINGS))
-    del bad_mappings["accounts"]["4110210"]
+    del bad_mappings["accounts"]["1100001"]
     (tmp_private_dir / "account_mappings.json").write_text(
         json.dumps(bad_mappings), encoding="utf-8"
     )

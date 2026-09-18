@@ -33,41 +33,41 @@ PINNED_NOW = date(2026, 8, 30)
 
 ACCOUNT_MAPPINGS = {
     "partners": {
-        "partner_a": {"label": "Fixture A", "savings_category_id": 34027470},
-        "partner_b": {"label": "Fixture B", "savings_category_id": 34025300},
+        "partner_a": {"label": "Fixture A", "savings_category_id": 2100014},
+        "partner_b": {"label": "Fixture B", "savings_category_id": 2100010},
     },
     "accounts": {
-        "4110210": {
+        "1100001": {
             "name": "FxA Check",
             "partner_id": "partner_a",
             "type": "checking",
             "excluded": False,
         },
-        "4110213": {
+        "1100002": {
             "name": "FxA Savings",
             "partner_id": "partner_a",
             "type": "savings",
             "excluded": False,
         },
-        "4110216": {
+        "1100003": {
             "name": "FxA CC",
             "partner_id": "partner_a",
             "type": "cc",
             "excluded": False,
         },
-        "5376190": {
+        "1100007": {
             "name": "FxB Check",
             "partner_id": "partner_b",
             "type": "checking",
             "excluded": False,
         },
-        "5376185": {
+        "1100006": {
             "name": "FxB Savings",
             "partner_id": "partner_b",
             "type": "savings",
             "excluded": False,
         },
-        "5376195": {
+        "1100008": {
             "name": "Fixture B CC",
             "partner_id": "partner_b",
             "type": "cc",
@@ -77,34 +77,34 @@ ACCOUNT_MAPPINGS = {
 }
 
 CATEGORY_ROLES = {
-    "34025485": "income",
-    "34025245": "spend",
-    "34025235": "savings",
-    "34025345": "spend",
+    "2100013": "income",
+    "2100003": "spend",
+    "2100001": "savings",
+    "2100011": "spend",
     # Per-partner savings categories â€“ these override is_transfer exclusion.
-    "34027470": "spend",  # Sparekonto (Fixture A) â€“ real PS uses "spend" role
-    "34025300": "spend",  # Sparekonto (Fixture B)
+    "2100014": "spend",  # Sparekonto (Fixture A) â€“ real PS uses "spend" role
+    "2100010": "spend",  # Sparekonto (Fixture B)
 }
 
 CATEGORY_CATALOG = [
-    {"id": 34025245, "title": "Common", "children": []},
-    {"id": 34025235, "title": "Savings", "children": []},
+    {"id": 2100003, "title": "Common", "children": []},
+    {"id": 2100001, "title": "Savings", "children": []},
     {
-        "id": 34025240,
+        "id": 2100002,
         "title": "Transfers",
         "children": [
-            {"id": 34025345, "title": "CC Payment (paired)", "children": []},
+            {"id": 2100011, "title": "CC Payment (paired)", "children": []},
         ],
     },
 ]
 
 ACCOUNT_CATALOG = [
-    {"id": 4110210, "current_balance": 9886.31, "starting_balance": 97740.37},
-    {"id": 4110213, "current_balance": 32000, "starting_balance": 28000},
-    {"id": 4110216, "current_balance": 27657.91, "starting_balance": 26837.2},
-    {"id": 5376190, "current_balance": 5000, "starting_balance": 4000},
-    {"id": 5376185, "current_balance": 61000, "starting_balance": 55000},
-    {"id": 5376195, "current_balance": 3000, "starting_balance": 2000},
+    {"id": 1100001, "current_balance": 9886.31, "starting_balance": 97740.37},
+    {"id": 1100002, "current_balance": 32000, "starting_balance": 28000},
+    {"id": 1100003, "current_balance": 27657.91, "starting_balance": 26837.2},
+    {"id": 1100007, "current_balance": 5000, "starting_balance": 4000},
+    {"id": 1100006, "current_balance": 61000, "starting_balance": 55000},
+    {"id": 1100008, "current_balance": 3000, "starting_balance": 2000},
 ]
 
 
@@ -114,24 +114,24 @@ def _ps_events():
             "id": "evt-1",
             "date": "2026-07-25",
             "note": "Salary",
-            "category": {"id": 34025485, "title": "Income", "is_transfer": False},
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "category": {"id": 2100013, "title": "Income", "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "amount": 42000,
         },
         {
             "id": "evt-2",
             "date": "2026-07-10",
             "note": "Rent",
-            "category": {"id": 34025245, "title": "Common", "is_transfer": False},
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "category": {"id": 2100003, "title": "Common", "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "amount": -15500,
         },
         {
             "id": "evt-3",
             "date": "2026-07-15",
             "note": "New laptop",
-            "category": {"id": 34025245, "title": "Electronics", "is_transfer": False},
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "category": {"id": 2100003, "title": "Electronics", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
             "amount": -5000,
         },
     ]
@@ -144,8 +144,8 @@ def _ps_transactions():
             "date": "2026-07-15",
             "amount": -500,
             "status": "posted",
-            "category": {"id": 34025245, "title": "Common", "is_transfer": False},
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "category": {"id": 2100003, "title": "Common", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
         {
             "id": 2,
@@ -153,11 +153,11 @@ def _ps_transactions():
             "amount": -5000,
             "status": "posted",
             "category": {
-                "id": 34025345,
+                "id": 2100011,
                 "title": "CC Payment (paired)",
                 "is_transfer": False,
             },
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "transaction_account": {"id": 1100001, "type": "bank"},
         },
     ]
 
@@ -220,7 +220,7 @@ def test_build_bills_snapshot_validates_with_pydantic():
 def test_build_bills_snapshot_raises_no_bills_account_error():
     # Remove Fixture A's checking account.
     bad_mappings = json.loads(json.dumps(ACCOUNT_MAPPINGS))
-    del bad_mappings["accounts"]["4110210"]
+    del bad_mappings["accounts"]["1100001"]
 
     with pytest.raises(NoBillsAccountError, match="Fixture A"):
         build_bills_snapshot(
@@ -239,22 +239,22 @@ def test_build_bills_snapshot_raises_no_bills_account_error():
 def test_build_bills_snapshot_aggregates_multiple_cc_accounts():
     # Add a second CC account for Fixture A.
     mappings = json.loads(json.dumps(ACCOUNT_MAPPINGS))
-    mappings["accounts"]["4110270"] = {
-        "name": "FxA CC SR Bank",
+    mappings["accounts"]["1100004"] = {
+        "name": "FxA CC Bank C",
         "partner_id": "partner_a",
         "type": "cc",
         "excluded": False,
     }
     account_catalog = list(ACCOUNT_CATALOG) + [
-        {"id": 4110270, "current_balance": 1000, "starting_balance": 800},
+        {"id": 1100004, "current_balance": 1000, "starting_balance": 800},
     ]
     events = _ps_events() + [
         {
             "id": "evt-4",
             "date": "2026-07-20",
             "note": "Headphones",
-            "category": {"id": 34025245, "title": "Electronics", "is_transfer": False},
-            "transaction_account": {"id": 4110270, "type": "bank"},
+            "category": {"id": 2100003, "title": "Electronics", "is_transfer": False},
+            "transaction_account": {"id": 1100004, "type": "bank"},
             "amount": -2000,
         },
     ]
@@ -280,7 +280,7 @@ def test_build_bills_snapshot_includes_planned_cc_buys():
     """Snapshot's partners[].planned_cc_buys = sum of type=buy events for
     that partner. Independent of real_cc_bill / estimated_cc_bill (realized
     card spend)."""
-    # _ps_events() has evt-3: a 5000 buy on 4110216 (FxA CC) classified as
+    # _ps_events() has evt-3: a 5000 buy on 1100003 (FxA CC) classified as
     # type=buy for Fixture A. Expected planned_cc_buys = 5000 for Fixture A,
     # 0 for Fixture B.
     snapshot = build_bills_snapshot(
@@ -372,10 +372,10 @@ def test_build_bills_snapshot_title_is_category_account_is_bank_name():
             "amount": 48111,
             "scenario": {
                 "account_id": 4004538,
-                "title": "FxA Check Handelsbanken",
+                "title": "FxA Check Nordic Bank",
             },
             "category": {
-                "id": 34025485,
+                "id": 2100013,
                 "title": "Salary (Fixture A)",
                 "is_transfer": False,
             },
@@ -386,14 +386,14 @@ def test_build_bills_snapshot_title_is_category_account_is_bank_name():
             "amount": -15000,
             "scenario": {
                 "account_id": 5245490,
-                "title": "FxB Check Handelsbanken",
+                "title": "FxB Check Nordic Bank",
             },
-            "category": {"id": 34025245, "title": "Mortgage", "is_transfer": False},
+            "category": {"id": 2100003, "title": "Mortgage", "is_transfer": False},
         },
     ]
 
     catalog = [
-        {**a, "account_id": {4110210: 4004538, 5376190: 5245490}.get(a["id"])}
+        {**a, "account_id": {1100001: 4004538, 1100007: 5245490}.get(a["id"])}
         for a in ACCOUNT_CATALOG
     ]
 
@@ -412,9 +412,9 @@ def test_build_bills_snapshot_title_is_category_account_is_bank_name():
     all_events = [e for p in snapshot["partners"] for e in p["events"]]
     by_id = {e["id"]: e for e in all_events}
     assert by_id["salary-c"]["title"] == "Salary (Fixture A)"
-    assert by_id["salary-c"]["account"] == "FxA Check Handelsbanken"
+    assert by_id["salary-c"]["account"] == "FxA Check Nordic Bank"
     assert by_id["mort-r1"]["title"] == "Mortgage"
-    assert by_id["mort-r1"]["account"] == "FxB Check Handelsbanken"
+    assert by_id["mort-r1"]["account"] == "FxB Check Nordic Bank"
     # category key no longer exists.
     assert "category" not in by_id["salary-c"]
 
@@ -427,12 +427,12 @@ def test_build_bills_snapshot_handles_real_ps_event_shape():
     """
     # Catalog with bank_id Ã¢â€ â€™ transaction_account.id mapping.
     catalog = list(ACCOUNT_CATALOG) + [
-        # FxA Check: bank=4004538, txn_acct=4110210
-        # FxB Check: bank=5245490, txn_acct=5376190
+        # FxA Check: bank=4004538, txn_acct=1100001
+        # FxB Check: bank=5245490, txn_acct=1100007
     ]
     # Patch the catalog entries with account_id (bank) so resolve works.
     catalog = [
-        {**a, "account_id": {4110210: 4004538, 5376190: 5245490}.get(a["id"])}
+        {**a, "account_id": {1100001: 4004538, 1100007: 5245490}.get(a["id"])}
         for a in catalog
     ]
 
@@ -443,14 +443,14 @@ def test_build_bills_snapshot_handles_real_ps_event_shape():
             "date": "2026-08-12",
             "amount": 48111,
             "scenario": {"account_id": 4004538, "title": "FxA Check"},
-            "category": {"id": 34025485, "title": "Salary", "is_transfer": False},
+            "category": {"id": 2100013, "title": "Salary", "is_transfer": False},
         },
         {
             "id": "salary-r",
             "date": "2026-08-12",
             "amount": 40814,
             "scenario": {"account_id": 5245490, "title": "FxB Check"},
-            "category": {"id": 34025485, "title": "Salary", "is_transfer": False},
+            "category": {"id": 2100013, "title": "Salary", "is_transfer": False},
         },
         # 3 mortgage events (Fixture AÃ—2 + Fixture BÃ—1)
         {
@@ -458,21 +458,21 @@ def test_build_bills_snapshot_handles_real_ps_event_shape():
             "date": "2026-08-17",
             "amount": -15000,
             "scenario": {"account_id": 4004538, "title": "FxA Check"},
-            "category": {"id": 34025245, "title": "Mortgage", "is_transfer": False},
+            "category": {"id": 2100003, "title": "Mortgage", "is_transfer": False},
         },
         {
             "id": "mort-c2",
             "date": "2026-08-17",
             "amount": -4000,
             "scenario": {"account_id": 4004538, "title": "FxA Check"},
-            "category": {"id": 34025245, "title": "Mortgage", "is_transfer": False},
+            "category": {"id": 2100003, "title": "Mortgage", "is_transfer": False},
         },
         {
             "id": "mort-r1",
             "date": "2026-08-17",
             "amount": -15000,
             "scenario": {"account_id": 5245490, "title": "FxB Check"},
-            "category": {"id": 34025245, "title": "Mortgage", "is_transfer": False},
+            "category": {"id": 2100003, "title": "Mortgage", "is_transfer": False},
         },
     ]
 
@@ -545,33 +545,33 @@ def test_build_bills_snapshot_real_cc_bill_differs_per_partner():
     CC-side = positive amount on the CC account (what was charged to the
     card), NOT the bills-side (negative on checking, the paydown transfer).
     """
-    # 4110216 = FxA CC, 5376195 = FxB CC.
-    cc_payment_cat = 34025345
+    # 1100003 = FxA CC, 1100008 = FxB CC.
+    cc_payment_cat = 2100011
     posted_txns = [
         # Fixture A: 3 CC-side payments to FxA CC.
         {
             "amount": 1000,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": cc_payment_cat},
         },
         {
             "amount": 2500,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": cc_payment_cat},
         },
         {
             "amount": 500,
             "status": "posted",
-            "transaction_account": {"id": 4110216},
+            "transaction_account": {"id": 1100003},
             "category": {"id": cc_payment_cat},
         },
         # Fixture B: 1 CC-side payment to FxB CC.
         {
             "amount": 1500,
             "status": "posted",
-            "transaction_account": {"id": 5376195},
+            "transaction_account": {"id": 1100008},
             "category": {"id": cc_payment_cat},
         },
         # Bills-side paired txn (negative on checking) Ã¢â‚¬â€ must be excluded
@@ -579,7 +579,7 @@ def test_build_bills_snapshot_real_cc_bill_differs_per_partner():
         {
             "amount": -1500,
             "status": "posted",
-            "transaction_account": {"id": 4110210},
+            "transaction_account": {"id": 1100001},
             "category": {"id": cc_payment_cat},
         },
     ]
@@ -613,10 +613,10 @@ def test_build_bills_snapshot_estimated_cc_bill_differs_per_partner():
     Posted July CC txns per partner Ã¢â€ â€™ distinct estimates per partner.
     """
     prior_txns = [
-        # Fixture A CC-spend (July): 800 on FxA CC (4110216).
-        {"amount": -800, "status": "posted", "transaction_account": {"id": 4110216}},
-        # Fixture B CC-spend (July): 300 on FxB CC (5376195).
-        {"amount": -300, "status": "posted", "transaction_account": {"id": 5376195}},
+        # Fixture A CC-spend (July): 800 on FxA CC (1100003).
+        {"amount": -800, "status": "posted", "transaction_account": {"id": 1100003}},
+        # Fixture B CC-spend (July): 300 on FxB CC (1100008).
+        {"amount": -300, "status": "posted", "transaction_account": {"id": 1100008}},
     ]
     snapshot = build_bills_snapshot(
         month="2026-08",  # current month Ã¢â€ â€™ estimated = July (mÃ¢Ë†â€™1) proxy
@@ -653,27 +653,27 @@ def test_build_bills_snapshot_estimated_cc_bill_ignores_buys_for_future():
             "id": "buy-1",
             "date": "2026-12-05",
             "amount": -1200,
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Hello Fresh", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Hello Fresh", "is_transfer": False},
         },
         {
             "id": "buy-2",
             "date": "2026-12-12",
             "amount": -300,
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Memberships", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Memberships", "is_transfer": False},
         },
     ]
     prior_txns = [
-        {"amount": -800, "status": "posted", "transaction_account": {"id": 4110216}},
+        {"amount": -800, "status": "posted", "transaction_account": {"id": 1100003}},
     ]
     prior_events = [
         {
             "id": "prior-buy",
             "date": "2026-11-05",
             "amount": -200,
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Hello Fresh", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Hello Fresh", "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -761,17 +761,17 @@ def test_build_bills_snapshot_past_savings_balance_uses_real_end_balances(
         "partners": {
             "partner_a": {
                 "label": "Fixture A",
-                "savings_category_id": 34027470,
+                "savings_category_id": 2100014,
             }
         },
         "accounts": {
-            "4110210": {  # FxA Check
+            "1100001": {  # FxA Check
                 "name": "FxA Check",
                 "partner_id": "partner_a",
                 "type": "checking",
                 "excluded": False,
             },
-            "4110213": {  # FxA Savings
+            "1100002": {  # FxA Savings
                 "name": "FxA Savings",
                 "partner_id": "partner_a",
                 "type": "savings",
@@ -781,14 +781,14 @@ def test_build_bills_snapshot_past_savings_balance_uses_real_end_balances(
     }
     catalog = [
         {
-            "id": 4110210,
-            "account_id": 4110210,
+            "id": 1100001,
+            "account_id": 1100001,
             "current_balance": 7000,
             "starting_balance": 10000,
         },
         {
-            "id": 4110213,
-            "account_id": 4110213,
+            "id": 1100002,
+            "account_id": 1100002,
             "current_balance": 8000,
             "starting_balance": 5000,
         },
@@ -798,15 +798,15 @@ def test_build_bills_snapshot_past_savings_balance_uses_real_end_balances(
             "id": "sal-1",
             "date": "2026-05-15",
             "amount": 5000,
-            "scenario": {"account_id": 4110210, "title": "FxA Check"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "scenario": {"account_id": 1100001, "title": "FxA Check"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "id": "bill-1",
             "date": "2026-05-20",
             "amount": -8000,
-            "scenario": {"account_id": 4110210, "title": "FxA Check"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "scenario": {"account_id": 1100001, "title": "FxA Check"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     posted_txns = [
@@ -814,8 +814,8 @@ def test_build_bills_snapshot_past_savings_balance_uses_real_end_balances(
             "amount": 3000,
             "date": "2026-05-15",
             "status": "posted",
-            "transaction_account": {"id": 4110213},
-            "category": {"id": 34027470, "is_transfer": False},
+            "transaction_account": {"id": 1100002},
+            "category": {"id": 2100014, "is_transfer": False},
         },
         # CC txn on a non-partner account Ã¢â‚¬â€ must NOT count toward delta
         # (delta is real cash flow on partner's bills+savings only).
@@ -823,8 +823,8 @@ def test_build_bills_snapshot_past_savings_balance_uses_real_end_balances(
             "amount": -800,
             "date": "2026-05-10",
             "status": "posted",
-            "transaction_account": {"id": 4110216},  # FxA CC
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100003},  # FxA CC
+            "category": {"id": 2100003, "is_transfer": False},
         },
         # Out-of-month txn on a partner savings account Ã¢â‚¬â€ must NOT count
         # toward delta (date filter). Use non-savings category so it
@@ -834,8 +834,8 @@ def test_build_bills_snapshot_past_savings_balance_uses_real_end_balances(
             "amount": 9999,
             "date": "2026-04-15",
             "status": "posted",
-            "transaction_account": {"id": 4110213},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100002},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -865,17 +865,17 @@ def test_build_bills_snapshot_savings_event_buckets_correctly():
         "partners": {
             "partner_a": {
                 "label": "Fixture A",
-                "savings_category_id": 34027470,
+                "savings_category_id": 2100014,
             }
         },
         "accounts": {
-            "4110210": {  # FxA Check
+            "1100001": {  # FxA Check
                 "name": "FxA Check",
                 "partner_id": "partner_a",
                 "type": "checking",
                 "excluded": False,
             },
-            "4110213": {  # FxA Savings
+            "1100002": {  # FxA Savings
                 "name": "FxA Savings",
                 "partner_id": "partner_a",
                 "type": "savings",
@@ -885,14 +885,14 @@ def test_build_bills_snapshot_savings_event_buckets_correctly():
     }
     catalog = [
         {
-            "id": 4110210,
-            "account_id": 4110210,
+            "id": 1100001,
+            "account_id": 1100001,
             "current_balance": 0,
             "starting_balance": 0,
         },
         {
-            "id": 4110213,
-            "account_id": 4110213,
+            "id": 1100002,
+            "account_id": 1100002,
             "current_balance": 0,
             "starting_balance": 0,
         },
@@ -902,9 +902,9 @@ def test_build_bills_snapshot_savings_event_buckets_correctly():
             "id": "savings-evt-1",
             "date": "2026-09-15",
             "amount": -2000,
-            "scenario": {"account_id": 4110210, "title": "FxA Check"},
+            "scenario": {"account_id": 1100001, "title": "FxA Check"},
             "category": {
-                "id": 34027470,
+                "id": 2100014,
                 "title": "Sparekonto (Fixture A)",
                 "is_transfer": False,
             },
@@ -941,42 +941,42 @@ def test_build_bills_snapshot_savings_event_buckets_correctly():
 def test_build_bills_snapshot_real_bills_populated_for_past():
     """Past month: real_bills is the sum of posted checking debits.
 
-    Setup: 4 posted debits on FxA checking 4110210.
-      - Mortgage -15000 (cat 34025245, real bill) Ã¢â€ â€™ kept
-      - Mortgage -4000 (cat 34025245, real bill) Ã¢â€ â€™ kept
-      - CC paydown -5000 (cat 34025345, transfer) Ã¢â€ â€™ excluded
-      - Personal Transfer -200 (cat 34028575, exclude role) Ã¢â€ â€™ excluded
+    Setup: 4 posted debits on FxA checking 1100001.
+      - Mortgage -15000 (cat 2100003, real bill) Ã¢â€ â€™ kept
+      - Mortgage -4000 (cat 2100003, real bill) Ã¢â€ â€™ kept
+      - CC paydown -5000 (cat 2100011, transfer) Ã¢â€ â€™ excluded
+      - Personal Transfer -200 (cat 2100016, exclude role) Ã¢â€ â€™ excluded
     Expected real_bills = 19000.
     """
     posted_txns = [
         {
             "amount": -15000,
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "amount": -4000,
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "amount": -5000,
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025345, "is_transfer": False},  # CC paydown
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100011, "is_transfer": False},  # CC paydown
         },
         {
             "amount": -200,
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34028575, "is_transfer": False},  # exclude
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100016, "is_transfer": False},  # exclude
         },
     ]
     # Category roles with exclude entry.
     category_roles_with_exclude = dict(CATEGORY_ROLES)
-    category_roles_with_exclude["34028575"] = "exclude"
+    category_roles_with_exclude["2100016"] = "exclude"
     snapshot = build_bills_snapshot(
         month="2026-07",  # past
         events=[],
@@ -1034,11 +1034,11 @@ def test_build_bills_snapshot_real_bills_none_for_current_and_future():
 def test_build_bills_snapshot_cc_usage_by_category_populated_for_past():
     """Past month: cc_usage_by_category groups posted FxA-CC spend by title.
 
-    Setup: posted debits on FxA CC 4110216.
-      - Groceries -500 + Groceries -300 (cat 34025245) Ã¢â€ â€™ 800
+    Setup: posted debits on FxA CC 1100003.
+      - Groceries -500 + Groceries -300 (cat 2100003) Ã¢â€ â€™ 800
       - Dining -1200 (new cat, no role) Ã¢â€ â€™ 1200
-      - CC paydown -5000 (cat 34025345) Ã¢â€ â€™ excluded
-      - Groceries -777 on FxB CC 5376195 Ã¢â€ â€™ stays Fixture B-side only
+      - CC paydown -5000 (cat 2100011) Ã¢â€ â€™ excluded
+      - Groceries -777 on FxB CC 1100008 Ã¢â€ â€™ stays Fixture B-side only
 
     Note: no per-bill actuals exist Ã¢â‚¬â€ this is card spend only.
     """
@@ -1046,40 +1046,40 @@ def test_build_bills_snapshot_cc_usage_by_category_populated_for_past():
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Groceries", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Groceries", "is_transfer": False},
         },
         {
             "amount": -300,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Groceries", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Groceries", "is_transfer": False},
         },
         {
             "amount": -1200,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34028576, "title": "Dining", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100017, "title": "Dining", "is_transfer": False},
         },
         {
             "amount": -5000,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025345, "title": "CC Payment (paired)", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100011, "title": "CC Payment (paired)", "is_transfer": False},
         },
         # Not posted Ã¢â€ â€™ excluded.
         {
             "amount": -9999,
             "status": "pending",
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Groceries", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Groceries", "is_transfer": False},
         },
         # Other partner's CC Ã¢â€ â€™ excluded from Fixture A's map.
         {
             "amount": -777,
             "status": "posted",
-            "transaction_account": {"id": 5376195, "type": "credits"},
-            "category": {"id": 34025245, "title": "Groceries", "is_transfer": False},
+            "transaction_account": {"id": 1100008, "type": "credits"},
+            "category": {"id": 2100003, "title": "Groceries", "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -1131,13 +1131,13 @@ def test_build_bills_snapshot_estimated_cc_bill_populated_for_past_months():
         {
             "amount": -800,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     prior_events = [
         {
             "amount": -200,
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -1157,7 +1157,7 @@ def test_build_bills_snapshot_estimated_cc_bill_populated_for_past_months():
     # Past uses include_buys=False Ã¢â€ â€™ only the spend side, not the events.
     assert partner_a["estimated_cc_bill"] == 800
     # real_cc_bill still populated for past (CC-side payments on the card).
-    # 0 because there are no posted CC-payments on 4110216 in the test.
+    # 0 because there are no posted CC-payments on 1100003 in the test.
     assert partner_a["real_cc_bill"] == 0
 
 
@@ -1203,43 +1203,43 @@ def test_build_bills_snapshot_current_savings_balance_chains_from_prior(
     # `account_id` field matches `scenario.account_id` for resolution.
     current_catalog = [
         {
-            "id": 4110210,
-            "account_id": 4110210,
+            "id": 1100001,
+            "account_id": 1100001,
             "type": "bank",
             "current_balance": 7000,
             "starting_balance": 0,
         },
         {
-            "id": 4110213,
-            "account_id": 4110213,
+            "id": 1100002,
+            "account_id": 1100002,
             "type": "bank",
             "current_balance": 8000,
             "starting_balance": 0,
         },
         {
-            "id": 4110216,
-            "account_id": 4110216,
+            "id": 1100003,
+            "account_id": 1100003,
             "type": "credits",
             "current_balance": 0,
             "starting_balance": 0,
         },
         {
-            "id": 5376190,
-            "account_id": 5376190,
+            "id": 1100007,
+            "account_id": 1100007,
             "type": "bank",
             "current_balance": 5000,
             "starting_balance": 0,
         },
         {
-            "id": 5376185,
-            "account_id": 5376185,
+            "id": 1100006,
+            "account_id": 1100006,
             "type": "bank",
             "current_balance": 61000,
             "starting_balance": 0,
         },
         {
-            "id": 5376195,
-            "account_id": 5376195,
+            "id": 1100008,
+            "account_id": 1100008,
             "type": "credits",
             "current_balance": 3000,
             "starting_balance": 0,
@@ -1250,8 +1250,8 @@ def test_build_bills_snapshot_current_savings_balance_chains_from_prior(
             "amount": -6000,
             "date": "2026-08-15",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34027470, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100014, "is_transfer": False},
         },
     ]
     events = [
@@ -1259,15 +1259,15 @@ def test_build_bills_snapshot_current_savings_balance_chains_from_prior(
             "id": "sal-1",
             "date": "2026-08-25",
             "amount": 42000,
-            "scenario": {"account_id": 4110210, "title": "FxA Check"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "scenario": {"account_id": 1100001, "title": "FxA Check"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "id": "bill-1",
             "date": "2026-08-10",
             "amount": -15000,
-            "scenario": {"account_id": 4110210, "title": "FxA Check"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "scenario": {"account_id": 1100001, "title": "FxA Check"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -1287,7 +1287,7 @@ def test_build_bills_snapshot_current_savings_balance_chains_from_prior(
     # lag model (prior 37000 + 3000 = 40000).
     assert partner_a["savings_balance"] == 15000
     # savings_delta = savings-accounts-only posted flow. The -6000 txn is
-    # on CHECKING (4110210) Ã¢â€ â€™ checking noise, never counts. No savings
+    # on CHECKING (1100001) Ã¢â€ â€™ checking noise, never counts. No savings
     # txns posted Ã¢â€ â€™ 0.0 (correct: nothing saved).
     assert partner_a["savings_delta"] == 0.0
     # savings_planned is the event plan: salary - bills = 42000 - 15000.
@@ -1328,43 +1328,43 @@ def test_build_bills_snapshot_current_savings_balance_lag_model(tmp_path, monkey
     # current-month flow.
     current_catalog = [
         {
-            "id": 4110210,
-            "account_id": 4110210,
+            "id": 1100001,
+            "account_id": 1100001,
             "type": "bank",
             "current_balance": 7000,
             "starting_balance": 0,
         },
         {
-            "id": 4110213,
-            "account_id": 4110213,
+            "id": 1100002,
+            "account_id": 1100002,
             "type": "bank",
             "current_balance": 8000,
             "starting_balance": 0,
         },
         {
-            "id": 4110216,
-            "account_id": 4110216,
+            "id": 1100003,
+            "account_id": 1100003,
             "type": "credits",
             "current_balance": 0,
             "starting_balance": 0,
         },
         {
-            "id": 5376190,
-            "account_id": 5376190,
+            "id": 1100007,
+            "account_id": 1100007,
             "type": "bank",
             "current_balance": 5000,
             "starting_balance": 0,
         },
         {
-            "id": 5376185,
-            "account_id": 5376185,
+            "id": 1100006,
+            "account_id": 1100006,
             "type": "bank",
             "current_balance": 61000,
             "starting_balance": 0,
         },
         {
-            "id": 5376195,
-            "account_id": 5376195,
+            "id": 1100008,
+            "account_id": 1100008,
             "type": "credits",
             "current_balance": 3000,
             "starting_balance": 0,
@@ -1376,15 +1376,15 @@ def test_build_bills_snapshot_current_savings_balance_lag_model(tmp_path, monkey
             "id": "sal-1",
             "date": "2026-08-25",
             "amount": 50000,
-            "scenario": {"account_id": 4110210, "title": "FxA Check"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "scenario": {"account_id": 1100001, "title": "FxA Check"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "id": "bill-1",
             "date": "2026-08-10",
             "amount": -10000,
-            "scenario": {"account_id": 4110210, "title": "FxA Check"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "scenario": {"account_id": 1100001, "title": "FxA Check"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -1435,7 +1435,7 @@ def test_build_bills_snapshot_current_savings_balance_uses_prior_delta_partner_a
     }
     (tmp_path / "bills_dashboard_2026-07.json").write_text(json.dumps(prior_snap))
 
-    # Aug 2026 events on FxA Check (4110210). Same shape as
+    # Aug 2026 events on FxA Check (1100001). Same shape as
     # test_build_bills_snapshot_current_savings_delta_matches_net_partner_a_august.
     bank_events = [
         ("2026-08-15", -15000.0),
@@ -1453,9 +1453,9 @@ def test_build_bills_snapshot_current_savings_balance_uses_prior_delta_partner_a
                 "id": f"bank-{i}",
                 "date": d,
                 "amount": amt,
-                "transaction_account": {"id": 4110210, "type": "bank"},
+                "transaction_account": {"id": 1100001, "type": "bank"},
                 "category": {
-                    "id": 34025485 if is_salary else 34025245,
+                    "id": 2100013 if is_salary else 2100003,
                     "is_transfer": False,
                 },
             }
@@ -1466,7 +1466,7 @@ def test_build_bills_snapshot_current_savings_balance_uses_prior_delta_partner_a
         {
             "amount": -40382.95,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -1547,15 +1547,15 @@ def test_build_bills_snapshot_future_savings_balance_lag_model(tmp_path, monkeyp
             "id": "sal-sep",
             "date": "2026-09-25",
             "amount": 50000,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "id": "bill-sep",
             "date": "2026-09-10",
             "amount": -10000,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -1671,7 +1671,7 @@ def test_build_bills_snapshot_future_savings_delta_includes_cc_bill_partner_a_se
         ],
     }
     (tmp_path / "bills_dashboard_2026-08.json").write_text(json.dumps(aug))
-    # Sep 2026 events on FxA Check (4110210): salary 48111 + 5 bills 20631.
+    # Sep 2026 events on FxA Check (1100001): salary 48111 + 5 bills 20631.
     events: list[dict] = []
     bank = [
         ("2026-09-15", -15000.0),  # Mortgage
@@ -1688,9 +1688,9 @@ def test_build_bills_snapshot_future_savings_delta_includes_cc_bill_partner_a_se
                 "id": f"bank-{i}",
                 "date": d,
                 "amount": amt,
-                "transaction_account": {"id": 4110210, "type": "bank"},
+                "transaction_account": {"id": 1100001, "type": "bank"},
                 "category": {
-                    "id": 34025485 if is_salary else 34025245,
+                    "id": 2100013 if is_salary else 2100003,
                     "is_transfer": False,
                 },
             }
@@ -1703,8 +1703,8 @@ def test_build_bills_snapshot_future_savings_delta_includes_cc_bill_partner_a_se
             "id": "cc-buy-1",
             "date": "2026-08-31",
             "amount": -6919.35,
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Hello Fresh", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Hello Fresh", "is_transfer": False},
         }
     ]
     snapshot = build_bills_snapshot(
@@ -1750,11 +1750,11 @@ def test_build_bills_snapshot_current_savings_delta_includes_cc_bill():
     # checking; July posted CC spend on his CC account feeds the m-1
     # estimate proxy (800).
     prior_txns = [
-        # 800 in July posted CC charges on FxA CC (4110216).
+        # 800 in July posted CC charges on FxA CC (1100003).
         {
             "amount": -800,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     events = [
@@ -1762,15 +1762,15 @@ def test_build_bills_snapshot_current_savings_delta_includes_cc_bill():
             "id": "sal-1",
             "date": "2026-08-25",
             "amount": 42000,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "id": "bill-1",
             "date": "2026-08-10",
             "amount": -15000,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -1810,7 +1810,7 @@ def test_build_bills_snapshot_current_savings_delta_matches_net_partner_a_august
     Uses the same fixture shape as the on-disk August snapshot so any
     drift in the real data surfaces here.
     """
-    # Aug 2026 events on FxA Check (4110210) + FxA CC (4110216).
+    # Aug 2026 events on FxA Check (1100001) + FxA CC (1100003).
     # Salary 48111 + 5 mortgage/utility bills = 20631 + 6 planned buys
     # = 5786. Matches the on-disk August snapshot's salary/bills/buys.
     bank_events = [
@@ -1838,9 +1838,9 @@ def test_build_bills_snapshot_current_savings_delta_matches_net_partner_a_august
                 "id": f"bank-{i}",
                 "date": d,
                 "amount": amt,
-                "transaction_account": {"id": 4110210, "type": "bank"},
+                "transaction_account": {"id": 1100001, "type": "bank"},
                 "category": {
-                    "id": 34025485 if is_salary else 34025245,
+                    "id": 2100013 if is_salary else 2100003,
                     "title": "Salary (Fixture A)" if is_salary else "Bills",
                     "is_transfer": False,
                 },
@@ -1852,9 +1852,9 @@ def test_build_bills_snapshot_current_savings_delta_matches_net_partner_a_august
                 "id": f"cc-{i}",
                 "date": d,
                 "amount": amt,
-                "transaction_account": {"id": 4110216, "type": "credits"},
+                "transaction_account": {"id": 1100003, "type": "credits"},
                 "category": {
-                    "id": 34025245,
+                    "id": 2100003,
                     "title": (
                         "Memberships"
                         if "Membership" in str(amt) or amt > -1000
@@ -1871,7 +1871,7 @@ def test_build_bills_snapshot_current_savings_delta_matches_net_partner_a_august
         {
             "amount": -40382.95,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -1924,17 +1924,17 @@ def test_build_bills_snapshot_past_last_month_uses_real_cash_flow(
         "partners": {
             "partner_a": {
                 "label": "Fixture A",
-                "savings_category_id": 34027470,
+                "savings_category_id": 2100014,
             }
         },
         "accounts": {
-            "4110210": {
+            "1100001": {
                 "name": "FxA Check",
                 "partner_id": "partner_a",
                 "type": "checking",
                 "excluded": False,
             },
-            "4110213": {
+            "1100002": {
                 "name": "FxA Savings",
                 "partner_id": "partner_a",
                 "type": "savings",
@@ -1943,23 +1943,23 @@ def test_build_bills_snapshot_past_last_month_uses_real_cash_flow(
         },
     }
     catalog = [
-        {"id": 4110210, "current_balance": 7000, "starting_balance": 0},
-        {"id": 4110213, "current_balance": 8000, "starting_balance": 0},
+        {"id": 1100001, "current_balance": 7000, "starting_balance": 0},
+        {"id": 1100002, "current_balance": 8000, "starting_balance": 0},
     ]
     posted_txns = [
         {
             "amount": 5000,
             "date": "2026-07-10",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "amount": -2000,
             "date": "2026-07-15",
             "status": "posted",
-            "transaction_account": {"id": 4110213, "type": "savings"},
-            "category": {"id": 34027470, "is_transfer": False},
+            "transaction_account": {"id": 1100002, "type": "savings"},
+            "category": {"id": 2100014, "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -1995,17 +1995,17 @@ def test_build_bills_snapshot_past_delta_excludes_cc_paydown():
         "partners": {
             "partner_a": {
                 "label": "Fixture A",
-                "savings_category_id": 34027470,
+                "savings_category_id": 2100014,
             }
         },
         "accounts": {
-            "4110210": {  # FxA Check
+            "1100001": {  # FxA Check
                 "name": "FxA Check",
                 "partner_id": "partner_a",
                 "type": "checking",
                 "excluded": False,
             },
-            "4110213": {  # FxA Savings
+            "1100002": {  # FxA Savings
                 "name": "FxA Savings",
                 "partner_id": "partner_a",
                 "type": "savings",
@@ -2014,20 +2014,20 @@ def test_build_bills_snapshot_past_delta_excludes_cc_paydown():
         },
     }
     catalog = [
-        {"id": 4110210, "current_balance": 10000, "starting_balance": 0},
-        {"id": 4110213, "current_balance": 5000, "starting_balance": 0},
+        {"id": 1100001, "current_balance": 10000, "starting_balance": 0},
+        {"id": 1100002, "current_balance": 5000, "starting_balance": 0},
     ]
     # One CC-paydown posted txn on the bills account: -5000.
-    # Category id 34025345 = "CC Payment (paired)" Ã¢â‚¬â€ the bills-side
+    # Category id 2100011 = "CC Payment (paired)" Ã¢â‚¬â€ the bills-side
     # of a CC paydown (cash out of checking to pay the card).
     posted_txns = [
         {
             "amount": -5000,
             "date": "2026-06-20",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "category": {
-                "id": 34025345,
+                "id": 2100011,
                 "title": "CC Payment (paired)",
                 "is_transfer": False,
             },
@@ -2065,7 +2065,7 @@ def test_build_bills_snapshot_current_cc_payment_on_checking_with_is_transfer_st
     so it fires even when the classifier would have excluded the event.
 
     Fixture: Fixture A August 2026 (current), CC-paydown event on FxA
-    Check (4110210) with is_transfer=True. The m-1 (July) proxy estimate
+    Check (1100001) with is_transfer=True. The m-1 (July) proxy estimate
     stays at 40382.95; the override only sets real_cc_bill = 12500, and
     savings_planned picks real over estimated.
     """
@@ -2074,23 +2074,23 @@ def test_build_bills_snapshot_current_cc_payment_on_checking_with_is_transfer_st
             "id": "sal-1",
             "date": "2026-08-25",
             "amount": 48111.0,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "id": "bill-1",
             "date": "2026-08-15",
             "amount": -15000.0,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "id": "cc-pay-1",
             "date": "2026-08-20",
             "amount": -12500,
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "category": {
-                "id": 34025345,
+                "id": 2100011,
                 "title": "CC Payment (paired)",
                 "is_transfer": True,
             },
@@ -2100,7 +2100,7 @@ def test_build_bills_snapshot_current_cc_payment_on_checking_with_is_transfer_st
         {
             "amount": -40382.95,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -2147,23 +2147,23 @@ def test_build_bills_snapshot_current_cc_payment_zero_amount_does_not_override()
             "id": "sal-1",
             "date": "2026-08-25",
             "amount": 42000,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "id": "bill-1",
             "date": "2026-08-10",
             "amount": -15000,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "id": "cc-pay-zero",
             "date": "2026-08-20",
             "amount": 0,
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "category": {
-                "id": 34025345,
+                "id": 2100011,
                 "title": "CC Payment (paired)",
                 "is_transfer": True,
             },
@@ -2173,7 +2173,7 @@ def test_build_bills_snapshot_current_cc_payment_zero_amount_does_not_override()
         {
             "amount": -800,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -2340,8 +2340,8 @@ def test_build_bills_chain_full_re_sync_consistent(tmp_path, monkeypatch):
             "amount": 3000,
             "date": "2026-06-15",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     transactions_per_month["2026-07"] = [
@@ -2349,8 +2349,8 @@ def test_build_bills_chain_full_re_sync_consistent(tmp_path, monkeypatch):
             "amount": -2000,
             "date": "2026-07-10",
             "status": "posted",
-            "transaction_account": {"id": 4110213, "type": "savings"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100002, "type": "savings"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
 
@@ -2435,24 +2435,24 @@ def _next_month_events():
             "id": "nxt-1",
             "date": "2026-08-25",
             "note": "Salary",
-            "category": {"id": 34025485, "title": "Income", "is_transfer": False},
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "category": {"id": 2100013, "title": "Income", "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "amount": 42000,
         },
         {
             "id": "nxt-2",
             "date": "2026-08-10",
             "note": "Rent",
-            "category": {"id": 34025245, "title": "Common", "is_transfer": False},
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "category": {"id": 2100003, "title": "Common", "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "amount": -15500,
         },
         {
             "id": "nxt-3",
             "date": "2026-08-15",
             "note": "New laptop",
-            "category": {"id": 34025245, "title": "Electronics", "is_transfer": False},
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "category": {"id": 2100003, "title": "Electronics", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
             "amount": -5000,
         },
     ]
@@ -2535,11 +2535,11 @@ def test_build_bills_snapshot_everyday_budget_excludes_cc_payment_events():
             "date": "2026-08-28",
             "note": "CC paydown",
             "category": {
-                "id": 34025345,
+                "id": 2100011,
                 "title": "CC Payment (paired)",
                 "is_transfer": True,
             },
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
             "amount": -9800,
         },
     ]
@@ -2598,8 +2598,8 @@ def test_build_bills_snapshot_everyday_budget_negative_passes_through():
                 "id": "nxt-neg-1",
                 "date": "2026-08-25",
                 "note": "Salary",
-                "category": {"id": 34025485, "title": "Income", "is_transfer": False},
-                "transaction_account": {"id": 4110210, "type": "bank"},
+                "category": {"id": 2100013, "title": "Income", "is_transfer": False},
+                "transaction_account": {"id": 1100001, "type": "bank"},
                 "amount": 10000,
             },
         ]
@@ -2668,8 +2668,8 @@ def test_savings_planned_current_month_delta_savings_accounts_only(tmp_path, mon
             "amount": -2000,
             "date": "2026-08-10",
             "status": "posted",
-            "transaction_account": {"id": 4110213, "type": "savings"},
-            "category": {"id": 34027470, "is_transfer": False},
+            "transaction_account": {"id": 1100002, "type": "savings"},
+            "category": {"id": 2100014, "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -2710,7 +2710,7 @@ def test_savings_planned_current_month_chain_kwargs_missing_delta_null_with_warn
     txns_no_cc_pay = [
         t
         for t in _ps_transactions()
-        if (t.get("category") or {}).get("id") != 34025345
+        if (t.get("category") or {}).get("id") != 2100011
     ]
     snapshot = build_bills_snapshot(
         month="2026-08",  # current
@@ -2745,7 +2745,7 @@ def test_savings_planned_future_month_delta_null(tmp_path, monkeypatch):
         {
             "amount": -500,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -2773,7 +2773,7 @@ def test_savings_planned_past_month_uses_real_cc_bill(tmp_path, monkeypatch):
     """Past month: planned = salary - bills - real_cc_bill; delta savings-only.
 
     Posted July txns: CC-side paydown -3000 on FxA CC Ã¢â€ â€™ real_cc_bill = 3000.
-    Fixture A's savings account (4110213) moved +26500 during July (salary
+    Fixture A's savings account (1100002) moved +26500 during July (salary
     in, then leftover transferred to savings). The +42000/-15500 checking
     activity is checking noise Ã¢â‚¬â€ never counts (user decision 2026-08-28).
     Events: salary 42000 + bill 15500 on checking.
@@ -2786,15 +2786,15 @@ def test_savings_planned_past_month_uses_real_cc_bill(tmp_path, monkeypatch):
             "id": "sal-jul",
             "date": "2026-07-25",
             "amount": 42000,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "id": "bill-jul",
             "date": "2026-07-10",
             "amount": -15500,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     posted_txns = [
@@ -2803,31 +2803,31 @@ def test_savings_planned_past_month_uses_real_cc_bill(tmp_path, monkeypatch):
             "amount": 26500,
             "date": "2026-07-28",
             "status": "posted",
-            "transaction_account": {"id": 4110213, "type": "savings"},
-            "category": {"id": 34027470, "is_transfer": False},
+            "transaction_account": {"id": 1100002, "type": "savings"},
+            "category": {"id": 2100014, "is_transfer": False},
         },
         # Checking noise Ã¢â‚¬â€ salary in / bills out. Must NOT pollute delta.
         {
             "amount": 42000,
             "date": "2026-07-25",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "amount": -15500,
             "date": "2026-07-10",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "amount": -3000,
             "date": "2026-07-20",
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
             "category": {
-                "id": 34025345,
+                "id": 2100011,
                 "title": "CC Payment (paired)",
                 "is_transfer": True,
             },
@@ -2878,8 +2878,8 @@ def test_savings_planned_chain_future_lag_uses_planned(tmp_path, monkeypatch):
             "amount": 2000,
             "date": "2026-07-10",
             "status": "posted",
-            "transaction_account": {"id": 4110213, "type": "savings"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100002, "type": "savings"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
     events_per_month["2026-09"] = [
@@ -2887,15 +2887,15 @@ def test_savings_planned_chain_future_lag_uses_planned(tmp_path, monkeypatch):
             "id": "sal-sep",
             "date": "2026-09-25",
             "amount": 10000,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "id": "bill-sep",
             "date": "2026-09-10",
             "amount": -4000,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
     ]
 
@@ -2948,8 +2948,8 @@ def test_savings_delta_current_excludes_checking_noise(tmp_path, monkeypatch):
     """Current delta = savings-only sum; mortgage/salary/CC-paydown ignored.
 
     Fixture mimics August noise: salary +42000 in, mortgage -15000 out, CC
-    paydown -12500 out -- all on CHECKING (4110210). Only the -28 on FxA
-    Savings (4110213) counts. Verified ground truth 2026-08: Fixture A's
+    paydown -12500 out -- all on CHECKING (1100001). Only the -28 on FxA
+    Savings (1100002) counts. Verified ground truth 2026-08: Fixture A's
     savings account moved -28.00.
     """
     monkeypatch.setattr(storage, "PRIVATE_DATA_DIR", tmp_path)
@@ -2958,23 +2958,23 @@ def test_savings_delta_current_excludes_checking_noise(tmp_path, monkeypatch):
             "amount": 42000,
             "date": "2026-08-15",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "amount": -15000,
             "date": "2026-08-15",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "amount": -12500,
             "date": "2026-08-20",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "category": {
-                "id": 34025345,
+                "id": 2100011,
                 "title": "CC Payment (paired)",
                 "is_transfer": True,
             },
@@ -2984,8 +2984,8 @@ def test_savings_delta_current_excludes_checking_noise(tmp_path, monkeypatch):
             "amount": -28,
             "date": "2026-08-12",
             "status": "posted",
-            "transaction_account": {"id": 4110213, "type": "savings"},
-            "category": {"id": 34027470, "is_transfer": False},
+            "transaction_account": {"id": 1100002, "type": "savings"},
+            "category": {"id": 2100014, "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -3020,22 +3020,22 @@ def test_savings_delta_past_excludes_checking_noise(tmp_path, monkeypatch):
             "amount": 42000,
             "date": "2026-07-25",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "amount": -41500,
             "date": "2026-07-26",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "amount": 1000,
             "date": "2026-07-28",
             "status": "posted",
-            "transaction_account": {"id": 4110213, "type": "savings"},
-            "category": {"id": 34027470, "is_transfer": False},
+            "transaction_account": {"id": 1100002, "type": "savings"},
+            "category": {"id": 2100014, "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -3067,8 +3067,8 @@ def test_savings_delta_zero_when_no_savings_txns(tmp_path, monkeypatch):
             "amount": 42000,
             "date": "2026-08-15",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -3111,15 +3111,15 @@ def test_chain_back_walk_deltas_stay_combined(tmp_path, monkeypatch):
             "amount": 3000,
             "date": "2026-07-10",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025245, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100003, "is_transfer": False},
         },
         {
             "amount": -2000,
             "date": "2026-07-11",
             "status": "posted",
-            "transaction_account": {"id": 4110213, "type": "savings"},
-            "category": {"id": 34027470, "is_transfer": False},
+            "transaction_account": {"id": 1100002, "type": "savings"},
+            "category": {"id": 2100014, "is_transfer": False},
         },
     ]
     snapshots = build_bills_chain(
@@ -3160,16 +3160,16 @@ def test_build_bills_snapshot_current_cc_unscheduled_posted_counts():
             "id": "sal-1",
             "date": "2026-08-25",
             "amount": 49490,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "id": "cc-evt",
             "date": "2026-08-15",
             "amount": -32806.0,
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "category": {
-                "id": 34025345,
+                "id": 2100011,
                 "title": "CC Payment (paired)",
                 "is_transfer": True,
             },
@@ -3180,22 +3180,22 @@ def test_build_bills_snapshot_current_cc_unscheduled_posted_counts():
             "amount": -32806.89,
             "date": "2026-08-15",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025345},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100011},
         },
         {
             "amount": -1933.04,
             "date": "2026-08-15",
             "status": "posted",
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025345},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100011},
         },
     ]
     prior_txns = [
         {
             "amount": -5000,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -3227,8 +3227,8 @@ def test_build_bills_snapshot_current_cc_no_event_posted_only():
             "id": "sal-b",
             "date": "2026-08-25",
             "amount": 40814,
-            "transaction_account": {"id": 5376190, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100007, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
     ]
     txns = [
@@ -3236,15 +3236,15 @@ def test_build_bills_snapshot_current_cc_no_event_posted_only():
             "amount": -11022.21,
             "date": "2026-08-15",
             "status": "posted",
-            "transaction_account": {"id": 5376190, "type": "bank"},
-            "category": {"id": 34025345},
+            "transaction_account": {"id": 1100007, "type": "bank"},
+            "category": {"id": 2100011},
         },
     ]
     prior_txns = [
         {
             "amount": -8000,
             "status": "posted",
-            "transaction_account": {"id": 5376195, "type": "credits"},
+            "transaction_account": {"id": 1100008, "type": "credits"},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -3274,16 +3274,16 @@ def test_build_bills_snapshot_current_cc_event_only_legacy_path():
             "id": "sal-1",
             "date": "2026-08-25",
             "amount": 49490,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
         {
             "id": "cc-evt",
             "date": "2026-08-20",
             "amount": -12500,
-            "transaction_account": {"id": 4110210, "type": "bank"},
+            "transaction_account": {"id": 1100001, "type": "bank"},
             "category": {
-                "id": 34025345,
+                "id": 2100011,
                 "title": "CC Payment (paired)",
                 "is_transfer": True,
             },
@@ -3293,7 +3293,7 @@ def test_build_bills_snapshot_current_cc_event_only_legacy_path():
         {
             "amount": -9000,
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
+            "transaction_account": {"id": 1100003, "type": "credits"},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -3325,8 +3325,8 @@ def test_build_bills_snapshot_m1_estimate_posted_plus_scheduled():
             "id": "sal-1",
             "date": "2026-09-25",
             "amount": 42000,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
     ]
     prior_events = [
@@ -3336,8 +3336,8 @@ def test_build_bills_snapshot_m1_estimate_posted_plus_scheduled():
             "id": "cc-buy-1",
             "date": "2026-08-31",
             "amount": -500,
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Hello Fresh", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Hello Fresh", "is_transfer": False},
         },
     ]
     prior_txns = [
@@ -3345,8 +3345,8 @@ def test_build_bills_snapshot_m1_estimate_posted_plus_scheduled():
             "amount": -200,
             "date": "2026-08-02",
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Groceries", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Groceries", "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(
@@ -3384,8 +3384,8 @@ def test_build_bills_snapshot_m1_classification_uses_injected_today():
             "id": "sal-1",
             "date": "2026-10-25",
             "amount": 42000,
-            "transaction_account": {"id": 4110210, "type": "bank"},
-            "category": {"id": 34025485, "is_transfer": False},
+            "transaction_account": {"id": 1100001, "type": "bank"},
+            "category": {"id": 2100013, "is_transfer": False},
         },
     ]
     prior_events = [
@@ -3393,16 +3393,16 @@ def test_build_bills_snapshot_m1_classification_uses_injected_today():
             "id": "cc-buy-1",
             "date": "2026-09-20",
             "amount": -500,
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Hello Fresh", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Hello Fresh", "is_transfer": False},
         },
         {
             # Dated <= injected today: must NOT add to the remaining envelope.
             "id": "cc-buy-past",
             "date": "2026-09-10",
             "amount": -300,
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Hello Fresh", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Hello Fresh", "is_transfer": False},
         },
     ]
     prior_txns = [
@@ -3410,8 +3410,8 @@ def test_build_bills_snapshot_m1_classification_uses_injected_today():
             "amount": -200,
             "date": "2026-09-02",
             "status": "posted",
-            "transaction_account": {"id": 4110216, "type": "credits"},
-            "category": {"id": 34025245, "title": "Groceries", "is_transfer": False},
+            "transaction_account": {"id": 1100003, "type": "credits"},
+            "category": {"id": 2100003, "title": "Groceries", "is_transfer": False},
         },
     ]
     snapshot = build_bills_snapshot(

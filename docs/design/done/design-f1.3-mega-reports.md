@@ -564,7 +564,7 @@ POST /api/mega-reports/{start}/{end}/pdf
 {
   "months": ["2026-01", "2026-02", ...],
   "cats": {
-    "34025255": {
+    "2100005": {
       "title": "Supermarket",
       "section": "common",
       "partner_a_paid": [0.0, ...],
@@ -610,7 +610,7 @@ POST /api/mega-reports/{start}/{end}/pdf
 {
   "income": 450000.0,
   "entries": [
-    {"id": "34025245", "title": "Groceries", "amount": 36000.0},
+    {"id": "2100003", "title": "Groceries", "amount": 36000.0},
     {"id": "role-net_savings", "title": "Net savings", "amount": 55000.0}
   ],
   "unavailable_reason": null

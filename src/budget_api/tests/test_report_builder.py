@@ -25,11 +25,11 @@ def _mock_transactions() -> list[dict]:
             "payee": "Rema 1000",
             "note": "Weekly shop",
             "is_transfer": False,
-            "account": {"id": "4110210", "name": "FxA Check Handelsbanken"},
-            "category": {"id": 34025255, "title": "Supermarket", "parent_id": 34025245},
+            "account": {"id": "1100001", "name": "FxA Check Nordic Bank"},
+            "category": {"id": 2100005, "title": "Supermarket", "parent_id": 2100003},
             "category_hierarchy": [
-                {"id": "34025245", "title": "Groceries"},
-                {"id": "34025255", "title": "Supermarket"},
+                {"id": "2100003", "title": "Groceries"},
+                {"id": "2100005", "title": "Supermarket"},
             ],
         },
         {
@@ -39,11 +39,11 @@ def _mock_transactions() -> list[dict]:
             "payee": "Kiwi",
             "note": None,
             "is_transfer": False,
-            "account": {"id": "5376190", "name": "FxB Check Handelsbanken"},
-            "category": {"id": 34025255, "title": "Supermarket", "parent_id": 34025245},
+            "account": {"id": "1100007", "name": "FxB Check Nordic Bank"},
+            "category": {"id": 2100005, "title": "Supermarket", "parent_id": 2100003},
             "category_hierarchy": [
-                {"id": "34025245", "title": "Groceries"},
-                {"id": "34025255", "title": "Supermarket"},
+                {"id": "2100003", "title": "Groceries"},
+                {"id": "2100005", "title": "Supermarket"},
             ],
         },
     ]
@@ -58,14 +58,14 @@ def _mock_account_mappings() -> dict:
             "partner_b": {"label": "Fixture B"},
         },
         "accounts": {
-            "4110210": {
-                "name": "FxA Check Handelsbanken",
+            "1100001": {
+                "name": "FxA Check Nordic Bank",
                 "partner_id": "partner_a",
                 "type": "checking",
                 "excluded": False,
             },
-            "5376190": {
-                "name": "FxB Check Handelsbanken",
+            "1100007": {
+                "name": "FxB Check Nordic Bank",
                 "partner_id": "partner_b",
                 "type": "checking",
                 "excluded": False,
@@ -78,16 +78,16 @@ def _mock_detailed_section_mapping() -> dict:
     return {
         "account_roles": {},
         "category_sections": {
-            "34025245": "common",
-            "34025255": "common",
+            "2100003": "common",
+            "2100005": "common",
         },
     }
 
 
 def _mock_category_roles() -> dict:
     return {
-        "34025245": "spend",
-        "34025255": "spend",
+        "2100003": "spend",
+        "2100005": "spend",
     }
 
 
@@ -97,14 +97,14 @@ def _mock_category_catalog() -> dict:
         "end": "2026-07",
         "categories": [
             {
-                "id": 34025245,
+                "id": 2100003,
                 "title": "Groceries",
                 "parent_id": None,
                 "children": [
                     {
-                        "id": 34025255,
+                        "id": 2100005,
                         "title": "Supermarket",
-                        "parent_id": 34025245,
+                        "parent_id": 2100003,
                         "children": [],
                     },
                 ],

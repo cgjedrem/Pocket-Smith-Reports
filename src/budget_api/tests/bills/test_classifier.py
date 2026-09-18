@@ -12,19 +12,19 @@ from budget_api.services.bills_classifier import (
 
 ACCOUNT_MAPPINGS = {
     "accounts": {
-        "4110210": {
+        "1100001": {
             "name": "FxA Check",
             "partner_id": "partner_a",
             "type": "checking",
             "excluded": False,
         },
-        "4110213": {
+        "1100002": {
             "name": "FxA Savings",
             "partner_id": "partner_a",
             "type": "savings",
             "excluded": False,
         },
-        "4110216": {
+        "1100003": {
             "name": "FxA CC",
             "partner_id": "partner_a",
             "type": "cc",
@@ -40,13 +40,13 @@ ACCOUNT_MAPPINGS = {
 }
 
 CATEGORY_ROLES = {
-    "34025485": "income",
-    "34025245": "spend",
-    "34025235": "savings",
-    "34025345": "spend",  # CC Payment (paired)
+    "2100013": "income",
+    "2100003": "spend",
+    "2100001": "savings",
+    "2100011": "spend",  # CC Payment (paired)
 }
 
-CC_PAYMENT_CATEGORY_ID = 34025345
+CC_PAYMENT_CATEGORY_ID = 2100011
 
 
 def _event(
@@ -55,7 +55,7 @@ def _event(
     return {
         "transaction_account": {
             "id": account_id,
-            "type": "bank" if account_id != 4110216 else "credits",
+            "type": "bank" if account_id != 1100003 else "credits",
         },
         "category": {"id": category_id, "is_transfer": is_transfer},
         "amount": amount,
@@ -67,12 +67,12 @@ def _event(
 
 
 def test_classify_bill_on_checking_account():
-    event = _event(4110210, 34025245)
+    event = _event(1100001, 2100003)
     assert classify_event(event, ACCOUNT_MAPPINGS, CATEGORY_ROLES) == "bill"
 
 
 def test_classify_buy_on_credits_account():
-    event = _event(4110216, 34025245)
+    event = _event(1100003, 2100003)
     assert classify_event(event, ACCOUNT_MAPPINGS, CATEGORY_ROLES) == "buy"
 
 
@@ -80,21 +80,21 @@ def test_classify_personal_spend_on_cc_is_buy():
     """PR65: CC account + personal_spend role (Charity, Memberships
     (Personal)) = scheduled CC buy — the card spend is paid with next
     month's salary like any other buy."""
-    roles = {**CATEGORY_ROLES, "34028550": "personal_spend"}
-    event = _event(4110216, 34028550)
+    roles = {**CATEGORY_ROLES, "2100015": "personal_spend"}
+    event = _event(1100003, 2100015)
     assert classify_event(event, ACCOUNT_MAPPINGS, roles) == "buy"
 
 
 def test_classify_personal_spend_on_checking_stays_excluded():
     """Same personal_spend role on a non-CC account must NOT become a
     bill — behavior unchanged for checking/savings."""
-    roles = {**CATEGORY_ROLES, "34028550": "personal_spend"}
-    event = _event(4110210, 34028550)
+    roles = {**CATEGORY_ROLES, "2100015": "personal_spend"}
+    event = _event(1100001, 2100015)
     assert classify_event(event, ACCOUNT_MAPPINGS, roles) == "excluded"
 
 
 def test_classify_savings_on_savings_account():
-    event = _event(4110213, 34025235)
+    event = _event(1100002, 2100001)
     assert classify_event(event, ACCOUNT_MAPPINGS, CATEGORY_ROLES) == "savings"
 
 
@@ -104,13 +104,13 @@ def test_classify_partner_savings_category_overrides_is_transfer():
     With per-partner savings_category_id, the event buckets as 'savings'
     even if the parent is_transfer was true."""
     # is_transfer=True (parent), but category id matches partner savings.
-    event = _event(4110210, 34027470, is_transfer=True)
+    event = _event(1100001, 2100014, is_transfer=True)
     assert (
         classify_event(
             event,
             ACCOUNT_MAPPINGS,
             CATEGORY_ROLES,
-            savings_category_id=34027470,
+            savings_category_id=2100014,
         )
         == "savings"
     )
@@ -120,17 +120,17 @@ def test_classify_partner_savings_category_only_for_matching_partner():
     """If event category id matches a DIFFERENT partner's savings category,
     do NOT bucket as savings — fall through to the normal rules.
 
-    CATEGORY_ROLES treats 34025300 as spend → on a checking account it
+    CATEGORY_ROLES treats 2100010 as spend → on a checking account it
     buckets as 'bill', not 'savings'. Confirms the per-partner id check
     didn't over-fire.
     """
-    # Category 34025300 is Fixture B's savings; event is on Fixture A's account.
-    event = _event(4110210, 34025300, is_transfer=False)
+    # Category 2100010 is Fixture B's savings; event is on Fixture A's account.
+    event = _event(1100001, 2100010, is_transfer=False)
     result = classify_event(
         event,
         ACCOUNT_MAPPINGS,
         CATEGORY_ROLES,
-        savings_category_id=34027470,  # Fixture A's id (different)
+        savings_category_id=2100014,  # Fixture A's id (different)
     )
     # Falls through to normal rules: checking + spend → "bill".
     assert result == "bill"
@@ -138,29 +138,29 @@ def test_classify_partner_savings_category_only_for_matching_partner():
 
 def test_classify_no_savings_category_id_falls_back_to_old_rules():
     """Without savings_category_id param, transfer categories still excluded."""
-    event = _event(4110210, 34025235, is_transfer=True)
+    event = _event(1100001, 2100001, is_transfer=True)
     assert (
         classify_event(event, ACCOUNT_MAPPINGS, CATEGORY_ROLES) == "excluded"
     )
 
 
 def test_classify_salary_income_on_checking():
-    event = _event(4110210, 34025485, amount=42000)
+    event = _event(1100001, 2100013, amount=42000)
     assert classify_event(event, ACCOUNT_MAPPINGS, CATEGORY_ROLES) == "salary"
 
 
 def test_classify_excluded_on_excluded_account():
-    event = _event(4629234, 34025245)
+    event = _event(4629234, 2100003)
     assert classify_event(event, ACCOUNT_MAPPINGS, CATEGORY_ROLES) == "excluded"
 
 
 def test_classify_excluded_on_transfer_category():
-    event = _event(4110210, 34025245, is_transfer=True)
+    event = _event(1100001, 2100003, is_transfer=True)
     assert classify_event(event, ACCOUNT_MAPPINGS, CATEGORY_ROLES) == "excluded"
 
 
 def test_classify_excluded_on_unmapped_bank_account():
-    event = _event(9999999, 34025245)
+    event = _event(9999999, 2100003)
     assert classify_event(event, ACCOUNT_MAPPINGS, CATEGORY_ROLES) == "excluded"
 
 
@@ -168,12 +168,12 @@ def test_classify_excluded_on_unmapped_bank_account():
 
 
 def test_is_cc_payment_true_on_matching_category():
-    event = _event(4110210, CC_PAYMENT_CATEGORY_ID)
+    event = _event(1100001, CC_PAYMENT_CATEGORY_ID)
     assert is_cc_payment(event, CC_PAYMENT_CATEGORY_ID) is True
 
 
 def test_is_cc_payment_false_on_other_category():
-    event = _event(4110210, 34025245)
+    event = _event(1100001, 2100003)
     assert is_cc_payment(event, CC_PAYMENT_CATEGORY_ID) is False
 
 
@@ -233,9 +233,9 @@ def test_match_scheduled_buys_does_not_mutate_input():
 from budget_api.services.bills_classifier import resolve_event_account_id
 
 ACCOUNT_CATALOG = [
-    {"id": 4110210, "account_id": 4004538, "type": "bank"},
-    {"id": 4110216, "account_id": 4004544, "type": "credits"},
-    {"id": 4110213, "account_id": 4004541, "type": "bank"},
+    {"id": 1100001, "account_id": 4004538, "type": "bank"},
+    {"id": 1100003, "account_id": 4004544, "type": "credits"},
+    {"id": 1100002, "account_id": 4004541, "type": "bank"},
 ]
 
 
@@ -261,27 +261,27 @@ def _real_ps_event(
 
 
 def test_resolve_event_account_id_translates_scenario_via_catalog():
-    """scenario.account_id=4004538 (bank) → 4110210 (transaction_account)."""
-    event = _real_ps_event(4004538, 34025245)
-    assert resolve_event_account_id(event, ACCOUNT_CATALOG) == "4110210"
+    """scenario.account_id=4004538 (bank) → 1100001 (transaction_account)."""
+    event = _real_ps_event(4004538, 2100003)
+    assert resolve_event_account_id(event, ACCOUNT_CATALOG) == "1100001"
 
 
 def test_resolve_event_account_id_falls_back_to_transaction_account():
     """Test/fabricated shape (transaction_account.id) still resolves."""
     event = {
-        "transaction_account": {"id": 4110210, "type": "bank"},
-        "category": {"id": 34025245},
+        "transaction_account": {"id": 1100001, "type": "bank"},
+        "category": {"id": 2100003},
     }
-    assert resolve_event_account_id(event, ACCOUNT_CATALOG) == "4110210"
+    assert resolve_event_account_id(event, ACCOUNT_CATALOG) == "1100001"
 
 
 def test_resolve_event_account_id_falls_back_when_no_catalog():
     """If catalog not provided and event has transaction_account, still works."""
     event = {
-        "transaction_account": {"id": 4110210, "type": "bank"},
-        "category": {"id": 34025245},
+        "transaction_account": {"id": 1100001, "type": "bank"},
+        "category": {"id": 2100003},
     }
-    assert resolve_event_account_id(event) == "4110210"
+    assert resolve_event_account_id(event) == "1100001"
 
 
 def test_resolve_event_account_id_empty_when_unresolvable():
@@ -293,13 +293,13 @@ def test_resolve_event_account_id_empty_when_unresolvable():
 def test_classify_real_ps_event_uses_catalog_lookup():
     """Regression: real PS event shape (scenario.account_id) must bucket
     into 'bill' for a checking account, not be silently dropped as 'excluded'."""
-    event = _real_ps_event(4004538, 34025245, amount=-15000)  # Mortgage spend
+    event = _real_ps_event(4004538, 2100003, amount=-15000)  # Mortgage spend
     bucket = classify_event(event, ACCOUNT_MAPPINGS, CATEGORY_ROLES, ACCOUNT_CATALOG)
     assert bucket == "bill"
 
 
 def test_classify_real_ps_salary_event_uses_catalog_lookup():
     """Salary event on Fixture A's checking account → 'salary' bucket."""
-    event = _real_ps_event(4004538, 34025485, amount=48111)  # Salary income
+    event = _real_ps_event(4004538, 2100013, amount=48111)  # Salary income
     bucket = classify_event(event, ACCOUNT_MAPPINGS, CATEGORY_ROLES, ACCOUNT_CATALOG)
     assert bucket == "salary"

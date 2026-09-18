@@ -10,7 +10,7 @@ export interface BillsEvent {
   day: number; // 1-31
   title: string; // category name (e.g. "Mortgage", "Salary (Partner B)")
   type: BillsEventType;
-  account: string; // bank account name (e.g. "FxA Check Handelsbanken")
+  account: string; // bank account name (e.g. "A-Check Nordic Bank")
   partner: string;
   amount: number;
   is_cc_payment: boolean;

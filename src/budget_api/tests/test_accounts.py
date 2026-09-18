@@ -20,9 +20,9 @@ class TestListAccounts:
         body = resp.json()
         assert "accounts" in body
         ids = [a["id"] for a in body["accounts"]]
-        assert "4110210" in ids
-        assert "4110213" in ids
-        assert "5376190" in ids
+        assert "1100001" in ids
+        assert "1100002" in ids
+        assert "1100007" in ids
 
     def test_list_empty_when_no_catalog(self, client, write_mappings):
         resp = client.get("/api/accounts")
@@ -61,7 +61,7 @@ class TestListAccounts:
     def test_merge_bound_values(self, client, write_mappings, write_catalog):
         resp = client.get("/api/accounts")
         accounts = {a["id"]: a for a in resp.json()["accounts"]}
-        acc = accounts["4110210"]
+        acc = accounts["1100001"]
         assert acc["partner_id"] == "partner_a"
         assert acc["type"] == "checking"
         assert acc["excluded"] is False
@@ -75,19 +75,19 @@ class TestListAccounts:
 class TestUpdateBinding:
     def test_ac21_valid_binding_200(self, client, write_mappings, write_catalog):
         resp = client.put(
-            "/api/accounts/4110210/binding",
+            "/api/accounts/1100001/binding",
             json={"partner_id": "partner_a", "type": "checking", "excluded": False},
         )
         assert resp.status_code == 200
         body = resp.json()
-        assert body["id"] == "4110210"
+        assert body["id"] == "1100001"
         assert body["partner_id"] == "partner_a"
         assert body["type"] == "checking"
         assert body["excluded"] is False
 
     def test_ac22_invalid_partner_id_400(self, client, write_mappings, write_catalog):
         resp = client.put(
-            "/api/accounts/4110210/binding",
+            "/api/accounts/1100001/binding",
             json={"partner_id": "nonexistent", "type": "checking", "excluded": False},
         )
         assert resp.status_code == 400
@@ -95,7 +95,7 @@ class TestUpdateBinding:
 
     def test_ac23_invalid_type_400(self, client, write_mappings, write_catalog):
         resp = client.put(
-            "/api/accounts/4110210/binding",
+            "/api/accounts/1100001/binding",
             json={"partner_id": None, "type": "bitcoin", "excluded": False},
         )
         assert resp.status_code == 400
@@ -104,7 +104,7 @@ class TestUpdateBinding:
     def test_ac23_type_422_to_400(self, client, write_mappings, write_catalog):
         """Pydantic 422 (wrong type for field) → custom handler → 400."""
         resp = client.put(
-            "/api/accounts/4110210/binding",
+            "/api/accounts/1100001/binding",
             json={"partner_id": None, "type": 123, "excluded": False},
         )
         assert resp.status_code == 400
@@ -119,7 +119,7 @@ class TestUpdateBinding:
 
     def test_null_partner_id_ok(self, client, write_mappings, write_catalog):
         resp = client.put(
-            "/api/accounts/4110210/binding",
+            "/api/accounts/1100001/binding",
             json={"partner_id": None, "type": None, "excluded": True},
         )
         assert resp.status_code == 200
@@ -131,7 +131,7 @@ class TestUpdateBinding:
     def test_valid_types_accepted(self, client, write_mappings, write_catalog):
         for valid_type in ("checking", "cc", "savings"):
             resp = client.put(
-                "/api/accounts/4110210/binding",
+                "/api/accounts/1100001/binding",
                 json={"partner_id": None, "type": valid_type, "excluded": False},
             )
             assert resp.status_code == 200
@@ -141,12 +141,12 @@ class TestUpdateBinding:
         """PUT replaces all fields — omitted fields reset to defaults."""
         # First set partner_id + type.
         client.put(
-            "/api/accounts/4110210/binding",
+            "/api/accounts/1100001/binding",
             json={"partner_id": "partner_a", "type": "checking", "excluded": False},
         )
         # Then PUT with only excluded=True, partner_id/type null.
         resp = client.put(
-            "/api/accounts/4110210/binding",
+            "/api/accounts/1100001/binding",
             json={"partner_id": None, "type": None, "excluded": True},
         )
         assert resp.status_code == 200
@@ -159,19 +159,19 @@ class TestUpdateBinding:
         self, client, write_mappings, write_catalog, tmp_private_dir
     ):
         client.put(
-            "/api/accounts/4110210/binding",
+            "/api/accounts/1100001/binding",
             json={"partner_id": "partner_b", "type": "savings", "excluded": False},
         )
         raw = json.loads(
             (tmp_private_dir / "account_mappings.json").read_text(encoding="utf-8")
         )
-        acc = raw["accounts"]["4110210"]
+        acc = raw["accounts"]["1100001"]
         assert acc["partner_id"] == "partner_b"
         assert acc["type"] == "savings"
 
     def test_binding_missing_body_400(self, client, write_mappings, write_catalog):
         """Pydantic 422 → 400."""
-        resp = client.put("/api/accounts/4110210/binding", json=None)
+        resp = client.put("/api/accounts/1100001/binding", json=None)
         assert resp.status_code == 400
 
     def test_binding_missing_excluded_defaults_false(
@@ -179,7 +179,7 @@ class TestUpdateBinding:
     ):
         """excluded has default=False in model — omitted → False."""
         resp = client.put(
-            "/api/accounts/4110210/binding",
+            "/api/accounts/1100001/binding",
             json={"partner_id": None, "type": None},
         )
         assert resp.status_code == 200
