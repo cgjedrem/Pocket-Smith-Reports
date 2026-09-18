@@ -12,9 +12,11 @@ dependencies = [
     "uvicorn>=0.51,<0.52",
     "pydantic>=2",
     "httpx",
+    "weasyprint>=70,<71",
+    "pypdf>=6.16.1,<6.17",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest",
     "pytest-asyncio",
