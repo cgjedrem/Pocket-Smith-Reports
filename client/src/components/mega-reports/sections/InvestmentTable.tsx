@@ -22,7 +22,6 @@ const B_BORDER_35 = "hsl(14 64% 56% / 0.35)";
 const T_BORDER_35 = "hsl(142 52% 36% / 0.35)";
 
 const A_BORDER_45 = "hsl(189 78% 26% / 0.45)";
-const B_BORDER_45 = "hsl(14 64% 56% / 0.45)";
 const T_BORDER_45 = "hsl(142 52% 36% / 0.45)";
 
 const B_BORDER_50 = "hsl(14 64% 56% / 0.5)";

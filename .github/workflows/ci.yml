@@ -18,8 +18,8 @@ jobs:
     env:
       PYTHONPATH: src
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.13"
           cache: pip
@@ -38,8 +38,8 @@ jobs:
     env:
       PYTHONPATH: src
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.13"
           cache: pip
@@ -64,3 +64,23 @@ jobs:
           python -m pytest src/mega/tests src/v4_pipeline/tests src/mom/tests src/budget_api/tests -m "not pdf_renderer" -q
           $code = $LASTEXITCODE
           if ($code -ne 0) { exit $code }
+
+  client:
+    name: Client build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install dependencies
+        working-directory: client
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        working-directory: client
+        run: pnpm build
+      - name: Test
+        working-directory: client
+        run: pnpm test

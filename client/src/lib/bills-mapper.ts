@@ -3,7 +3,6 @@
 
 import {
   BAR_SMALL_THRESHOLD,
-  BUDGET_ZONE_RATIO,
   BUDGET_ZONE_WIDTH,
   SALARY_ZONE_FRACTION,
   formatKr,
@@ -18,8 +17,6 @@ import type {
 } from "@/types/api";
 import type {
   BillsEvent,
-  BillsEventType,
-  BillsPartnerStatus,
   BillsSnapshot,
   PartnerBills,
 } from "@/types/bills";
@@ -54,7 +51,6 @@ function buildBarView(partner: PartnerBills, ccUsageOverride?: number): EconomyB
   // default) — normalize before any width/formatKr math (NaN guard).
   const savings_planned = partner.savings_planned ?? 0;
   const estimatedCcBill = partner.estimated_cc_bill ?? 0;
-  const realCcBill = partner.real_cc_bill ?? 0;
   // Use the populated one for display. Past → real, future → estimated.
   // PR65 review: null-aware — real 0.0 is a valid "card paid in full"
   // bill and must NOT fall through to the estimate (`||` would eat it).

@@ -1,6 +1,6 @@
 // SubcatPeriodPie — shadcn Card + ChartContainer + Recharts PieChart.
 
-import { Cell, Pie, PieChart, Tooltip } from "recharts";
+import { Cell, Pie, PieChart, Tooltip, type PieLabelRenderProps } from "recharts";
 import {
   Card,
   CardContent,
@@ -77,15 +77,15 @@ export function SubcatPeriodPie({ data, title }: SubcatPeriodPieProps) {
               cx="50%"
               cy="50%"
               outerRadius={180}
-              label={(entry: { value: number; name: string }) => {
-                if (!total) return "";
-                const pct = (entry.value / total) * 100;
+              label={({ value }: PieLabelRenderProps) => {
+                if (!total || typeof value !== "number") return "";
+                const pct = (value / total) * 100;
                 return `${pct.toFixed(0)}%`;
               }}
               labelLine={false}
               isAnimationActive={false}
             >
-              {chartData.map((d, i) => (
+              {chartData.map((d) => (
                 <Cell key={d.sliceKey} fill={`var(--color-${d.sliceKey})`} />
               ))}
             </Pie>

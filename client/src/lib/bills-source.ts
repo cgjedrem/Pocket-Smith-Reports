@@ -9,8 +9,12 @@ import {
 } from "@/components/bills/finance-data";
 import type { FinanceEvent, MonthData } from "@/types/api";
 
+// Table rows always carry their month label — the live mapper
+// (bills-mapper.mapSnapshotToEvents) and the mock fallback both attach it.
+export type BillsEventRow = FinanceEvent & { monthLabel: string };
+
 let monthlyDataList: MonthData[] = [];
-let eventsList: FinanceEvent[] = [];
+let eventsList: BillsEventRow[] = [];
 const subscribers = new Set<() => void>();
 
 // Subscribe to hydrate notifications. Returns cleanup function.
@@ -27,13 +31,13 @@ export function getMonths(): MonthData[] {
 }
 
 // Returns events if hydrated, otherwise mock fallback.
-export function getAllEvents(): FinanceEvent[] {
+export function getAllEvents(): BillsEventRow[] {
   return eventsList.length > 0 ? eventsList : mockGetAllEvents();
 }
 
 // Hydrate source with mapped months (1..N). Triggers re-render.
 // Idempotent — same input → same output, safe under StrictMode double-mount.
-export function hydrate(months: MonthData[], events: FinanceEvent[]): void {
+export function hydrate(months: MonthData[], events: BillsEventRow[]): void {
   monthlyDataList = months;
   eventsList = events;
   subscribers.forEach((fn) => fn());

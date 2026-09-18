@@ -15,7 +15,7 @@ import { KpiRoleSummary } from "@/components/reports/KpiRoleSummary";
 import { DetailedSections } from "@/components/reports/DetailedSections";
 import { ReconciliationSection } from "@/components/reports/ReconciliationSection";
 import { BillsWarningBanner } from "@/components/bills/BillsWarningBanner";
-import type { GenerateStatus, ReportResponse } from "@/types/report";
+import type { ReportResponse } from "@/types/report";
 
 // Shared report SCSS — Vite compiles via sass.
 import "@/styles/report-shared.scss";

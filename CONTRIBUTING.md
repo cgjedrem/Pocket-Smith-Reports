@@ -21,6 +21,12 @@ Issues and pull requests are welcome. This is an open-source project: good-quali
   fragments at runtime instead of writing the literal; see
   `src/budget_api/tests/reports/test_contract_v2.py` for the pattern.
 
+## Local secret guard
+
+Once per clone: `pip install pre-commit` then `pre-commit install`. The hooks
+block accidental commits of secrets, private keys, and large files, and mirror
+the `Secret Scanning` CI job.
+
 ## Verification and handoff policy
 
 Policy revision: 1.0.0 (2026-09-15). Applies to contributors and agents working
@@ -99,11 +105,11 @@ permission to sync or substitute static evidence.
    boundary; evidence does not itself authorize commit, push, merge, or release.
 
 **Enforcement limit:** this is a procedural post-review gate, not an installed
-agent hook or automated acceptance gate. `.github/workflows/ci.yml` runs Python
-tests on pull requests and configured pushes; it does not validate this evidence
-contract or respond to review completion. Windows excludes `pdf_renderer` tests,
-and CI does not run the frontend tests/build. Contributors must run applicable
-checks separately and record the gaps. No Spec Kit, generated command surfaces,
+agent hook or automated acceptance gate. `.github/workflows/ci.yml` runs the
+Python tests on Ubuntu and Windows and builds and tests the client on Ubuntu,
+on pull requests and configured pushes; it does not validate this evidence
+contract or respond to review completion. Windows excludes `pdf_renderer`
+tests. Contributors must run applicable checks separately and record the gaps. No Spec Kit, generated command surfaces,
 or repo agent definitions are present for automatic gate wiring.
 
 Use this status format at handoff:
