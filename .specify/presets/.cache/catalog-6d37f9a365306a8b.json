@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-09-03T00:00:00Z",
+  "catalog_url": "https://raw.githubusercontent.com/enso-dev-beep/enso-skills-and-scripts/main/bundles/cgjedrem-spec-stack/catalogs/presets.catalog.json",
+  "presets": {
+    "agent-team": {
+      "name": "Agent Team Personas",
+      "id": "agent-team",
+      "description": "Seven-agent development team personas (coordinator, backend-dev, frontend-dev, qa-reviewer, code-explorer, editor, tasker) with a setup command that installs them into .github/agents/, seeds charter fragments (per-project toolchain choice: npm-strict or pnpm-strict; plus quality/playwright-e2e), scaffolds the red-team lens catalog, and registers the qa-review workflow gate overlay.",
+      "author": "cgjedrem",
+      "version": "1.1.0",
+      "download_url": "https://raw.githubusercontent.com/enso-dev-beep/enso-skills-and-scripts/93bd9db45449ae495d422bf67b0edd7c82c4e04d/bundles/cgjedrem-spec-stack/payload/dist/agent-team-1.1.0.zip",
+      "repository": "https://github.com/enso-dev-beep/enso-skills-and-scripts",
+      "documentation": "https://github.com/enso-dev-beep/enso-skills-and-scripts/tree/main/bundles/cgjedrem-spec-stack",
+      "license": "MIT",
+      "requires": {
+        "speckit_version": ">=1.0.0"
+      },
+      "provides": {
+        "templates": 1
+      },
+      "tags": [
+        "agents",
+        "personas",
+        "team",
+        "workflow"
+      ],
+      "verified": false
+    }
+  }
+}

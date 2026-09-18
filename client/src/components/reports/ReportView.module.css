@@ -1,0 +1,90 @@
+/* ReportView — section spacing + shared report styles. */
+.reportView {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.toolbar h2 {
+  margin: 0;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.toolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.section {
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 12px;
+}
+
+.section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.section:nth-of-type(2) {
+  border-top: none;
+  padding-top: 0;
+}
+
+.section h3 {
+  margin: 0 0 12px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+/* Override shared SCSS print margins — tighten for screen. */
+.reportView :global(.overview-page) {
+  margin: 0;
+  min-height: auto;
+  page-break-after: auto;
+}
+
+.reportView :global(.overview-page header) {
+  margin-bottom: 4px;
+}
+
+.reportView :global(.summary) {
+  margin: 4px 0 8px;
+}
+
+.reportView :global(.partner-row) {
+  margin: 4px 0 8px;
+}
+
+.reportView :global(h2) {
+  margin: 8px 0 4px;
+}
+
+.reportView :global(.report-section) {
+  break-before: auto;
+  page-break-before: auto;
+}
+
+.reportView :global(.legacy-chart) {
+  margin: 8px 0;
+  text-align: center;
+}
+
+.reportView :global(.legacy-chart svg) {
+  width: auto;
+  max-width: 100%;
+}
+
+.reportView :global(.drilldown-card) {
+  margin: 4px 0;
+}

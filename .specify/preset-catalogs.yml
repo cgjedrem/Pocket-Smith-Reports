@@ -1,0 +1,6 @@
+catalogs:
+- name: cgjedrem-presets
+  url: https://raw.githubusercontent.com/enso-dev-beep/enso-skills-and-scripts/main/bundles/cgjedrem-spec-stack/catalogs/presets.catalog.json
+  priority: 10
+  install_allowed: true
+  description: ''

@@ -1,0 +1,21 @@
+{
+  "category_sections": {
+    "1": "common",
+    "2": "common",
+    "3": "income_salary",
+    "4": "income_third_party",
+    "5": "savings",
+    "6": "home",
+    "7": "personal_partner_a",
+    "8": "personal_partner_b",
+    "9": "trips",
+    "10": "cc_payments",
+    "11": "excluded"
+  },
+  "account_roles": {
+    "1": "credit_card",
+    "2": "credit_card",
+    "3": "savings_partner_a",
+    "4": "savings_partner_b"
+  }
+}

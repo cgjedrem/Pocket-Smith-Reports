@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-09-03T14:31:19Z",
+  "bundles": [
+    {
+      "bundle_id": "cgjedrem-spec-stack",
+      "version": "1.1.1",
+      "installed_at": "2026-09-02T13:00:42Z",
+      "contributed_components": [
+        {
+          "kind": "extensions",
+          "id": "git",
+          "version": "1.0.0"
+        },
+        {
+          "kind": "extensions",
+          "id": "agent-context",
+          "version": "1.0.0"
+        },
+        {
+          "kind": "extensions",
+          "id": "assess",
+          "version": "1.0.0"
+        },
+        {
+          "kind": "extensions",
+          "id": "bug",
+          "version": "1.0.0"
+        },
+        {
+          "kind": "extensions",
+          "id": "brownfield",
+          "version": "1.0.0",
+          "source": "https://codeload.github.com/Quratulain-bilal/spec-kit-brownfield/zip/7479c5206a573e95890cbc252dd30806121a44bb"
+        },
+        {
+          "kind": "extensions",
+          "id": "charter",
+          "version": "0.6.0",
+          "source": "https://codeload.github.com/Fyloss/spec-kit-charter/zip/d983dfc7bf9705f6270927c3b26642d9aeb26a94"
+        },
+        {
+          "kind": "extensions",
+          "id": "conduct",
+          "version": "1.0.0",
+          "source": "https://codeload.github.com/twbrandon7/spec-kit-conduct-ext/zip/0226d7a1c147657e150377948f52d4c4cc15f4ad"
+        },
+        {
+          "kind": "extensions",
+          "id": "red-team",
+          "version": "1.0.3",
+          "source": "https://codeload.github.com/ashbrener/spec-kit-red-team/zip/4f749df9066ed0d4d7517034f10964a1903864cb"
+        },
+        {
+          "kind": "extensions",
+          "id": "plan-review-gate",
+          "version": "1.0.0",
+          "source": "https://codeload.github.com/luno/spec-kit-plan-review-gate/zip/11340d1d0608228e93b065825196deacbfb68e43"
+        },
+        {
+          "kind": "extensions",
+          "id": "trace",
+          "version": "1.0.0",
+          "source": "https://raw.githubusercontent.com/enso-dev-beep/enso-skills-and-scripts/93bd9db45449ae495d422bf67b0edd7c82c4e04d/bundles/cgjedrem-spec-stack/payload/dist/trace-1.0.0.zip"
+        },
+        {
+          "kind": "extensions",
+          "id": "bugfix",
+          "version": "1.1.0",
+          "source": "https://codeload.github.com/Quratulain-bilal/spec-kit-bugfix/zip/b2707c171f5672c7d9bb3c6cdc87a678b019da81"
+        },
+        {
+          "kind": "presets",
+          "id": "agent-team",
+          "version": "1.1.0",
+          "source": "https://raw.githubusercontent.com/enso-dev-beep/enso-skills-and-scripts/93bd9db45449ae495d422bf67b0edd7c82c4e04d/bundles/cgjedrem-spec-stack/payload/dist/agent-team-1.1.0.zip",
+          "priority": 20,
+          "strategy": "replace"
+        }
+      ]
+    }
+  ]
+}

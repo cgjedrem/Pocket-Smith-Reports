@@ -1,0 +1,1409 @@
+{
+  "month": "2026-04",
+  "contract_version": 2,
+  "calculation_version": 7,
+  "txn_count": 43,
+  "normalized_transactions": [
+    {
+      "id": 100001,
+      "date": "2026-04-01",
+      "amount": -100.0,
+      "payee": "Payee A 0",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "1",
+          "title": "Test A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100011,
+      "date": "2026-04-01",
+      "amount": -200.0,
+      "payee": "Payee B 0",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "2",
+          "title": "Test B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100002,
+      "date": "2026-04-02",
+      "amount": -200.0,
+      "payee": "Payee A 1",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "1",
+          "title": "Test A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100012,
+      "date": "2026-04-02",
+      "amount": -400.0,
+      "payee": "Payee B 1",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "2",
+          "title": "Test B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100003,
+      "date": "2026-04-03",
+      "amount": -300.0,
+      "payee": "Payee A 2",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "1",
+          "title": "Test A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100013,
+      "date": "2026-04-03",
+      "amount": -600.0,
+      "payee": "Payee B 2",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "2",
+          "title": "Test B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100004,
+      "date": "2026-04-04",
+      "amount": -400.0,
+      "payee": "Payee A 3",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "1",
+          "title": "Test A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100014,
+      "date": "2026-04-04",
+      "amount": -800.0,
+      "payee": "Payee B 3",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "2",
+          "title": "Test B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100005,
+      "date": "2026-04-05",
+      "amount": -500.0,
+      "payee": "Payee A 4",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "1",
+          "title": "Test A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100015,
+      "date": "2026-04-05",
+      "amount": -1000.0,
+      "payee": "Payee B 4",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "2",
+          "title": "Test B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100006,
+      "date": "2026-04-06",
+      "amount": -600.0,
+      "payee": "Payee A 5",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "1",
+          "title": "Test A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100016,
+      "date": "2026-04-06",
+      "amount": -1200.0,
+      "payee": "Payee B 5",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "2",
+          "title": "Test B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100007,
+      "date": "2026-04-07",
+      "amount": -700.0,
+      "payee": "Payee A 6",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "1",
+          "title": "Test A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100017,
+      "date": "2026-04-07",
+      "amount": -1400.0,
+      "payee": "Payee B 6",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "2",
+          "title": "Test B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100008,
+      "date": "2026-04-08",
+      "amount": -800.0,
+      "payee": "Payee A 7",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "1",
+          "title": "Test A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100018,
+      "date": "2026-04-08",
+      "amount": -1600.0,
+      "payee": "Payee B 7",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "2",
+          "title": "Test B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100009,
+      "date": "2026-04-09",
+      "amount": -900.0,
+      "payee": "Payee A 8",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "1",
+          "title": "Test A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100019,
+      "date": "2026-04-09",
+      "amount": -1800.0,
+      "payee": "Payee B 8",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "2",
+          "title": "Test B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100010,
+      "date": "2026-04-10",
+      "amount": -1000.0,
+      "payee": "Payee A 9",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "1",
+          "title": "Test A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100020,
+      "date": "2026-04-10",
+      "amount": -2000.0,
+      "payee": "Payee B 9",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "2",
+          "title": "Test B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100021,
+      "date": "2026-04-11",
+      "amount": 30000.0,
+      "payee": "Salary Payee A",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "3",
+          "title": "Test Income Salary"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100022,
+      "date": "2026-04-11",
+      "amount": 25000.0,
+      "payee": "Salary Payee B",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "3",
+          "title": "Test Income Salary"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100023,
+      "date": "2026-04-12",
+      "amount": 1500.0,
+      "payee": "Freelance Payee A",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "4",
+          "title": "Test Income Third Party"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100024,
+      "date": "2026-04-12",
+      "amount": 0.0,
+      "payee": "Freelance Payee B",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "4",
+          "title": "Test Income Third Party"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100025,
+      "date": "2026-04-13",
+      "amount": 2000.0,
+      "payee": "Savings Move A",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "5",
+          "title": "Test Savings"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100026,
+      "date": "2026-04-13",
+      "amount": 1000.0,
+      "payee": "Savings Move B",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "5",
+          "title": "Test Savings"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100027,
+      "date": "2026-04-14",
+      "amount": 3000.0,
+      "payee": "Savings Deposit A",
+      "note": "",
+      "account_id": "3",
+      "account_name": "Fixture A Savings",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "5",
+          "title": "Test Savings"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100028,
+      "date": "2026-04-15",
+      "amount": -800.0,
+      "payee": "Savings Withdrawal B",
+      "note": "",
+      "account_id": "4",
+      "account_name": "Fixture B Savings",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "5",
+          "title": "Test Savings"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100029,
+      "date": "2026-04-16",
+      "amount": -1200.0,
+      "payee": "Home Payee A",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "6",
+          "title": "Test Home"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100030,
+      "date": "2026-04-16",
+      "amount": -600.0,
+      "payee": "Home Payee B",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "6",
+          "title": "Test Home"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100031,
+      "date": "2026-04-17",
+      "amount": -500.0,
+      "payee": "Home Reimb A",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "6",
+          "title": "Test Home"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100032,
+      "date": "2026-04-17",
+      "amount": 500.0,
+      "payee": "Home Reimb B",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "6",
+          "title": "Test Home"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100033,
+      "date": "2026-04-18",
+      "amount": -700.0,
+      "payee": "Personal Payee Fixture A 1",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "7",
+          "title": "Test Personal Fixture A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100034,
+      "date": "2026-04-19",
+      "amount": -300.0,
+      "payee": "Personal Payee Fixture A 2",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "7",
+          "title": "Test Personal Fixture A"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100035,
+      "date": "2026-04-18",
+      "amount": -900.0,
+      "payee": "Personal Payee Fixture B 1",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "8",
+          "title": "Test Personal Fixture B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100036,
+      "date": "2026-04-19",
+      "amount": -300.0,
+      "payee": "Personal Payee Fixture B 2",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "8",
+          "title": "Test Personal Fixture B"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100037,
+      "date": "2026-04-20",
+      "amount": -2500.0,
+      "payee": "Trip Payee A",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "9",
+          "title": "Test Trips"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100038,
+      "date": "2026-04-20",
+      "amount": -1500.0,
+      "payee": "Trip Payee B",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "9",
+          "title": "Test Trips"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100039,
+      "date": "2026-04-21",
+      "amount": -3000.0,
+      "payee": "CC Payment A",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "10",
+          "title": "Test CC Payment"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100040,
+      "date": "2026-04-21",
+      "amount": -2000.0,
+      "payee": "CC Payment B",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "10",
+          "title": "Test CC Payment"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100041,
+      "date": "2026-04-22",
+      "amount": 1000.0,
+      "payee": "CC Credit A",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "10",
+          "title": "Test CC Payment"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100042,
+      "date": "2026-04-23",
+      "amount": -400.0,
+      "payee": "Excluded Payee A",
+      "note": "",
+      "account_id": "1",
+      "account_name": "Fixture A Checking",
+      "owner": "partner_a",
+      "category_path": [
+        {
+          "id": "11",
+          "title": "Test Excluded"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    },
+    {
+      "id": 100043,
+      "date": "2026-04-23",
+      "amount": -600.0,
+      "payee": "Excluded Payee B",
+      "note": "",
+      "account_id": "2",
+      "account_name": "Fixture B Checking",
+      "owner": "partner_b",
+      "category_path": [
+        {
+          "id": "11",
+          "title": "Test Excluded"
+        }
+      ],
+      "is_transfer": false,
+      "labels": []
+    }
+  ],
+  "categories": [
+    {
+      "id": "1",
+      "title": "Test A",
+      "parent_id": null,
+      "path": [
+        {
+          "id": "1",
+          "title": "Test A"
+        }
+      ],
+      "paid": 5500.0,
+      "received": 0.0,
+      "net": 5500.0,
+      "count": 10,
+      "owners": {
+        "partner_a": {
+          "paid": 5500.0,
+          "received": 0.0,
+          "net": 5500.0
+        },
+        "partner_b": {
+          "paid": 0.0,
+          "received": 0.0,
+          "net": 0.0
+        }
+      }
+    },
+    {
+      "id": "2",
+      "title": "Test B",
+      "parent_id": null,
+      "path": [
+        {
+          "id": "2",
+          "title": "Test B"
+        }
+      ],
+      "paid": 11000.0,
+      "received": 0.0,
+      "net": 11000.0,
+      "count": 10,
+      "owners": {
+        "partner_a": {
+          "paid": 0.0,
+          "received": 0.0,
+          "net": 0.0
+        },
+        "partner_b": {
+          "paid": 11000.0,
+          "received": 0.0,
+          "net": 11000.0
+        }
+      }
+    },
+    {
+      "id": "10",
+      "title": "Test CC Payment",
+      "parent_id": null,
+      "path": [
+        {
+          "id": "10",
+          "title": "Test CC Payment"
+        }
+      ],
+      "paid": 5000.0,
+      "received": 1000.0,
+      "net": 4000.0,
+      "count": 3,
+      "owners": {
+        "partner_a": {
+          "paid": 3000.0,
+          "received": 1000.0,
+          "net": 2000.0
+        },
+        "partner_b": {
+          "paid": 2000.0,
+          "received": 0.0,
+          "net": 2000.0
+        }
+      }
+    },
+    {
+      "id": "11",
+      "title": "Test Excluded",
+      "parent_id": null,
+      "path": [
+        {
+          "id": "11",
+          "title": "Test Excluded"
+        }
+      ],
+      "paid": 1000.0,
+      "received": 0.0,
+      "net": 1000.0,
+      "count": 2,
+      "owners": {
+        "partner_a": {
+          "paid": 400.0,
+          "received": 0.0,
+          "net": 400.0
+        },
+        "partner_b": {
+          "paid": 600.0,
+          "received": 0.0,
+          "net": 600.0
+        }
+      }
+    },
+    {
+      "id": "6",
+      "title": "Test Home",
+      "parent_id": null,
+      "path": [
+        {
+          "id": "6",
+          "title": "Test Home"
+        }
+      ],
+      "paid": 2300.0,
+      "received": 500.0,
+      "net": 1800.0,
+      "count": 4,
+      "owners": {
+        "partner_a": {
+          "paid": 1700.0,
+          "received": 0.0,
+          "net": 1700.0
+        },
+        "partner_b": {
+          "paid": 600.0,
+          "received": 500.0,
+          "net": 100.0
+        }
+      }
+    },
+    {
+      "id": "3",
+      "title": "Test Income Salary",
+      "parent_id": null,
+      "path": [
+        {
+          "id": "3",
+          "title": "Test Income Salary"
+        }
+      ],
+      "paid": 0.0,
+      "received": 55000.0,
+      "net": -55000.0,
+      "count": 2,
+      "owners": {
+        "partner_a": {
+          "paid": 0.0,
+          "received": 30000.0,
+          "net": -30000.0
+        },
+        "partner_b": {
+          "paid": 0.0,
+          "received": 25000.0,
+          "net": -25000.0
+        }
+      }
+    },
+    {
+      "id": "4",
+      "title": "Test Income Third Party",
+      "parent_id": null,
+      "path": [
+        {
+          "id": "4",
+          "title": "Test Income Third Party"
+        }
+      ],
+      "paid": 0.0,
+      "received": 1500.0,
+      "net": -1500.0,
+      "count": 2,
+      "owners": {
+        "partner_a": {
+          "paid": 0.0,
+          "received": 1500.0,
+          "net": -1500.0
+        },
+        "partner_b": {
+          "paid": 0.0,
+          "received": 0.0,
+          "net": 0.0
+        }
+      }
+    },
+    {
+      "id": "7",
+      "title": "Test Personal Fixture A",
+      "parent_id": null,
+      "path": [
+        {
+          "id": "7",
+          "title": "Test Personal Fixture A"
+        }
+      ],
+      "paid": 1000.0,
+      "received": 0.0,
+      "net": 1000.0,
+      "count": 2,
+      "owners": {
+        "partner_a": {
+          "paid": 1000.0,
+          "received": 0.0,
+          "net": 1000.0
+        },
+        "partner_b": {
+          "paid": 0.0,
+          "received": 0.0,
+          "net": 0.0
+        }
+      }
+    },
+    {
+      "id": "8",
+      "title": "Test Personal Fixture B",
+      "parent_id": null,
+      "path": [
+        {
+          "id": "8",
+          "title": "Test Personal Fixture B"
+        }
+      ],
+      "paid": 1200.0,
+      "received": 0.0,
+      "net": 1200.0,
+      "count": 2,
+      "owners": {
+        "partner_a": {
+          "paid": 0.0,
+          "received": 0.0,
+          "net": 0.0
+        },
+        "partner_b": {
+          "paid": 1200.0,
+          "received": 0.0,
+          "net": 1200.0
+        }
+      }
+    },
+    {
+      "id": "5",
+      "title": "Test Savings",
+      "parent_id": null,
+      "path": [
+        {
+          "id": "5",
+          "title": "Test Savings"
+        }
+      ],
+      "paid": 800.0,
+      "received": 6000.0,
+      "net": -5200.0,
+      "count": 4,
+      "owners": {
+        "partner_a": {
+          "paid": 0.0,
+          "received": 5000.0,
+          "net": -5000.0
+        },
+        "partner_b": {
+          "paid": 800.0,
+          "received": 1000.0,
+          "net": -200.0
+        }
+      }
+    },
+    {
+      "id": "9",
+      "title": "Test Trips",
+      "parent_id": null,
+      "path": [
+        {
+          "id": "9",
+          "title": "Test Trips"
+        }
+      ],
+      "paid": 4000.0,
+      "received": 0.0,
+      "net": 4000.0,
+      "count": 2,
+      "owners": {
+        "partner_a": {
+          "paid": 2500.0,
+          "received": 0.0,
+          "net": 2500.0
+        },
+        "partner_b": {
+          "paid": 1500.0,
+          "received": 0.0,
+          "net": 1500.0
+        }
+      }
+    }
+  ],
+  "reconciliation": {
+    "source": 32200.0,
+    "report": 32200.0,
+    "excluded_transfers": 0,
+    "difference": 0.0
+  },
+  "detailed_section_mapping": {
+    "category_sections": {
+      "1": "common",
+      "2": "common",
+      "3": "income_salary",
+      "4": "income_third_party",
+      "5": "savings",
+      "6": "home",
+      "7": "personal_partner_a",
+      "8": "personal_partner_b",
+      "9": "trips",
+      "10": "cc_payments",
+      "11": "excluded"
+    },
+    "account_roles": {
+      "1": "credit_card",
+      "2": "credit_card",
+      "3": "savings_partner_a",
+      "4": "savings_partner_b"
+    }
+  },
+  "kpis": null,
+  "savings_summary": {
+    "partner_a": {
+      "to_savings": 8000.0,
+      "from_savings": 0.0,
+      "kron_net": 5000.0,
+      "net_saved": 8000.0
+    },
+    "partner_b": {
+      "to_savings": 200.0,
+      "from_savings": 800.0,
+      "kron_net": 200.0,
+      "net_saved": -600.0
+    },
+    "total": {
+      "to_savings": 8200.0,
+      "from_savings": 800.0,
+      "kron_net": 5200.0,
+      "net_saved": 7400.0
+    }
+  },
+  "root_totals": {
+    "paid": 31800.0,
+    "received": 64000.0,
+    "net": -32200.0,
+    "count": 43
+  },
+  "owner_totals": {
+    "partner_a": {
+      "paid": 14100.0,
+      "received": 37500.0,
+      "net": -23400.0
+    },
+    "partner_b": {
+      "paid": 17700.0,
+      "received": 26500.0,
+      "net": -8800.0
+    }
+  },
+  "partner_panels": {
+    "partner_a": {
+      "label": "Partner A",
+      "paid": 14100.0,
+      "received": 37500.0,
+      "net": -23400.0,
+      "net_class": "neg"
+    },
+    "partner_b": {
+      "label": "Partner B",
+      "paid": 17700.0,
+      "received": 26500.0,
+      "net": -8800.0,
+      "net_class": "neg"
+    }
+  },
+  "partner_labels": {
+    "partner_a": "Partner A",
+    "partner_b": "Partner B"
+  },
+  "warnings": [],
+  "detailed": {
+    "income": {
+      "salary": {
+        "partner_a": 30000.0,
+        "partner_a_class": "pos",
+        "partner_b": 25000.0,
+        "partner_b_class": "pos",
+        "total": 55000.0,
+        "total_class": "pos",
+        "row_pct_partner_a": 54.54545454545454,
+        "row_pct_partner_b": 45.45454545454545,
+        "household_pct": 97.34513274336283
+      },
+      "third_party": {
+        "partner_a": 1500.0,
+        "partner_a_class": "pos",
+        "partner_b": 0.0,
+        "partner_b_class": "zero",
+        "total": 1500.0,
+        "total_class": "pos",
+        "row_pct_partner_a": 100.0,
+        "row_pct_partner_b": 0.0,
+        "household_pct": 2.6548672566371683
+      },
+      "total_partner_a": 31500.0,
+      "total_partner_a_class": "pos",
+      "total_partner_b": 25000.0,
+      "total_partner_b_class": "pos",
+      "total_income": 56500.0,
+      "total_income_class": "pos"
+    },
+    "savings": {
+      "partner_a": {
+        "to_savings": 8000.0,
+        "to_savings_class": "pos",
+        "from_savings": 0.0,
+        "from_savings_class": "zero",
+        "net_saved": 8000.0,
+        "net_saved_class": "pos",
+        "income": 31500.0,
+        "income_class": "pos",
+        "rate": 25.396825396825395
+      },
+      "partner_b": {
+        "to_savings": 200.0,
+        "to_savings_class": "pos",
+        "from_savings": 800.0,
+        "from_savings_class": "pos",
+        "net_saved": -600.0,
+        "net_saved_class": "neg",
+        "income": 25000.0,
+        "income_class": "pos",
+        "rate": -2.4
+      },
+      "household": {
+        "to_savings": 8200.0,
+        "to_savings_class": "pos",
+        "from_savings": 800.0,
+        "from_savings_class": "pos",
+        "net_saved": 7400.0,
+        "net_saved_class": "pos",
+        "income": 56500.0,
+        "income_class": "pos",
+        "rate": 13.097345132743362
+      }
+    },
+    "home": {
+      "rows": [
+        {
+          "category_title": "Test Home",
+          "partner_a_net": 1700.0,
+          "partner_a_net_class": "pos",
+          "partner_b_net": 100.0,
+          "partner_b_net_class": "pos",
+          "total": 1800.0,
+          "total_class": "pos",
+          "g_share_partner_a": 94.44444444444444,
+          "g_share_partner_b": 5.555555555555555
+        }
+      ],
+      "paired_reimbursements": [
+        {
+          "category_title": "Test Home",
+          "partner_a": -500.0,
+          "partner_a_class": "neg",
+          "partner_b": 500.0,
+          "partner_b_class": "pos",
+          "total": 0.0,
+          "total_class": "zero"
+        }
+      ],
+      "total_partner_a": 1700.0,
+      "total_partner_a_class": "pos",
+      "total_partner_b": 100.0,
+      "total_partner_b_class": "pos",
+      "total": 1800.0,
+      "total_class": "pos",
+      "share_partner_a": 94.44444444444444,
+      "share_partner_b": 5.555555555555555
+    },
+    "common": {
+      "rows": [
+        {
+          "category_title": "Test B",
+          "partner_a_net": 0.0,
+          "partner_a_net_class": "zero",
+          "partner_b_net": 11000.0,
+          "partner_b_net_class": "pos",
+          "total": 11000.0,
+          "total_class": "pos",
+          "g_share_partner_a": 0.0,
+          "g_share_partner_b": 100.0
+        },
+        {
+          "category_title": "Test A",
+          "partner_a_net": 5500.0,
+          "partner_a_net_class": "pos",
+          "partner_b_net": 0.0,
+          "partner_b_net_class": "zero",
+          "total": 5500.0,
+          "total_class": "pos",
+          "g_share_partner_a": 100.0,
+          "g_share_partner_b": 0.0
+        }
+      ],
+      "paired_reimbursements": [],
+      "total_partner_a": 5500.0,
+      "total_partner_a_class": "pos",
+      "total_partner_b": 11000.0,
+      "total_partner_b_class": "pos",
+      "total": 16500.0,
+      "total_class": "pos",
+      "share_partner_a": 33.33333333333333,
+      "share_partner_b": 66.66666666666666
+    },
+    "personal_partner_a": {
+      "rows": [
+        {
+          "category_title": "Test Personal Fixture A",
+          "paid_partner_a": 1000.0,
+          "paid_partner_a_class": "pos",
+          "paid_partner_b": 0.0,
+          "paid_partner_b_class": "zero",
+          "total": 1000.0,
+          "total_class": "pos",
+          "pct_personal": 45.45454545454545,
+          "pct_household": 4.081632653061225
+        }
+      ],
+      "subtotal": 1000.0,
+      "subtotal_class": "pos",
+      "personal_total": 2200.0,
+      "personal_total_class": "pos",
+      "household_total": 24500.0,
+      "household_total_class": "pos",
+      "pct_personal": 100.0,
+      "pct_household": 4.081632653061225
+    },
+    "personal_partner_b": {
+      "rows": [
+        {
+          "category_title": "Test Personal Fixture B",
+          "paid_partner_a": 0.0,
+          "paid_partner_a_class": "zero",
+          "paid_partner_b": 1200.0,
+          "paid_partner_b_class": "pos",
+          "total": 1200.0,
+          "total_class": "pos",
+          "pct_personal": 54.54545454545454,
+          "pct_household": 4.8979591836734695
+        }
+      ],
+      "subtotal": 1200.0,
+      "subtotal_class": "pos",
+      "personal_total": 2200.0,
+      "personal_total_class": "pos",
+      "household_total": 24500.0,
+      "household_total_class": "pos",
+      "pct_personal": 100.0,
+      "pct_household": 4.8979591836734695
+    },
+    "trips": {
+      "rows": [
+        {
+          "category_title": "Test Trips",
+          "partner_a_net": 2500.0,
+          "partner_a_net_class": "pos",
+          "partner_b_net": 1500.0,
+          "partner_b_net_class": "pos",
+          "total": 4000.0,
+          "total_class": "pos",
+          "g_share_partner_a": 62.5,
+          "g_share_partner_b": 37.5
+        }
+      ],
+      "paired_reimbursements": [],
+      "total_partner_a": 2500.0,
+      "total_partner_a_class": "pos",
+      "total_partner_b": 1500.0,
+      "total_partner_b_class": "pos",
+      "total": 4000.0,
+      "total_class": "pos",
+      "share_partner_a": 62.5,
+      "share_partner_b": 37.5
+    },
+    "cc_payments": {
+      "partner_a_paid": 3000.0,
+      "partner_a_paid_class": "pos",
+      "partner_b_paid": 2000.0,
+      "partner_b_paid_class": "pos",
+      "household_paid": 5000.0,
+      "household_paid_class": "pos"
+    },
+    "excluded": {
+      "rows": [
+        {
+          "category_title": "Test Excluded",
+          "paid_partner_a": 400.0,
+          "paid_partner_a_class": "pos",
+          "paid_partner_b": 600.0,
+          "paid_partner_b_class": "pos",
+          "total": 1000.0,
+          "total_class": "pos"
+        }
+      ],
+      "total": 1000.0,
+      "total_class": "pos"
+    },
+    "household_totals": {
+      "partner_a": 10700.0,
+      "partner_a_class": "pos",
+      "partner_b": 13800.0,
+      "partner_b_class": "pos",
+      "total": 24500.0,
+      "total_class": "pos"
+    }
+  },
+  "personal_share": null,
+  "personal_share_partner_a": null,
+  "personal_share_partner_b": null,
+  "balanced": true
+}

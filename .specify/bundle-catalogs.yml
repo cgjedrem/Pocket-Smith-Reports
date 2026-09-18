@@ -1,0 +1,6 @@
+schema_version: '1.0'
+catalogs:
+- id: cgjedrem-bundles
+  url: https://raw.githubusercontent.com/enso-dev-beep/enso-skills-and-scripts/main/bundles/cgjedrem-spec-stack/catalogs/bundles.catalog.json
+  priority: 10
+  install_policy: install-allowed

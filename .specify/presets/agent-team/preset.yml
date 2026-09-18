@@ -1,0 +1,30 @@
+schema_version: "1.0"
+
+preset:
+  id: agent-team
+  name: "Agent Team Personas"
+  version: "1.1.0"
+  description: "Seven-agent development team personas (coordinator, backend-dev, frontend-dev, qa-reviewer, code-explorer, editor, tasker) with a setup command that installs them into .github/agents/, seeds charter fragments (per-project toolchain choice: npm-strict or pnpm-strict; plus quality/playwright-e2e), scaffolds the red-team lens catalog, and registers the qa-review workflow gate overlay."
+  author: cgjedrem
+  repository: "https://github.com/enso-dev-beep/enso-skills-and-scripts"
+  license: MIT
+
+requires:
+  speckit_version: ">=1.0.0"
+
+provides:
+  templates:
+    - name: speckit.agent-team.setup
+      type: command
+      file: commands/speckit.agent-team.setup.md
+      description: "Install the seven agent-team personas into .github/agents/, seed charter fragments (per-project toolchain choice), scaffold the red-team lens catalog, and register the QA review gate overlay"
+
+# Pack payload (copied wholesale into .specify/presets/agent-team/ on install):
+#   agents/     — the 7 *.agent.md persona files (source of truth: HomeStuff/.github/agents/)
+#   charter/    — starter charter fragment registry (manifest.yml + fragments/<group>/*.md):
+#                 platform/windows-powershell (mandatory); backend/node-backend,
+#                 client/react-client, quality/playwright-e2e, toolchain/npm-strict,
+#                 toolchain/pnpm-strict (recommended — toolchain is a per-project choice,
+#                 select exactly one in /speckit.charter.config)
+#   overlays/   — qa-review-gate.yml workflow overlay (duplicate of the bundle's
+#                 payload/overlays/qa-review-gate.yml, which is canonical)

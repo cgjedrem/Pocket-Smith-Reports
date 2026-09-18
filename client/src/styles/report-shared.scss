@@ -1,0 +1,76 @@
+// Shared report styles — React (Vite SCSS) + CLI/WeasyPrint both read.
+// Constrained to CSS intersection of Chromium + WeasyPrint.
+
+@page { size: A4; margin: 14mm; }
+:root { color: #19303d; }
+* { box-sizing: border-box; }
+body { background: #eef3f4; color: #19303d; font-family: "Aptos", "DejaVu Sans", sans-serif; font-size: 10.5pt; line-height: 1.4; margin: 0; }
+.report-header { border-top: 5px solid #d4664d; margin: 0 0 18px; padding: 16px 0 0; text-align: left; }
+.eyebrow { color: #0f6b78; font-size: 9pt; font-weight: 700; margin: 0 0 5px; }
+h1 { color: #19303d; font-family: Georgia, "DejaVu Serif", serif; font-size: 28pt; line-height: 1.1; margin: 0; }
+h2 { border-bottom: 2px solid #0f6b78; color: #19303d; font-family: Georgia, "DejaVu Serif", serif; font-size: 18pt; margin: 28px 0 7px; padding: 0 0 5px; page-break-after: avoid; }
+h3 { color: #19303d; font-size: 12pt; margin: 0 0 8px; }
+.period { color: #5d6c75; font-size: 10pt; margin: 6px 0 0; }
+.note { color: #5d6c75; font-size: 9pt; margin: 6px 0; }
+table { background: #fff; border-collapse: collapse; margin: 12px 0; width: 100%; }
+th, td { border-bottom: 1px solid #d7e0e3; padding: 6px 8px; text-align: right; vertical-align: top; }
+th { background: #19303d; color: #fff; font-size: 8.5pt; font-weight: 700; text-align: left; }
+tr:nth-child(even) td { background: #f5f8f8; }
+th:first-child, td:first-child { text-align: left; }
+thead { display: table-header-group; }
+tr { break-inside: avoid-page; page-break-inside: avoid; }
+.empty { color: #5d6c75; font-style: italic; text-align: left; }
+.report-section { break-before: page; page-break-before: always; }
+.report-section > h2 { break-after: avoid-page; page-break-after: avoid; }
+.drilldown-card, .legacy-chart { break-inside: avoid-page; page-break-inside: avoid; }
+.drilldown summary { break-after: avoid-page; page-break-after: avoid; }
+.drilldown .tx-table { break-inside: auto; page-break-inside: auto; }
+.reconciliation-ok { color: #19755b; font-weight: bold; }
+.reconciliation-review { color: #bb553e; font-weight: bold; }
+
+// KPI overview + partner panels + charts.
+.overview-page header { margin-bottom: 14px; text-align: center; }
+.overview-page h1 { color: #1f77b4; font-family: Arial, sans-serif; font-size: 26pt; line-height: 1.1; margin: 0 0 4px; }
+.overview-page .period { color: #555; font-size: 11pt; margin: 0; }
+.summary { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0 18px; }
+.metric { background: #f0f7fc; border: 1px solid #1f77b4; border-radius: 6px; flex: 1 1 30%; min-width: 0; overflow-wrap: anywhere; padding: 12px; text-align: center; }
+.metric-label { color: #555; display: block; font-size: 10pt; }
+.metric-value { color: #1f77b4; display: block; font-family: Arial, sans-serif; font-size: 20pt; font-weight: 700; margin-top: 4px; }
+.metric.net-negative .metric-value { color: #d62728; }
+.partner-row { display: flex; gap: 12px; margin: 12px 0 18px; }
+.partner-box { background: #fff; border: 1px solid #ccc; border-radius: 6px; flex: 1; padding: 12px; }
+.partner-box.partner-a { border-color: #1f77b4; }
+.partner-box.partner-b { border-color: #ff7f0e; }
+.partner-box .row { border-bottom: 1px solid #eee; display: flex; justify-content: space-between; padding: 4px 0; }
+.partner-box .row:last-child { border-bottom: none; }
+.partner-box .label { color: #555; }
+.partner-box .val { font-weight: 700; }
+.partner-box .pos { color: #2ca02c; }
+.partner-box .neg { color: #d62728; }
+// Server `_class` siblings also come back on detailed section table cells
+// (outside .partner-box) — style them the same so the sign colors apply.
+// Colors mirror the partner-box pair; .zero is muted (no old-UI equivalent,
+// zero cells simply had no coloring before).
+.legacy-table .pos { color: #2ca02c; }
+.legacy-table .neg { color: #d62728; }
+.legacy-table .zero { color: #888; }
+.overview-charts { display: flex; flex: 1; flex-direction: column; gap: 10px; min-height: 0; }
+.overview-chart { align-items: flex-start; background: #fff; border: 1px solid #d8e3ec; border-radius: 4px; display: flex; flex: 1; min-height: 0; overflow: hidden; padding: 8px; }
+.overview-chart svg { display: block; height: auto; margin: 0 auto; max-width: 720px; width: 100%; }
+.overview-matrix { flex-direction: column; }
+
+// Drilldown + legacy tables.
+.tx-table { font-size: 8.5pt; }
+.tx-table td:last-child, .tx-table th:last-child { text-align: right; }
+.drilldown-card { background: #fff; border: 1px solid #d7e0e3; border-radius: 4px; margin: 10px 0; padding: 10px; page-break-inside: avoid; }
+.legacy-table .legacy-total td { font-weight: 700; }
+.legacy-chart { margin: 16px 0; padding: 12px; page-break-inside: avoid; }
+.legacy-chart svg { display: block; height: auto; max-width: 100%; width: 100%; }
+
+// Screen-only overrides — print layout breaks browser.
+@media screen {
+  .overview-page { display: flex; flex-direction: column; min-height: auto; page-break-after: auto; }
+  .report-section { break-before: auto; page-break-before: auto; }
+}
+
+@media print { body { background: #fff; } }

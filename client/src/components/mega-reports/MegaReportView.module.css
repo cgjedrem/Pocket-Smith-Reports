@@ -1,0 +1,102 @@
+/* MegaReportView — section spacing + shared styles. */
+.megaReportView {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.layout {
+  display: block;
+  /* Nav is now floating (position: fixed) so the layout doesn't need
+     a dedicated sidebar column. */
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.navColumn {
+  display: none;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--muted) / 0.25);
+}
+
+.toolbarRange {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.toolbarRight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.toolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.section {
+  /* Cards have own border + padding; only add vertical spacing between sections. */
+}
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 800px) {
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  /* Reset flex containers to block for predictable page breaks. */
+  .megaReportView,
+  .layout,
+  .content {
+    display: block !important;
+    gap: 0 !important;
+  }
+  /* Hide toolbar, nav, Radix dialog portal/overlay, and all non-section chrome. */
+  .toolbar,
+  .navColumn,
+  [data-slot="dialog-overlay"],
+  [data-slot="dialog-content"],
+  [data-slot="dialog-portal"] {
+    display: none !important;
+  }
+  /* Reset body/html backgrounds to white for printing. */
+  html,
+  body {
+    background: #fff !important;
+  }
+  /* PDF generation happens server-side — all sections render naturally.
+     No client-side print selection needed. */
+}

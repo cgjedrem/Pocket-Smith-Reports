@@ -1,0 +1,23 @@
+/* MegaReportsPage — single column stack: generated reports row, report view. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.reportsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--muted) / 0.25);
+}
+
+.reportsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
