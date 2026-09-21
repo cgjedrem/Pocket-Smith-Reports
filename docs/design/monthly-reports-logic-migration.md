@@ -16,7 +16,7 @@ This is the divergence risk the migration eliminates.
 
 ## Related docs
 
-- `designs/f2-bills-ui.md` (L1–L3 precedent), `designs/f2-bills-dashboard.md` (L4–L5 precedent)
+- `docs/design/f2-bills-ui.md` (L1–L3 precedent), `docs/design/f2-bills-dashboard.md` (L4–L5 precedent)
 - Explorer map: `DetailedSections.tsx`, `KpiRoleSummary.tsx`, `client/src/types/report.ts`,
   `client/src/api/reports.ts`, `routers/reports.py`, `services/report_builder.py`,
   `v4_pipeline/accounting.py`, `budget_api/models/reports.py`

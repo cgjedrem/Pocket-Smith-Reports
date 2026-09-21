@@ -55,8 +55,8 @@ The 404 message in this endpoint points the user to that sync endpoint to genera
 10. **One router** — `routers/bills.py` — stubbed with this one endpoint. Sub-feature 3 adds `GET /api/bills/events` to the same file.
 
 11. **Doc cleanup in this sub-feature:**
-    - `designs/f2-bills-api.md` — replace async `POST /api/sync/bills` + `bills_sync_jobs/*.json` model with reality: existing `GET /api/sync` does it. Mark `GET /api/sync/bills/status` as superseded.
-    - `designs/f2-bills-snapshot.md` — replace async job lifecycle with reality: snapshot written synchronously inside sub-feature 1's per-month loop. No `bills_sync_jobs/` dir. `ps_window_start` / `ps_window_end` removed.
+    - `docs/design/f2-bills-api.md` — replace async `POST /api/sync/bills` + `bills_sync_jobs/*.json` model with reality: existing `GET /api/sync` does it. Mark `GET /api/sync/bills/status` as superseded.
+    - `docs/design/f2-bills-snapshot.md` — replace async job lifecycle with reality: snapshot written synchronously inside sub-feature 1's per-month loop. No `bills_sync_jobs/` dir. `ps_window_start` / `ps_window_end` removed.
 
 ## Out-of-scope
 
@@ -470,8 +470,8 @@ Full traceback logged to stderr with the request context (month, path).
 | `src/budget_api/routers/bills.py` | **CREATE** | ~45 |
 | `src/budget_api/main.py` | **EDIT** (1 line) | +1 |
 | `src/budget_api/tests/bills/test_dashboard.py` | **CREATE** | ~150 |
-| `designs/f2-bills-api.md` | **EDIT** (cleanup) | ~-30 (net reduction) |
-| `designs/f2-bills-snapshot.md` | **EDIT** (cleanup) | ~-40 (net reduction) |
+| `docs/design/f2-bills-api.md` | **EDIT** (cleanup) | ~-30 (net reduction) |
+| `docs/design/f2-bills-snapshot.md` | **EDIT** (cleanup) | ~-40 (net reduction) |
 
 **Total: 2 creates, 3 edits, ~+126 net lines.**
 
@@ -500,8 +500,8 @@ git checkout -b feat/f2-bills-dashboard-subfeature-2
 
 ### Step 4: Doc cleanup (separate commits, not stacked with code)
 
-- Edit `designs/f2-bills-api.md`: replace `POST /api/sync/bills` + `bills_sync_jobs/*.json` with reality.
-- Edit `designs/f2-bills-snapshot.md`: replace async job lifecycle with reality.
+- Edit `docs/design/f2-bills-api.md`: replace `POST /api/sync/bills` + `bills_sync_jobs/*.json` with reality.
+- Edit `docs/design/f2-bills-snapshot.md`: replace async job lifecycle with reality.
 - One commit: `docs(f2-bills): clean up old API + snapshot drafts`.
 
 ### Step 5: Manual smoke test
@@ -1045,7 +1045,7 @@ Shape error:
 | src/budget_api/routers/bills.py | EDIT (extend) | +175 |
 | src/budget_api/main.py | EDIT (add middleware) | +14 |
 | src/budget_api/tests/bills/test_events.py | CREATE | ~970 |
-| designs/f2-bills-dashboard.md | EDIT (append) | ~470 |
+| docs/design/f2-bills-dashboard.md | EDIT (append) | ~470 |
 
 **Total: 1 create, 3 edits, ~+1629 net lines.**
 
@@ -1067,7 +1067,7 @@ Shape error:
 
 ### Step 4: Doc append (same commit as code per L5 Q1)
 
-- Append sub-feature 3 sections to `designs/f2-bills-dashboard.md`.
+- Append sub-feature 3 sections to `docs/design/f2-bills-dashboard.md`.
 
 ### Step 5: Address review feedback (same branch)
 
@@ -1532,7 +1532,7 @@ Shape error:
 | src/budget_api/routers/bills.py | EDIT (extract helper + add handler) | +95 |
 | src/budget_api/main.py | EDIT (add path to no-store set) | +2 |
 | src/budget_api/tests/bills/test_event_detail.py | CREATE | ~310 |
-| designs/f2-bills-dashboard.md | EDIT (append) | ~400 |
+| docs/design/f2-bills-dashboard.md | EDIT (append) | ~400 |
 
 **Total: 1 create, 3 edits, ~+807 net lines.**
 
@@ -1558,7 +1558,7 @@ Shape error:
 
 ### Step 4: Doc append (same commit as code per L5 Q1)
 
-- Append sub-feature 4 sections to `designs/f2-bills-dashboard.md`.
+- Append sub-feature 4 sections to `docs/design/f2-bills-dashboard.md`.
 
 ## Test plan
 

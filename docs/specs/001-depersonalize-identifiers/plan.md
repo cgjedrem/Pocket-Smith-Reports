@@ -2,7 +2,7 @@
 
 **Branch**: `001-depersonalize-identifiers` | **Date**: 2026-09-16 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/001-depersonalize-identifiers/spec.md`
+**Input**: Feature specification from `/docs/specs/001-depersonalize-identifiers/spec.md`
 
 **Binding constraints**: Open-source launch gates LG-001..LG-008 (`docs/open-source-launch-gates.md`)
 **Code evidence**: `code-evidence.md` (verified full call-graph trace, 2026-09-16)
@@ -22,7 +22,7 @@ Remove every removal-list personal identifier (LG-002 inventory: I-001 `Christia
 - PR2 — `budget_api` contract (DTO + report_builder full contract update — **removing the transitional adapter** — + category_mappings enum + `contract_version` rejection + label validation + golden regeneration + version bumps)
 - PR3 — `mega` + `mom` (keys, alias-collapse in section_personal.py, appendix titles)
 - PR4 — client (reports/mega/settings/bills components, TS mirrors, mocks, tests)
-- PR5 — remaining test-fixture scrub (bills test slugs), docs prose scrub (designs/, docs/design/), LG-002 verification evidence + containment test, LG-008 CI smoke test, README/CONTRIBUTING notes
+- PR5 — remaining test-fixture scrub (bills test slugs), docs prose scrub (docs/design/, docs/design/), LG-002 verification evidence + containment test, LG-008 CI smoke test, README/CONTRIBUTING notes
 
 Fixtures consumed by a given layer land in that layer's PR (golden regeneration in PR2 is mandatory — the golden payload embeds the renamed keys).
 
@@ -45,7 +45,7 @@ Fixtures consumed by a given layer land in that layer's PR (golden regeneration 
 **Constraints**:
 - Fail-closed only (Constitution II): incompatible stored data → loud rejection, never partial render.
 - Synthetic-only tracked fixtures with neutral labels (Constitution I, FR-007).
-- `git grep -i 'christian|rasma|gjedrem'` over tracked files → zero hits outside the exact governance allowlist (`.charter/`/`.specify/` tooling templates, `docs/open-source-launch-gates.md`, `specs/001-depersonalize-identifiers/**`) per LG-002/R7 — the same allowlist the CI containment test and the launch command both apply. This covers docs prose in `designs/` and `docs/design/`.
+- `git grep -i 'christian|rasma|gjedrem'` over tracked files → zero hits outside the exact governance allowlist (`.charter/`/`.specify/` tooling templates, `docs/open-source-launch-gates.md`, `docs/specs/001-depersonalize-identifiers/**`) per LG-002/R7 — the same allowlist the CI containment test and the launch command both apply. This covers docs prose in `docs/design/` and `docs/design/`.
 - Bills snapshots never 500 on old files (repo convention, memory index) — additive-with-defaults + `schema_version` bump.
 - Monthly-reports reader keeps the render-with-`stale:true` convention for *additive* drift (`TestReportResponseCompat`); the *breaking* contract path is the new loud rejection.
 
@@ -78,7 +78,7 @@ Post-design re-check (2026-09-16, after research.md + data-model.md + contracts/
 ### Documentation (this feature)
 
 ```text
-specs/001-depersonalize-identifiers/
+docs/specs/001-depersonalize-identifiers/
 ├── plan.md              # This file (/speckit-plan command output)
 ├── research.md          # Phase 0 output (/speckit-plan command)
 ├── data-model.md        # Phase 1 output (/speckit-plan command)
@@ -143,7 +143,7 @@ data/                       # fixtures (land with consuming layer's PR)
 ├── sample_apr_2026.json                        # payee/category-title scrub (FR-007)
 └── sample_apr_2026_detailed_section_mapping.json   # "7"/"8" -> new section keys
 
-docs/                       # PR5: designs/*.md, docs/design/*.md prose scrub (LG-002)
+docs/                       # PR5: docs/design/*.md, docs/design/*.md prose scrub (LG-002)
 .github/workflows/ci.yml    # unchanged — smoke test lands inside existing suite dirs
 ```
 

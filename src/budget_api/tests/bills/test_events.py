@@ -1,6 +1,6 @@
 """F2-BE bills dashboard events endpoint — 42 acceptance tests.
 
-Covers L4 contracts + edge cases per `designs/f2-bills-dashboard.md` sub-feature 3.
+Covers L4 contracts + edge cases per `docs/design/f2-bills-dashboard.md` sub-feature 3.
 """
 
 from __future__ import annotations

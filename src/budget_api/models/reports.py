@@ -1,7 +1,7 @@
 """Report pydantic models — MonthList, GenerateStatus, ReportResponse.
 
 PR1 of the monthly-reports-logic-migration (see
-designs/monthly-reports-logic-migration.md, L1-L5 APPROVED) adds the
+docs/design/monthly-reports-logic-migration.md, L1-L5 APPROVED) adds the
 `detailed` DTO contract below. Contracts only — no builder logic yet
 (PR2). All new fields are optional/default-None so reports written by the
 pre-PR1 backend still deserialize unchanged.

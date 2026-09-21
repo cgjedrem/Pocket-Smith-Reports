@@ -1,6 +1,6 @@
 """F2-BE bills dashboard event detail endpoint â€” 20 acceptance tests.
 
-Covers L4 contracts + edge cases per `designs/f2-bills-dashboard.md` sub-feature 4.
+Covers L4 contracts + edge cases per `docs/design/f2-bills-dashboard.md` sub-feature 4.
 Reuses helpers from `test_events.py` (copy = isolation, no cross-file import).
 """
 

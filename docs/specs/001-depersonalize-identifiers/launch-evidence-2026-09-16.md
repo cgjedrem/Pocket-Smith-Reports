@@ -14,7 +14,7 @@ git grep -n -i 'christian\|rasma\|gjedrem' -- .
 
 Result: **PASS** — zero matches outside the LG-002 carve-outs.
 All printed matches are confined to `.charter/`, `.specify/`,
-`docs/open-source-launch-gates.md`, and `specs/001-depersonalize-identifiers/`
+`docs/open-source-launch-gates.md`, and `docs/specs/001-depersonalize-identifiers/`
 (governance inventory / tooling templates only).
 
 ### Vector 2 — tracked path names
@@ -32,7 +32,7 @@ git grep -n 'Q2hyaXN0aWFu\|Y2hyaXN0aWFu\|UmFzbWE\|cmFzbWE\|R2plZHJlbQ\|Z2plZHJlb
 ```
 
 Result: **PASS** — matches only in `docs/open-source-launch-gates.md` (the
-command documentation itself) and `specs/001-depersonalize-identifiers/quickstart.md`,
+command documentation itself) and `docs/specs/001-depersonalize-identifiers/quickstart.md`,
 both inside the carve-outs.
 
 ### Containment guard (R7 / T070)

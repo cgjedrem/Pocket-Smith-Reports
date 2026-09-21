@@ -8,7 +8,7 @@ Mirrors the three verification vectors of docs/open-source-launch-gates.md
 3. Encoded vector — base64 byte-offset-0 literals of the identifiers.
 
 Carve-outs (identical to LG-002): .charter/, .specify/,
-docs/open-source-launch-gates.md, and specs/001-depersonalize-identifiers/**
+docs/open-source-launch-gates.md, and docs/specs/001-depersonalize-identifiers/**
 (the governance docs that must name the identifiers to be meaningful; they are
 excluded from the published history-reset repo per LG-001).
 """
@@ -42,7 +42,7 @@ ENCODED_LITERALS = (
     "R2pl" + "ZHJlbQ",  # base64, I-003 case-sensitive variant
     "Z2pl" + "ZHJlbQ",  # base64, I-003 lowercase variant
 )
-ALLOWLIST_PREFIXES = (".charter/", ".specify/", "specs/001-depersonalize-identifiers/")
+ALLOWLIST_PREFIXES = (".charter/", ".specify/", "docs/specs/001-depersonalize-identifiers/")
 ALLOWLIST_PATHS = ("docs/open-source-launch-gates.md",)
 
 

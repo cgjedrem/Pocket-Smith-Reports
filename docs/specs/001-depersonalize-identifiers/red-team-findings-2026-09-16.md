@@ -1,7 +1,7 @@
 # Red Team Findings: RT-001-depersonalize-identifiers-2026-09-16
 
 **Session ID**: RT-001-depersonalize-identifiers-2026-09-16
-**Target spec**: `specs/001-depersonalize-identifiers/spec.md`
+**Target spec**: `docs/specs/001-depersonalize-identifiers/spec.md`
 **Date**: 2026-09-16
 **Maintainer**: ChristianGjedrem
 **Lenses run**: Regulatory Adversary, Trust-Boundary Adversary
@@ -62,7 +62,7 @@ history scrubbing is required.
 
 ```yaml
 session_id: RT-001-depersonalize-identifiers-2026-09-16
-target_spec: specs/001-depersonalize-identifiers/spec.md
+target_spec: docs/specs/001-depersonalize-identifiers/spec.md
 date: 2026-09-16
 maintainer: ChristianGjedrem
 lenses: [Regulatory Adversary, Trust-Boundary Adversary]

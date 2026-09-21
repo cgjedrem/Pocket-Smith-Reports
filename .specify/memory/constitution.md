@@ -1,4 +1,14 @@
 <!--
+Sync Impact Report — 2026-09-21
+- Version change: 1.0.0 → 1.0.1 (PATCH — clarification of artifact paths)
+- Modified principles: none
+- Modified sections: Quality & Workflow — spec-kit artifact directory updated
+  from `specs/` to `docs/specs/` to match the documentation consolidation
+  (PR #27: designs/ → docs/design/, specs/ → docs/specs/). No principle
+  added, removed, or redefined.
+- Deferred: none
+-->
+<!--
 Sync Impact Report — 2026-09-03 (initial ratification)
 - Version change: none (template placeholder) → 1.0.0 (initial ratification)
 - Modified principles: N/A (initial adoption; template placeholders replaced)
@@ -178,7 +188,7 @@ are the historical sources of CI/local divergence; one dialect, stated once.
   with types `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, matching the existing
   history (`fix(reports):`, `feat(bills):`, `chore:`).
 - Feature work flows through the spec-kit workflow (specify → plan → tasks →
-  implement) with artifacts under `specs/`; this constitution governs every
+  implement) with artifacts under `docs/specs/`; this constitution governs every
   plan-review gate (spec-kit + cgjedrem-spec-stack initialized in PR #69, commit
   `42c166e`).
 - This is a single-maintainer repository: self-merge is allowed; the spec-kit
@@ -311,4 +321,4 @@ pnpm test
 - Attribution-first: every third-party asset is licensed and attributed in
   `NOTICE` or the project attribution file.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-03 | **Last Amended**: 2026-09-03
+**Version**: 1.0.1 | **Ratified**: 2026-09-03 | **Last Amended**: 2026-09-21
