@@ -74,6 +74,19 @@ export function AppLayout() {
           >
             Settings
           </NavLink>
+          <NavLink
+            to="/docs"
+            className={({ isActive }) =>
+              cn(
+                "border-b-2 border-transparent px-2 py-1 text-base no-underline",
+                isActive
+                  ? "border-accent text-accent"
+                  : "text-muted-foreground hover:text-foreground",
+              )
+            }
+          >
+            Docs
+          </NavLink>
         </nav>
       </header>
       <main className="mx-auto w-full max-w-[1200px] flex-1 p-6">

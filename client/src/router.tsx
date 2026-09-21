@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppLayout } from "@/layouts/AppLayout";
 import { BillsPage } from "@/pages/BillsPage";
 import { BillsPreviewPage } from "@/pages/BillsPreviewPage";
+import { DocsPage } from "@/pages/DocsPage";
 import { MegaReportsPage } from "@/pages/MegaReportsPage";
 import { MonthlyReportsPage } from "@/pages/MonthlyReportsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -21,6 +22,7 @@ export const router = createBrowserRouter([
       { path: "bills", element: <BillsPage /> },
       { path: "bills-preview", element: <BillsPreviewPage /> },
       { path: "settings", element: <SettingsPage /> },
+      { path: "docs", element: <DocsPage /> },
     ],
   },
 ]);
