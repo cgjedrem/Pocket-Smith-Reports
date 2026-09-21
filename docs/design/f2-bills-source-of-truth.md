@@ -56,7 +56,7 @@ The existing [`PSClient`](../src/budget_api/services/ps_client.py) already cover
 | `GET /users/{id}/categories` | `PSClient.get_categories()` (line 246) | Category tree for role filter (`spend` / `savings` / `income` / `is_transfer`). |
 | `GET /me` | `PSClient.get_me()` (line 182) | Bootstrap `user_id` for the sync job. |
 
-No F2-BE gaps in the PS client. The design doc's [PS-integration §"API client reference"](../designs/f2-bills-ps-integration.md) is accurate.
+No F2-BE gaps in the PS client. The design doc's [PS-integration §"API client reference"](../docs/design/f2-bills-ps-integration.md) is accurate.
 
 ## What F2-CRUD (future task) would need from PS
 

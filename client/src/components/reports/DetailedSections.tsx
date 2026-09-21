@@ -3,7 +3,7 @@
 // src/budget_api/models/reports.py + src/v4_pipeline/accounting.py section
 // builders). No grouping, category aggregation, paired-reimbursement
 // matching, or percent math happens here (PR3 of
-// monthly-reports-logic-migration — see designs/monthly-reports-logic-migration.md).
+// monthly-reports-logic-migration — see docs/design/monthly-reports-logic-migration.md).
 //
 // Per-transaction drill-downs under each section are restored in PR5 via
 // SectionDrilldowns.tsx (verbatim port of the pre-PR3 code): they read

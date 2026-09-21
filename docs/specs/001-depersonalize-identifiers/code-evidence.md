@@ -174,7 +174,7 @@ Full `git grep -n "personal_christian\|personal_rasma"` over **tracked** files, 
 ### Docs prose hits (removal list / design history)
 
 - `docs/open-source-launch-gates.md:45-46` — identifier inventory I-001/I-002 (`personal_christian`/`personal_rasma` as substrings to remove).
-- `designs/monthly-reports-logic-migration.md:83, 94-95`; `docs/design/design-client-pdf-export-sections.md:77`; `docs/design/done/design-f1.2-react-reports.md:258, 794, 891`.
+- `docs/design/monthly-reports-logic-migration.md:83, 94-95`; `docs/design/design-client-pdf-export-sections.md:77`; `docs/design/done/design-f1.2-react-reports.md:258, 794, 891`.
 
 ---
 

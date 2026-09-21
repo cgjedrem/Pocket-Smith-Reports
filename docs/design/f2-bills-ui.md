@@ -375,7 +375,7 @@ UI key: `economy.realBills != null` → render row, else hide.
 - `client/src/components/bills/EconomyBar.tsx` — destructure + 2 render sites
 - `client/src/components/bills/__tests__/economy-bar-bills-zone.test.tsx` — `makeEconomy()` default null + new past-only test
 - `client/src/components/bills/__tests__/economy-bar-budget-zone.test.tsx` — `makeEconomy()` default null
-- `designs/f2-bills-ui.md` — this section
+- `docs/design/f2-bills-ui.md` — this section
 
 
 ## Run sync navigation

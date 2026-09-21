@@ -1,14 +1,14 @@
 # Open-Source Launch Gates — Pocket-Smith-Reports
 
 Forward-facing canonical record for the open-source launch. Supersedes the loose
-assumptions in `specs/001-depersonalize-identifiers/spec.md` where they
+assumptions in `docs/specs/001-depersonalize-identifiers/spec.md` where they
 conflict; that spec file is a historical SpecKit record and is not edited after
 ratification (per the red-team skill's immutability rule, changes land here).
 
 **Status**: Active
 **Feature**: 001-depersonalize-identifiers
-**Spec ref**: `specs/001-depersonalize-identifiers/spec.md`
-**Findings basis**: `specs/001-depersonalize-identifiers/red-team-findings-2026-09-16.md`
+**Spec ref**: `docs/specs/001-depersonalize-identifiers/spec.md`
+**Findings basis**: `docs/specs/001-depersonalize-identifiers/red-team-findings-2026-09-16.md`
 
 ---
 
@@ -78,7 +78,7 @@ git grep -n 'Q2hyaXN0aWFu\|Y2hyaXN0aWFu\|UmFzbWE\|cmFzbWE\|R2plZHJlbQ\|Z2plZHJlb
 
 Carve-outs (only permitted remainders): `.charter/` and `.specify/` tooling
 templates, plus the governance files that must name the identifiers to be
-meaningful — this file and `specs/001-depersonalize-identifiers/` — which per
+meaningful — this file and `docs/specs/001-depersonalize-identifiers/` — which per
 LG-001 are not carried into the public fresh-fork repo.
 
 ---

@@ -1,6 +1,6 @@
 """F2-BE bills dashboard read endpoint — 17 acceptance tests.
 
-Covers L4 contracts + edge cases per `designs/f2-bills-dashboard.md`.
+Covers L4 contracts + edge cases per `docs/design/f2-bills-dashboard.md`.
 """
 
 from __future__ import annotations

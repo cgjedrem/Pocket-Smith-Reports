@@ -82,7 +82,7 @@ class PartnerBills(BaseModel):
             "no reality exists yet. None + warning when chain kwargs are "
             "absent (standalone build). NOTE: the balance back-walk chain "
             "internally uses combined bills+savings deltas — deliberate "
-            "split, see designs/f2-bills-derivations.md §13."
+            "split, see docs/design/f2-bills-derivations.md §13."
         ),
     )
     savings_balance: float

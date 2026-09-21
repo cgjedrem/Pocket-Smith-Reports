@@ -1,6 +1,6 @@
 # Tasks: De-personalize identifiers for open-source launch
 
-**Input**: Design documents from `/specs/001-depersonalize-identifiers/`
+**Input**: Design documents from `/docs/specs/001-depersonalize-identifiers/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md (all present and review-resolved on PR #77)
 
 **Tests**: INCLUDED — mandated by FR-008, SC-002, LG-005/006/007/008 and every contract's "Tests that pin this contract" section.
@@ -15,7 +15,7 @@
 
 ## Path Conventions
 
-Single repo: BE pipelines `src/v4_pipeline`, `src/mega`, `src/mom`; API layer `src/budget_api`; FE `client/src`; fixtures `data/`; docs `docs/`, `designs/`. Tests colocated per Constitution VIII. Canonical BE command (PowerShell):
+Single repo: BE pipelines `src/v4_pipeline`, `src/mega`, `src/mom`; API layer `src/budget_api`; FE `client/src`; fixtures `data/`; docs `docs/`, `docs/design/`. Tests colocated per Constitution VIII. Canonical BE command (PowerShell):
 
 ```powershell
 $env:PYTHONPATH = 'src'; python -m pytest src/mega/tests src/v4_pipeline/tests src/mom/tests src/budget_api/tests -q
@@ -82,7 +82,7 @@ $env:PYTHONPATH = 'src'; python -m pytest src/mega/tests src/v4_pipeline/tests s
 ### PR5 — remainder fixtures + docs prose scrub
 
 - [X] T028 [P] [US1] Scrub remaining test-fixture identifiers across BE/FE suites not covered above (search-driven from the T002 inventory)
-- [X] T029 [P] [US1] Scrub docs prose in `designs/*.md`, `docs/design/*.md`, `docs/bugs/*/` provenance notes (R8 — in-place neutralization of identifiers)
+- [X] T029 [P] [US1] Scrub docs prose in `docs/design/*.md`, `docs/bugs/*/` provenance notes (R8 — in-place neutralization of identifiers)
 - [X] T030 [US1] Run quickstart Scenario 1 (content + path + encoded vectors) and record PASS output as launch-evidence material; only the LG-002 governance allowlist may remain — 2026-09-16: all three vectors PASS, recorded in `launch-evidence-2026-09-16.md`
 
 **Checkpoint**: SC-001 holds on the whole tree; suites green; US1 independently verifiable via quickstart Scenarios 1-2.
@@ -143,7 +143,7 @@ $env:PYTHONPATH = 'src'; python -m pytest src/mega/tests src/v4_pipeline/tests s
 
 **Purpose**: Continuous verification, launch plumbing for this feature, and docs.
 
-- [X] T070 [P] LG-002 CI containment test (same style as `test_tracked_relevant_text_has_no_private_paths_or_credentials`): the three-vector check (content grep, `git ls-files` path scan, base64-pattern scan) failing on any hit outside the exact governance allowlist `.charter/`, `.specify/`, `docs/open-source-launch-gates.md`, `specs/001-depersonalize-identifiers/**`
+- [X] T070 [P] LG-002 CI containment test (same style as `test_tracked_relevant_text_has_no_private_paths_or_credentials`): the three-vector check (content grep, `git ls-files` path scan, base64-pattern scan) failing on any hit outside the exact governance allowlist `.charter/`, `.specify/`, `docs/open-source-launch-gates.md`, `docs/specs/001-depersonalize-identifiers/**`
 - [X] T071 [P] README + CONTRIBUTING breaking-change note: contract v2 rejection semantics and the regenerate remedy; LG-008 fallback (unregenerable shape → PocketSmith re-sync)
 - [X] T072 Fix pre-existing adjacent defect: stale comment at `src/v4_pipeline/accounting.py:899-900` if not already covered by T010 (verify, do not duplicate) — verified covered by PR1/T010: grep for the stale text finds nothing; the surviving comment at :978 correctly describes server-side computation
 - [X] T073 Run full quickstart.md validation (Scenarios 1-8) on the final tree; record outputs — 2026-09-16 all PASS, matrix in `launch-evidence-2026-09-16.md`

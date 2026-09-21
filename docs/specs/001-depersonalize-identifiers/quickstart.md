@@ -22,7 +22,7 @@ elseif ($code -eq 0) { Write-Output 'FAIL — identifiers present (matches print
 else { Write-Output "FAIL — grep error (exit $code)"; exit $code }
 # Expected PASS. Only permitted remainders: .charter/ and .specify/ tooling
 # templates plus the governance inventory docs (docs/open-source-launch-gates.md,
-# specs/001-depersonalize-identifiers/) — see LG-002 carve-outs.
+# docs/specs/001-depersonalize-identifiers/) — see LG-002 carve-outs.
 ```
 
 The path-name and encoded-payload vectors of LG-002 are checked the same way:
