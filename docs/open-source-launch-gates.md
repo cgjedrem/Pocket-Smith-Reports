@@ -96,7 +96,7 @@ present in the published tree.
 
 Before the public repo's initial push, the maintainer inventories local artifact
 directories capable of holding PII from pre-change runs — `out/`,
-`data/private/`, `specs/**/out/` — and either regenerates every stored report
+`data/private/`, `docs/specs/**/out/` — and either regenerates every stored report
 with the de-personalized build (which overwrites the old payload) or deletes
 unregenerable ones. No pre-change stored report containing old partner names may
 remain on the maintainer's machine at launch.
