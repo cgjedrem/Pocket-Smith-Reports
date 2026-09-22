@@ -53,7 +53,7 @@ describe("DocsPage", () => {
     render(<DocsPage />);
     expect(screen.getByText(/choose a start and end month/i)).toBeInTheDocument();
     expect(screen.getAllByText(/partner labels/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/single-month report/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/single-month report/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/12-month range/i)).toBeInTheDocument();
   });
 });
