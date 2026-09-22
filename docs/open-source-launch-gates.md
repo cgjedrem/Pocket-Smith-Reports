@@ -76,10 +76,18 @@ git grep -n 'Q2hyaXN0aWFu\|Y2hyaXN0aWFu\|UmFzbWE\|cmFzbWE\|R2plZHJlbQ\|Z2plZHJlb
 # PASS = no matches.
 ```
 
-Carve-outs (only permitted remainders): `.charter/` and `.specify/` tooling
-templates, plus the governance files that must name the identifiers to be
-meaningful — this file and `docs/specs/001-depersonalize-identifiers/` — which per
-LG-001 are not carried into the public fresh-fork repo.
+Carve-outs (only permitted remainders):
+
+- `.charter/` and `.specify/` tooling templates.
+- The governance files that must name the identifiers to be meaningful — this
+  file and `docs/specs/001-depersonalize-identifiers/`.
+- `LICENSE` — the MIT copyright notice must name the copyright holder;
+  attribution is a legal requirement, not a data identifier (added 2026-09-22).
+- The canonical public repository URL
+  `https://github.com/cgjedrem/Pocket-Smith-Reports` — the repo's own public
+  metadata, visible in the URL of the published repository itself. The guard
+  test strips it from file contents before scanning rather than exempting
+  whole files (added 2026-09-22).
 
 ---
 

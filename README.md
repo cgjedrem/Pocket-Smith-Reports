@@ -31,7 +31,7 @@ report CLI, and release notes. This README covers installation only.
 Install backend and frontend dependencies:
 
 ```bash
-git clone https://github.com/<your-username>/Pocket-Smith-Reports.git
+git clone https://github.com/cgjedrem/Pocket-Smith-Reports.git
 cd Pocket-Smith-Reports
 uv sync                # backend deps (pyproject.toml + uv.lock)
 cd client && pnpm install   # client deps (pnpm-lock.yaml)

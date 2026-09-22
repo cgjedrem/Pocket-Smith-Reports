@@ -118,7 +118,7 @@ export function DocsPage() {
       </Section>
 
       <Section id="install" title="Install & run">
-        <CodeBlock>{`git clone https://github.com/<your-username>/Pocket-Smith-Reports.git
+        <CodeBlock>{`git clone https://github.com/cgjedrem/Pocket-Smith-Reports.git
 cd Pocket-Smith-Reports
 uv sync                # backend deps (pyproject.toml + uv.lock)
 cd client

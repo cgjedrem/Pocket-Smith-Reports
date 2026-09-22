@@ -53,7 +53,15 @@ describe("DocsPage", () => {
 
   it("documents the core install and run commands", () => {
     render(<DocsPage />);
-    // Backend + frontend commands from the quick start.
+    // Clone + backend + frontend commands from the quick start. The clone URL
+    // owner is intentionally not hardcoded here: the canonical repository URL
+    // is permitted LG-002 carve-out content, and this file stays
+    // identifier-free.
+    expect(
+      screen.getByText(
+        /git clone https:\/\/github\.com\/[^/]+\/Pocket-Smith-Reports\.git/,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText(/run_api\.ps1 -Port 8001/)).toBeInTheDocument();
     expect(screen.getByText(/pnpm dev/)).toBeInTheDocument();
     expect(screen.getByText(/uv sync/)).toBeInTheDocument();
@@ -61,8 +69,6 @@ describe("DocsPage", () => {
 
   it("references the data policy and hardening docs by path", () => {
     render(<DocsPage />);
-    // LG-002 forbids personal identifiers in tracked files, so repo links use
-    // plain file paths rather than absolute GitHub URLs.
     expect(screen.getAllByText("docs/DATA_POLICY.md").length).toBeGreaterThan(0);
     expect(
       screen.getByText("docs/production-hardening-loops.md"),
