@@ -1,4 +1,14 @@
 <!--
+Sync Impact Report — 2026-09-21 (2nd amendment)
+- Version change: 1.0.1 → 1.0.2 (PATCH — Principle I rationale citation update)
+- Modified principles: none
+- Modified sections: Principle I rationale now cites docs/DATA_POLICY.md,
+  which was created in this change; the stale "does not exist yet" note and
+  its follow-up TODO bullet were removed. No principle added, removed, or
+  redefined.
+- Deferred: packageManager pin / lint-script TODO retained (client tooling)
+-->
+<!--
 Sync Impact Report — 2026-09-21
 - Version change: 1.0.0 → 1.0.1 (PATCH — clarification of artifact paths)
 - Modified principles: none
@@ -20,8 +30,6 @@ Sync Impact Report — 2026-09-03 (initial ratification)
   (pyproject.toml requires-python ">=3.13"); Python-specific principles were written
   from repo evidence instead (Principles IV–VI)
 - Follow-up TODOs:
-  - README references docs/DATA_POLICY.md as the data-policy authority, but that
-    file does not exist yet; Principle I currently cites .gitignore + README.
   - client/package.json has no `packageManager` pin (pnpm-strict requires one) and
     no lint script (react-client quality gate lists `pnpm lint`).
   - Environment tooling is split: scripts/run_api.ps1 uses uv (uv.lock) while CI
@@ -51,9 +59,8 @@ credentials, generated reports, and private reference material MUST stay out of 
 `docs/old sections/`. Fixtures MUST keep neutral `Partner A`/`Partner B` labels,
 reserved synthetic transaction-ID ranges, and deterministic payees
 (`data/sample_apr_2026.json`). Rationale: this repo handles a real household's
-finances; the README's opening paragraph states the synthetic-only contract and
-`.gitignore` is the enforcement layer. (`docs/DATA_POLICY.md` is referenced by the
-README but does not exist yet — see follow-up TODOs.)
+finances; `docs/DATA_POLICY.md` is the data-policy authority and `.gitignore`
+is the enforcement layer.
 
 ### II. Pipelines Fail Closed
 
@@ -321,4 +328,4 @@ pnpm test
 - Attribution-first: every third-party asset is licensed and attributed in
   `NOTICE` or the project attribution file.
 
-**Version**: 1.0.1 | **Ratified**: 2026-09-03 | **Last Amended**: 2026-09-21
+**Version**: 1.0.2 | **Ratified**: 2026-09-03 | **Last Amended**: 2026-09-21

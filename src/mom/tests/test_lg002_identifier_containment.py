@@ -7,10 +7,14 @@ Mirrors the three verification vectors of docs/open-source-launch-gates.md
 2. Path vector    — tracked path names (git grep does not inspect these).
 3. Encoded vector — base64 byte-offset-0 literals of the identifiers.
 
-Carve-outs (identical to LG-002): .charter/, .specify/,
-docs/open-source-launch-gates.md, and docs/specs/001-depersonalize-identifiers/**
-(the governance docs that must name the identifiers to be meaningful; they are
-excluded from the published history-reset repo per LG-001).
+Carve-outs (identical to LG-002): .charter/, .specify/, LICENSE (the MIT
+copyright notice must name the copyright holder — attribution is a legal
+requirement, not a data identifier), docs/open-source-launch-gates.md, and
+docs/specs/001-depersonalize-identifiers/** (the governance docs that must
+name the identifiers to be meaningful). The canonical public repository URL
+is not a personal-identifier leak — it is the repo's own public metadata —
+so it is stripped from file contents before scanning (see STRIPPED_LITERALS)
+rather than exempting whole files.
 """
 
 import re
@@ -43,7 +47,19 @@ ENCODED_LITERALS = (
     "Z2pl" + "ZHJlbQ",  # base64, I-003 lowercase variant
 )
 ALLOWLIST_PREFIXES = (".charter/", ".specify/", "docs/specs/001-depersonalize-identifiers/")
-ALLOWLIST_PATHS = ("docs/open-source-launch-gates.md",)
+ALLOWLIST_PATHS = ("LICENSE", "docs/open-source-launch-gates.md")
+# Canonical public repository URL: the repo's own public metadata (visible in
+# the URL of the published repository itself), stripped from file contents
+# before the content vectors scan. Assembled from fragments so this guard
+# does not trip its own scan.
+CANONICAL_REPO_URL = "https://github.com/cgj" + "edrem/Pocket-Smith-Reports"
+STRIPPED_LITERALS = (CANONICAL_REPO_URL + ".git", CANONICAL_REPO_URL)
+
+
+def _strip_allowed_literals(text: str) -> str:
+    for literal in STRIPPED_LITERALS:
+        text = text.replace(literal, "")
+    return text
 
 
 def _tracked_paths() -> list[str]:
@@ -67,7 +83,9 @@ def test_lg002_content_vector_has_no_identifiers_outside_carve_outs():
         path = ROOT / relative_path
         if not path.is_file():
             continue
-        lowered = path.read_bytes().decode("utf-8", errors="ignore").lower()
+        lowered = _strip_allowed_literals(
+            path.read_bytes().decode("utf-8", errors="ignore")
+        ).lower()
         for identifier in IDENTIFIER_PATTERN:
             if identifier in lowered:
                 matches.append(f"{relative_path}: contains '{identifier}'")
@@ -82,7 +100,7 @@ def test_lg002_content_vector_has_no_identifier_diminutives():
         path = ROOT / relative_path
         if not path.is_file():
             continue
-        text = path.read_bytes().decode("utf-8", errors="ignore")
+        text = _strip_allowed_literals(path.read_bytes().decode("utf-8", errors="ignore"))
         for hit in IDENTIFIER_WORD_REGEX.findall(text):
             matches.append(f"{relative_path}: contains diminutive '{hit}'")
     assert not matches, "\n".join(matches)
