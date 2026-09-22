@@ -1,5 +1,5 @@
-// DocsPage tests — static docs page: sections render, TOC anchors resolve,
-// key install commands present. No API calls (page is static).
+// DocsPage tests — static usage guide: sections render, TOC anchors resolve.
+// No API calls (page is static).
 
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -8,16 +8,14 @@ import { DocsPage } from "@/pages/DocsPage";
 
 const TOC_LABELS = [
   "Overview",
-  "Getting started",
-  "Install & run",
-  "First run",
-  "Using the app",
-  "Staged live sync",
-  "Report CLI",
-  "Synthetic fixture contract",
-  "Release notes",
-  "Testing & QA",
-  "Data & privacy",
+  "Connect & sync",
+  "Set up accounts & labels",
+  "Monthly reports",
+  "Mega reports (12 months)",
+  "Bills dashboard",
+  "Settings",
+  "Command line",
+  "Troubleshooting",
 ];
 
 describe("DocsPage", () => {
@@ -25,7 +23,7 @@ describe("DocsPage", () => {
     render(<DocsPage />);
     expect(screen.getByRole("heading", { name: "Docs" })).toBeInTheDocument();
     expect(
-      screen.getByText(/install, run, and use pocket-smith reports/i),
+      screen.getByText(/how to use pocket-smith reports/i),
     ).toBeInTheDocument();
   });
 
@@ -51,27 +49,11 @@ describe("DocsPage", () => {
     }
   });
 
-  it("documents the core install and run commands", () => {
+  it("points each app page to its main job", () => {
     render(<DocsPage />);
-    // Clone + backend + frontend commands from the quick start. The clone URL
-    // owner is intentionally not hardcoded here: the canonical repository URL
-    // is permitted LG-002 carve-out content, and this file stays
-    // identifier-free.
-    expect(
-      screen.getByText(
-        /git clone https:\/\/github\.com\/[^/]+\/Pocket-Smith-Reports\.git/,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/run_api\.ps1 -Port 8001/)).toBeInTheDocument();
-    expect(screen.getByText(/pnpm dev/)).toBeInTheDocument();
-    expect(screen.getByText(/uv sync/)).toBeInTheDocument();
-  });
-
-  it("references the data policy and hardening docs by path", () => {
-    render(<DocsPage />);
-    expect(screen.getAllByText("docs/DATA_POLICY.md").length).toBeGreaterThan(0);
-    expect(
-      screen.getByText("docs/production-hardening-loops.md"),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/choose a start and end month/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/partner labels/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/single-month report/i)).toBeInTheDocument();
+    expect(screen.getByText(/12-month range/i)).toBeInTheDocument();
   });
 });

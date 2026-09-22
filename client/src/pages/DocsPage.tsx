@@ -1,6 +1,5 @@
-// DocsPage — in-app documentation: install, run, and use the app locally.
-// Static content only — no API calls. Mirrors the README quick start; the
-// deep sync/CLI reference lives here instead of the README.
+// DocsPage — in-app user guide: how to use the app. Static content only,
+// no API calls. Installation/setup lives in the README, not here.
 
 import type { ReactNode } from "react";
 
@@ -8,16 +7,14 @@ type Section = { id: string; label: string };
 
 const SECTIONS: Section[] = [
   { id: "overview", label: "Overview" },
-  { id: "getting-started", label: "Getting started" },
-  { id: "install", label: "Install & run" },
-  { id: "first-run", label: "First run" },
-  { id: "using", label: "Using the app" },
-  { id: "staged-sync", label: "Staged live sync" },
-  { id: "report-cli", label: "Report CLI" },
-  { id: "fixture", label: "Synthetic fixture contract" },
-  { id: "releases", label: "Release notes" },
-  { id: "testing", label: "Testing & QA" },
-  { id: "privacy", label: "Data & privacy" },
+  { id: "connect", label: "Connect & sync" },
+  { id: "setup", label: "Set up accounts & labels" },
+  { id: "monthly-reports", label: "Monthly reports" },
+  { id: "mega-reports", label: "Mega reports (12 months)" },
+  { id: "bills", label: "Bills dashboard" },
+  { id: "settings", label: "Settings" },
+  { id: "cli", label: "Command line" },
+  { id: "faq", label: "Troubleshooting" },
 ];
 
 function CodeBlock({ children }: { children: string }) {
@@ -42,9 +39,8 @@ export function DocsPage() {
     <div className="mx-auto max-w-[820px]">
       <h1 className="mb-4">Docs</h1>
       <p className="mb-6 text-muted-foreground">
-        How to install, run, and use Pocket-Smith Reports on your own machine.
-        The repository <code>docs/</code> folder holds design notes and policy
-        deep-dives; this page is the practical guide.
+        How to use Pocket-Smith Reports — connect your account, sync, and
+        build reports. (Install and run instructions are in the README.)
       </p>
 
       <nav
@@ -65,262 +61,171 @@ export function DocsPage() {
 
       <Section id="overview" title="Overview">
         <p className="mb-3">
-          Pocket-Smith Reports is a local-first personal-finance reporting tool
-          for PocketSmith. A FastAPI backend syncs your PocketSmith data into
-          local JSON snapshots, and a React dashboard renders reports and a
-          bills overview. Nothing leaves your machine: the API key and all
-          synced data stay in local, git-ignored files.
+          Pocket-Smith Reports turns your PocketSmith data into readable PDF
+          reports and a bills dashboard. Everything runs on your machine:
+          your PocketSmith API key and all synced data stay in local,
+          git-ignored files.
         </p>
-        <ul className="mb-3 list-disc space-y-1 pl-5">
-          <li>Staged sync from the PocketSmith API (accounts → categories → transactions)</li>
-          <li>Single-month reports as paired HTML + PDF</li>
-          <li>12-month &ldquo;Mega&rdquo; reports with per-section navigation</li>
-          <li>Bills dashboard with budget, economy, and savings views</li>
-          <li>Settings for partners, accounts, and category mappings</li>
-        </ul>
-        <p className="mb-3">
-          Tracked fixtures use neutral synthetic data only. Your live data
-          never enters version control — see <code>docs/DATA_POLICY.md</code>.
-        </p>
-      </Section>
-
-      <Section id="getting-started" title="Getting started">
-        <p className="mb-3">You need:</p>
-        <ul className="mb-3 list-disc space-y-1 pl-5">
-          <li>
-            Python 3.13+ and{" "}
-            <a
-              className="text-accent hover:underline"
-              href="https://docs.astral.sh/uv/"
-            >
-              uv
-            </a>{" "}
-            (manages the backend virtualenv from <code>uv.lock</code>)
-          </li>
-          <li>Node.js 20+ and pnpm 10</li>
-          <li>
-            WeasyPrint native libraries (Pango, Cairo, GDK-PixBuf) and system
-            fonts for PDF rendering — see below
-          </li>
-        </ul>
-        <p className="mb-3">
-          On Windows, install the WeasyPrint GTK runtime with the bundled
-          script (the Python wheel does not ship the DLLs). Get the SHA-256
-          only from the official MSYS2 release or a signed checksum source; the
-          script verifies it before running the installer:
-        </p>
-        <CodeBlock>{`.\\scripts\\install-weasyprint-msys2.ps1 -ExpectedSha256 '<official-msys2-sha256>'`}</CodeBlock>
-        <p className="mb-3">
-          Use <code>-WhatIf</code> to preview. GPG verification remains a
-          manual step. On Linux, install Pango, Cairo, and GDK-PixBuf plus
-          system fonts with your package manager.
-        </p>
-      </Section>
-
-      <Section id="install" title="Install & run">
-        <CodeBlock>{`git clone https://github.com/cgjedrem/Pocket-Smith-Reports.git
-cd Pocket-Smith-Reports
-uv sync                # backend deps (pyproject.toml + uv.lock)
-cd client
-pnpm install           # client deps (pnpm-lock.yaml)`}</CodeBlock>
-        <p className="mb-3">
-          Start the backend (PowerShell, from the repository root). The client
-          expects the API on port 8001:
-        </p>
-        <CodeBlock>{`.\\scripts\\run_api.ps1 -Port 8001`}</CodeBlock>
-        <p className="mb-3">
-          In a second terminal, start the frontend:
-        </p>
-        <CodeBlock>{`cd client
-pnpm dev               # http://localhost:5174`}</CodeBlock>
-        <p className="mb-3">
-          The Vite dev server proxies <code>/api</code> to{" "}
-          <code>http://localhost:8001</code>. Point it elsewhere with{" "}
-          <code>VITE_API_URL</code>.
-        </p>
-      </Section>
-
-      <Section id="first-run" title="First run">
+        <p className="mb-3">A normal session looks like this:</p>
         <ol className="mb-3 list-decimal space-y-1 pl-5">
-          <li>
-            Open the app and go to <strong>Settings</strong>. Paste your
-            PocketSmith API key — it is stored as <code>API_KEY</code> in the
-            repo-root <code>.env</code>, which is git-ignored and never sent
-            back to the UI.
-          </li>
-          <li>
-            Run your first sync from the <strong>Sync</strong> page (see{" "}
-            <a className="text-accent hover:underline" href="#staged-sync">
-              Staged live sync
-            </a>
-            ).
-          </li>
-          <li>
-            Review <strong>Settings</strong> — partner labels, account
-            ownership, excluded accounts, and category mappings.
-          </li>
-          <li>
-            Generate your first report from <strong>Monthly Reports</strong>.
-          </li>
+          <li><strong>Sync</strong> — pull a month range from PocketSmith.</li>
+          <li><strong>Set up accounts</strong> — map accounts to partners, exclude what you don't want.</li>
+          <li><strong>Build a report</strong> — a single month, or a 12-month Mega report.</li>
+          <li><strong>Review Bills</strong> — check recurring payments against your budget.</li>
         </ol>
       </Section>
 
-      <Section id="using" title="Using the app">
+      <Section id="connect" title="Connect & sync">
+        <p className="mb-3">
+          Sync pulls your PocketSmith data into local JSON snapshots. It runs
+          in stages — accounts, then categories, then transactions — and never
+          writes partial data: if a fetch fails, no new snapshot is published.
+        </p>
+        <ol className="mb-3 list-decimal space-y-1 pl-5">
+          <li>
+            Open <strong>Settings</strong> and paste your PocketSmith API key.
+            It is stored as <code>API_KEY</code> in the repo-root{" "}
+            <code>.env</code> (git-ignored) and never shown again.
+          </li>
+          <li>
+            Open <strong>Sync</strong>, choose a start and end month, and run
+            the sync.
+          </li>
+          <li>
+            Check the row counts and last-sync status shown on the page.
+          </li>
+        </ol>
+        <p className="mb-3">
+          Synced snapshots are written under <code>data/private/</code>, which
+          is git-ignored.
+        </p>
+      </Section>
+
+      <Section id="setup" title="Set up accounts & labels">
+        <p className="mb-3">
+          After your first sync, tell the app who owns each account before
+          generating reports:
+        </p>
         <ul className="mb-3 list-disc space-y-1 pl-5">
           <li>
-            <strong>Sync</strong> — pull PocketSmith data for a month range;
-            shows row counts and last-sync status. Syncs run in stages and fail
-            closed on incomplete data.
+            <strong>Partner labels</strong> — the two display names used across
+            all reports. They must be distinct and non-empty.
           </li>
           <li>
-            <strong>Monthly Reports</strong> — generate a single-month HTML +
-            PDF report; regenerate or export any stored month.
+            <strong>Account ownership</strong> — assign every synced account to
+            a partner. Every report account must map to a partner, or the
+            build fails closed.
           </li>
           <li>
-            <strong>Mega Reports</strong> — build a 12-month report with
-            per-section navigation and export.
+            <strong>Exclusions</strong> — excluded accounts are never fetched
+            by sync and never appear in reports.
           </li>
           <li>
-            <strong>Bills</strong> — recurring payments dashboard with budget
-            coverage, economy bar, and savings view.
-          </li>
-          <li>
-            <strong>Settings</strong> — API key, partner labels, account
-            ownership/exclusions, and category mappings.
-          </li>
-        </ul>
-      </Section>
-
-      <Section id="staged-sync" title="Staged live sync">
-        <p className="mb-3">
-          The sync API drives the staged CLI under the hood. Run stages from
-          the repository root; they read only the repo-root <code>.env</code>{" "}
-          and write only under <code>data/private/</code>. The legacy{" "}
-          <code>src/pull-month-ps-paginate.py</code> is disabled and cannot
-          write snapshots.
-        </p>
-        <p className="mb-3">
-          <strong>1. Account catalog</strong> — probes every account for every
-          requested month and writes metadata only:
-        </p>
-        <CodeBlock>{`PYTHONPATH=src python src/live_sync.py accounts --start 2025-08 --end 2026-07`}</CodeBlock>
-        <p className="mb-3">
-          Then create <code>data/private/account_mappings.json</code> covering
-          exactly the catalog IDs (names must match the catalog; both partner
-          labels nonempty and distinct; duplicate IDs fail before any API
-          call):
-        </p>
-        <CodeBlock>{`{"schema_version":1,"partners":{"partner_a":{"label":"..."},"partner_b":{"label":"..."}},"accounts":{"ID":{"name":"exact account catalog name","owner":"partner_a","excluded":false}}}`}</CodeBlock>
-        <p className="mb-3">
-          <strong>2. Category catalog</strong> — fetch categories; human
-          role/section mapping happens afterwards:
-        </p>
-        <CodeBlock>{`PYTHONPATH=src python src/live_sync.py categories --start 2025-08 --end 2026-07`}</CodeBlock>
-        <p className="mb-3">
-          <strong>3. Transactions</strong> — fetches every non-excluded mapped
-          account for every month before writing anything; a fetch error
-          publishes no new monthly snapshot:
-        </p>
-        <CodeBlock>{`PYTHONPATH=src python src/live_sync.py transactions --start 2025-08 --end 2026-07`}</CodeBlock>
-        <p className="mb-3">
-          An excluded account is never fetched by the transaction stage or
-          rendered from live snapshots. <code>excluded: true</code> in the
-          unified mapping is authoritative; <code>--exclude-account-id</code>{" "}
-          only adds one-run exclusions.
-        </p>
-      </Section>
-
-      <Section id="report-cli" title="Report CLI">
-        <p className="mb-3">
-          Builds can also run from the command line. Single-month (paired
-          HTML/PDF published to <code>out/YYYYMM_partner_report.*</code>;{" "}
-          <code>--name</code> overrides the basename; <code>--output-dir</code>{" "}
-          is not supported):
-        </p>
-        <CodeBlock>{`python src/v4_pipeline/build.py --month 2026-04 --data-dir data --input-kind synthetic --detailed-section-map data/sample_apr_2026_detailed_section_mapping.json`}</CodeBlock>
-        <p className="mb-3">
-          Multi-month Mega build (validates every month in the inclusive range
-          before publishing):
-        </p>
-        <CodeBlock>{`PYTHONPATH=src python -m mega.build_mega --start 2026-04 --end 2026-04 --data-dir data --input-kind synthetic --detailed-section-map data/sample_apr_2026_detailed_section_mapping.json`}</CodeBlock>
-        <p className="mb-3">
-          Every CLI build requires <code>--input-kind live</code> or{" "}
-          <code>--input-kind synthetic</code>. Publishers serialize per name
-          (30s wait limit), stage artifacts under{" "}
-          <code>out/.published/NAME/</code>, and write{" "}
-          <code>out/NAME.manifest.json</code> for consumers that need a
-          coherent HTML/PDF pair during a concurrent publish.
-        </p>
-      </Section>
-
-      <Section id="fixture" title="Synthetic fixture contract">
-        <ul className="mb-3 list-disc space-y-1 pl-5">
-          <li>Live source files use exactly <code>YYYY-MM_ps_raw.json</code> in <code>--data-dir</code>; synthetic files use exactly <code>sample_&lt;mon&gt;_&lt;year&gt;.json</code>. No filename fallback, glob lookup, or partial-period build.</li>
-          <li>Every requested month must be readable valid JSON before publishing starts.</li>
-          <li>Fixture transaction identifiers stay in the reserved synthetic range.</li>
-          <li>Fixture labels use neutral <code>Partner A</code> / <code>Partner B</code> terminology.</li>
-          <li>Fixture input uses normalized category accounting and literal boolean transfer flags when supplied.</li>
-          <li>The loader owns account-to-partner attribution for fixture labels.</li>
-        </ul>
-      </Section>
-
-      <Section id="releases" title="Release notes">
-        <p className="mb-3">
-          <strong>Report contract v2 &amp; canonical labels.</strong> Stored
-          reports are stamped <code>contract_version: 2</code>; pre-change
-          payloads are rejected with <strong>409 Conflict</strong> and must be
-          regenerated (UI button or the generate endpoints). Partner labels
-          from the unified account mapping are validated on every load and at
-          the settings write path: duplicates, empty, overlong, or reserved{" "}
-          <code>Partner A</code>/<code>Partner B</code> labels fail with HTTP
-          400; an invalid label degrades only the affected partner to the
-          placeholder with a visible warning. There are no hardcoded names
-          anywhere in the app.
-        </p>
-        <p className="mb-3">
-          <strong>Bills snapshot schema 5.</strong> Events carry additive{" "}
-          <code>partner_id</code>/<code>partner_slot</code>; the API accepts{" "}
-          <code>?partner_id=</code> (supersedes the label-based{" "}
-          <code>?partner=</code>). Schema-4 snapshots still load but lack
-          stable partner routing until rebuilt.
-        </p>
-        <p className="mb-3">
-          <strong>Config migration.</strong> Old per-name personal sections in{" "}
-          <code>detailed_section_mapping.json</code> must be renamed to{" "}
-          <code>personal_partner_a</code>/<code>personal_partner_b</code>;
-          until then every report build fails closed.
-        </p>
-      </Section>
-
-      <Section id="testing" title="Testing & QA">
-        <CodeBlock>{`uv run pytest src/mega/tests src/v4_pipeline/tests src/mom/tests -q
-PYTHONPATH=src python -m pytest src/mega/tests/test_release_gate.py -q   # Mega release gate
-cd client && pnpm build && pnpm test`}</CodeBlock>
-        <p className="mb-3">
-          The release gate uses only the committed synthetic fixture, builds
-          the full report and every <code>--only</code> section, and validates
-          the HTML/PDF artifacts with <code>pypdf</code>. Tests marked{" "}
-          <code>pdf_renderer</code> need working native WeasyPrint libraries.
-        </p>
-      </Section>
-
-      <Section id="privacy" title="Data & privacy">
-        <ul className="mb-3 list-disc space-y-1 pl-5">
-          <li>Everything runs locally; no data leaves your machine.</li>
-          <li>
-            Tracked files contain only deterministic synthetic data — neutral
-            labels, synthetic IDs, deterministic payees.
-          </li>
-          <li>
-            <code>.gitignore</code> blocks <code>data/private/</code>,{" "}
-            <code>data/raw/</code>, <code>.env</code>, <code>out/</code>, keys,
-            and local JSON exports.
+            <strong>Category mappings</strong> — route categories into report
+            sections (personal, savings, transfers, and so on).
           </li>
         </ul>
         <p className="mb-3">
-          The full policy lives in <code>docs/DATA_POLICY.md</code>. Hardening
-          work is tracked in <code>docs/production-hardening-loops.md</code>.
+          All of this lives in <strong>Settings</strong> and in{" "}
+          <code>data/private/</code> (git-ignored).
         </p>
+      </Section>
+
+      <Section id="monthly-reports" title="Monthly reports">
+        <p className="mb-3">
+          A single-month report with spending, savings, and transfers. It is
+          published as paired HTML and PDF.
+        </p>
+        <ol className="mb-3 list-decimal space-y-1 pl-5">
+          <li>Open <strong>Monthly Reports</strong>.</li>
+          <li>Pick a month and generate the report.</li>
+          <li>Open it in the browser, or export the PDF.</li>
+        </ol>
+        <p className="mb-3">
+          Reports are versioned (<code>contract_version: 2</code>). If the app
+          rejects a stored report as outdated (409), regenerate it from the
+          button on the page.
+        </p>
+      </Section>
+
+      <Section id="mega-reports" title="Mega reports (12 months)">
+        <p className="mb-3">
+          A full-year report covering a 12-month range, with per-section
+          navigation and export. The build validates every month in the range
+          before publishing, so a missing month fails the whole build rather
+          than producing a partial report.
+        </p>
+        <ol className="mb-3 list-decimal space-y-1 pl-5">
+          <li>Open <strong>Mega Reports</strong>.</li>
+          <li>Choose the start and end month and build.</li>
+          <li>Navigate by section and export what you need.</li>
+        </ol>
+      </Section>
+
+      <Section id="bills" title="Bills dashboard">
+        <p className="mb-3">A dashboard for recurring payments:</p>
+        <ul className="mb-3 list-disc space-y-1 pl-5">
+          <li><strong>Budget</strong> — recurring bills against the budget.</li>
+          <li><strong>Economy bar</strong> — a quick health view of fixed costs.</li>
+          <li><strong>Savings</strong> — what's left after bills.</li>
+        </ul>
+      </Section>
+
+      <Section id="settings" title="Settings">
+        <p className="mb-3"><strong>Settings</strong> is the control center:</p>
+        <ul className="mb-3 list-disc space-y-1 pl-5">
+          <li><strong>API key</strong> — connect or rotate your PocketSmith key.</li>
+          <li><strong>Partner labels</strong> — the two names used everywhere.</li>
+          <li><strong>Accounts</strong> — ownership and exclusions.</li>
+          <li><strong>Category mappings</strong> — route categories into sections.</li>
+        </ul>
+        <p className="mb-3">
+          Invalid partner labels (duplicates, empty, overlong, or the reserved
+          "Partner A"/"Partner B") are rejected with a visible error.
+        </p>
+      </Section>
+
+      <Section id="cli" title="Command line">
+        <p className="mb-3">
+          Everything the app does can also run from the command line (from the
+          repository root). Sync stages:
+        </p>
+        <CodeBlock>{`PYTHONPATH=src python src/live_sync.py accounts --start 2025-08 --end 2026-07
+PYTHONPATH=src python src/live_sync.py categories --start 2025-08 --end 2026-07
+PYTHONPATH=src python src/live_sync.py transactions --start 2025-08 --end 2026-07`}</CodeBlock>
+        <p className="mb-3">Build a single-month or Mega report directly:</p>
+        <CodeBlock>{`python src/v4_pipeline/build.py --month 2026-04 --data-dir data --input-kind synthetic --detailed-section-map data/sample_apr_2026_detailed_section_mapping.json
+PYTHONPATH=src python -m mega.build_mega --start 2025-08 --end 2026-07 --data-dir data/private --input-kind live`}</CodeBlock>
+        <p className="mb-3">
+          Every build requires <code>--input-kind live</code> or{" "}
+          <code>--input-kind synthetic</code>. Reports are published to{" "}
+          <code>out/</code> as paired HTML and PDF.
+        </p>
+      </Section>
+
+      <Section id="faq" title="Troubleshooting">
+        <ul className="mb-3 list-disc space-y-2 pl-5">
+          <li>
+            <strong>"API_KEY is missing"</strong> — add your PocketSmith key in
+            Settings, then sync again.
+          </li>
+          <li>
+            <strong>Sync fails partway</strong> — stages fail closed; fix the
+            error and re-run. No partial snapshot is kept.
+          </li>
+          <li>
+            <strong>409 on an old report</strong> — regenerate it (button on
+            the reports page).
+          </li>
+          <li>
+            <strong>PDF won't render</strong> — the WeasyPrint native libraries
+            are missing (see the README install steps).
+          </li>
+          <li>
+            <strong>An account doesn't show up</strong> — it's either excluded
+            or not mapped to a partner in Settings.
+          </li>
+        </ul>
       </Section>
     </div>
   );
