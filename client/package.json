@@ -49,7 +49,7 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^6",
-    "vitest": "^4"
+    "vitest": "^5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
