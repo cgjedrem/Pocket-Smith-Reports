@@ -143,6 +143,10 @@ export interface NetCategoryRow {
   total_class: SignClass;
   g_share_partner_a: number | null;
   g_share_partner_b: number | null;
+  // Nested transparency rows rendered directly under this category row
+  // (CALCULATION_VERSION 8+). Optional/undefined on stored v7 reports —
+  // renderers fall back to the section-level paired_reimbursements list.
+  paired_reimbursements?: PairedReimbursementRow[];
 }
 
 export interface NetSection {

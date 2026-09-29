@@ -14,6 +14,7 @@ from accounting import (
     _safe_pct,
     _sign_class,
     detailed_income_section,
+    detailed_net_section,
     detailed_savings_section,
     has_income_records,
 )
@@ -47,7 +48,15 @@ class TestHasIncomeRecords:
         assert has_income_records([_record(2, 100.0, "partner_a", category_id="4")], MAPPING)
 
 
-def _record(record_id, amount, owner, date="2026-04-01", category_id="3", is_transfer=False):
+def _record(
+    record_id,
+    amount,
+    owner,
+    date="2026-04-01",
+    category_id="3",
+    is_transfer=False,
+    category_title="Cat",
+):
     return {
         "id": record_id,
         "date": date,
@@ -57,7 +66,7 @@ def _record(record_id, amount, owner, date="2026-04-01", category_id="3", is_tra
         "account_id": "acc",
         "account_name": None,
         "owner": owner,
-        "category_path": [{"id": category_id, "title": "Cat"}],
+        "category_path": [{"id": category_id, "title": category_title}],
         "is_transfer": is_transfer,
     }
 
@@ -134,6 +143,88 @@ class TestPairedReimbursements:
             _record(2, -50.0, "partner_b"),
         ]
         assert _paired_reimbursements(_group(records)) == []
+
+
+# --------------------------------------------------------------------------- #
+# detailed_net_section — per-row nested paired_reimbursements.
+# --------------------------------------------------------------------------- #
+
+
+NET_MAPPING = {
+    "category_sections": {"c1": "common", "c2": "common"},
+    "account_roles": {},
+}
+
+
+class TestDetailedNetSectionNesting:
+    def test_pairs_nest_under_their_category_row(self):
+        """Each pair lands in its own category row's nested list; the
+        section-level flattened list is unchanged (all pairs, all categories)."""
+        records = [
+            _record(1, 100.0, "partner_a", category_id="c1", category_title="Dining"),
+            _record(2, -100.0, "partner_b", category_id="c1", category_title="Dining"),
+            _record(3, 300.0, "partner_b", category_id="c2", category_title="Groceries"),
+            _record(4, -300.0, "partner_a", category_id="c2", category_title="Groceries"),
+        ]
+        section = detailed_net_section(records, "common", NET_MAPPING)
+        # Groups sort by total abs amount desc — Groceries (600) first.
+        assert [row["category_title"] for row in section["rows"]] == [
+            "Groceries",
+            "Dining",
+        ]
+        groceries, dining = section["rows"]
+        assert len(groceries["paired_reimbursements"]) == 1
+        assert len(dining["paired_reimbursements"]) == 1
+        # Sign convention: + for the receiver. Groceries: partner_b received.
+        assert groceries["paired_reimbursements"][0]["partner_a"] == -300.0
+        assert groceries["paired_reimbursements"][0]["partner_a_class"] == "neg"
+        assert groceries["paired_reimbursements"][0]["partner_b"] == 300.0
+        assert groceries["paired_reimbursements"][0]["partner_b_class"] == "pos"
+        assert dining["paired_reimbursements"][0]["partner_a"] == 100.0
+        assert dining["paired_reimbursements"][0]["partner_b"] == -100.0
+        # Flattened section list = all nested rows, same order.
+        assert section["paired_reimbursements"] == [
+            *groceries["paired_reimbursements"],
+            *dining["paired_reimbursements"],
+        ]
+
+    def test_fully_paired_category_keeps_zero_row_with_nested_pairs(self):
+        """A fully-paired (net 0) category emits its row — the nested pairs
+        are the only transparency surface, so the row must stay as anchor."""
+        records = [
+            _record(1, 100.0, "partner_a", category_id="c1"),
+            _record(2, -100.0, "partner_b", category_id="c1"),
+        ]
+        section = detailed_net_section(records, "common", NET_MAPPING)
+        assert len(section["rows"]) == 1
+        row = section["rows"][0]
+        assert row["total"] == 0.0
+        assert row["total_class"] == "zero"
+        # 0/0 shares — None, never fabricated 0%.
+        assert row["g_share_partner_a"] is None
+        assert row["g_share_partner_b"] is None
+        assert len(row["paired_reimbursements"]) == 1
+        assert len(section["paired_reimbursements"]) == 1
+
+    def test_partially_paired_category_has_row_and_nested_pair(self):
+        """Unpaired remainder keeps a nonzero row; the matched pair nests."""
+        records = [
+            _record(1, 100.0, "partner_a", category_id="c1", date="2026-04-01"),
+            _record(2, -100.0, "partner_b", category_id="c1", date="2026-04-01"),
+            _record(3, -40.0, "partner_a", category_id="c1", date="2026-04-02"),
+        ]
+        section = detailed_net_section(records, "common", NET_MAPPING)
+        assert len(section["rows"]) == 1
+        row = section["rows"][0]
+        # net_a = 40 paid - 100 received = -60; net_b = 100 paid → total 40.
+        assert row["total"] == 40.0
+        assert len(row["paired_reimbursements"]) == 1
+
+    def test_no_pairs_still_has_empty_nested_list(self):
+        records = [_record(1, -50.0, "partner_a", category_id="c1")]
+        section = detailed_net_section(records, "common", NET_MAPPING)
+        assert section["rows"][0]["paired_reimbursements"] == []
+        assert section["paired_reimbursements"] == []
 
 
 # --------------------------------------------------------------------------- #

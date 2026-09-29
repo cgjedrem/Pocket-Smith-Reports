@@ -12,7 +12,7 @@
 // Uses shared SCSS classes (.legacy-section, .legacy-table, .legacy-total,
 // .drilldown, .drilldown-card, .tx-table).
 
-import { useMemo, type ReactNode } from "react";
+import { Fragment, useMemo, type ReactNode } from "react";
 
 import { HorizontalBarChart } from "@/components/reports/charts/HorizontalBarChart";
 import {
@@ -34,6 +34,7 @@ import type {
   IncomeRow,
   IncomeSection as IncomeSectionDto,
   NetSection as NetSectionDto,
+  PairedReimbursementRow as PairedReimbursementRowDto,
   PersonalSection as PersonalSectionDto,
   ReportResponse,
   SavingsPartnerRow,
@@ -107,7 +108,6 @@ export function DetailedSections({ report }: DetailedSectionsProps) {
         section={detailed.home}
         paLabel={paLabel}
         pbLabel={pbLabel}
-        note="The Home reimbursement rows show both cash legs. They cancel in household total, while the partner net columns show who actually paid after reimbursement."
         drilldown={<SectionDrilldown txns={sectionTxns["home"] ?? []} />}
       />
 
@@ -117,7 +117,6 @@ export function DetailedSections({ report }: DetailedSectionsProps) {
         section={detailed.common}
         paLabel={paLabel}
         pbLabel={pbLabel}
-        note="The Common net columns subtract reimbursements from the recipient and add them to the sender. No 50/50 split is assumed."
         chartTitle="Common spending by category"
         drilldown={<SectionDrilldown txns={sectionTxns["common"] ?? []} />}
       />
@@ -298,17 +297,15 @@ function SavingsSection({ section, paLabel, pbLabel, drilldown }: SavingsSection
   );
 }
 
-// 3/4/7. Net sections — Home, Common, Trips. Per-category net + paired
-// reimbursements (rendered as their own block — the DTO no longer carries
-// the transaction-level position needed to interleave them with their
-// category row) + optional chart.
+// 3/4/7. Net sections — Home, Common, Trips. Per-category net in ONE table:
+// each category row is immediately followed by its paired reimbursement rows
+// (class "reimb-row", signed +/- amounts — mirrors the HTML renderer).
 interface NetSectionProps {
   num: string;
   title: string;
   section: NetSectionDto | null;
   paLabel: string;
   pbLabel: string;
-  note?: string;
   chartTitle?: string;
   drilldown?: ReactNode;
 }
@@ -319,7 +316,6 @@ function NetSection({
   section,
   paLabel,
   pbLabel,
-  note,
   chartTitle,
   drilldown,
 }: NetSectionProps) {
@@ -337,6 +333,25 @@ function NetSection({
   const chartData = section.rows
     .filter((r) => r.total > 0)
     .map((r) => ({ label: r.category_title, value: r.total }));
+
+  // v8 DTO: pairs nested per category row. Stored v7 reports only carry the
+  // section-level flattened list — fall back to rendering it after all
+  // category rows, still inside the main table.
+  const hasNested = section.rows.some((r) => (r.paired_reimbursements?.length ?? 0) > 0);
+
+  const reimbRow = (r: PairedReimbursementRowDto, key: string) => (
+    <tr key={key} className="reimb-row">
+      <td>
+        <i>{r.category_title} (paired reimbursement)</i>
+      </td>
+      <td className={cls(r.partner_a_class)}>{fmtSigned(r.partner_a)}</td>
+      <td className={cls(r.partner_b_class)}>{fmtSigned(r.partner_b)}</td>
+      <td className={cls(r.total_class)}>
+        <b>{fmt(r.total)}</b>
+      </td>
+      <td />
+    </tr>
+  );
 
   return (
     <section className="report-section legacy-section">
@@ -357,20 +372,27 @@ function NetSection({
         </thead>
         <tbody>
           {section.rows.map((r) => (
-            <tr key={r.category_title}>
-              <td>{r.category_title}</td>
-              <td className={cls(r.partner_a_net_class)}>{fmt(r.partner_a_net)}</td>
-              <td className={cls(r.partner_b_net_class)}>{fmt(r.partner_b_net)}</td>
-              <td className={cls(r.total_class)}>
-                <b>{fmt(r.total)}</b>
-              </td>
-              <td>
-                <b>
-                  {pct(r.g_share_partner_a)} / {pct(r.g_share_partner_b)}
-                </b>
-              </td>
-            </tr>
+            <Fragment key={r.category_title}>
+              <tr>
+                <td>{r.category_title}</td>
+                <td className={cls(r.partner_a_net_class)}>{fmt(r.partner_a_net)}</td>
+                <td className={cls(r.partner_b_net_class)}>{fmt(r.partner_b_net)}</td>
+                <td className={cls(r.total_class)}>
+                  <b>{fmt(r.total)}</b>
+                </td>
+                <td>
+                  <b>
+                    {pct(r.g_share_partner_a)} / {pct(r.g_share_partner_b)}
+                  </b>
+                </td>
+              </tr>
+              {(r.paired_reimbursements ?? []).map((p, i) =>
+                reimbRow(p, `${r.category_title}-reimb-${i}`),
+              )}
+            </Fragment>
           ))}
+          {!hasNested &&
+            section.paired_reimbursements.map((r, i) => reimbRow(r, `section-reimb-${i}`))}
           <tr className="legacy-total">
             <td>Total</td>
             <td className={cls(section.total_partner_a_class)}>{fmt(section.total_partner_a)}</td>
@@ -382,34 +404,6 @@ function NetSection({
           </tr>
         </tbody>
       </table>
-      {note && <p className="note">{note}</p>}
-      {section.paired_reimbursements.length > 0 && (
-        <table className="legacy-table net-table">
-          <caption>Paired reimbursements (net 0, shown for transparency)</caption>
-          <thead>
-            <tr>
-              <th>Category</th>
-              <th>{paLabel}</th>
-              <th>{pbLabel}</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {section.paired_reimbursements.map((r, i) => (
-              <tr key={`${r.category_title}-${i}`} className="reimb-row">
-                <td>
-                  <i>{r.category_title} (paired reimbursement)</i>
-                </td>
-                <td className={cls(r.partner_a_class)}>{fmtSigned(r.partner_a)}</td>
-                <td className={cls(r.partner_b_class)}>{fmtSigned(r.partner_b)}</td>
-                <td className={cls(r.total_class)}>
-                  <b>{fmt(r.total)}</b>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
       {chartTitle && chartData.length > 0 && (
         <div className="legacy-chart">
           <HorizontalBarChart data={chartData} title={chartTitle} />

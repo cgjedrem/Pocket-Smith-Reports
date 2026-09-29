@@ -169,6 +169,28 @@ def _literal_transfer_flag(value: Any, field: str) -> bool:
     return value
 
 
+def _partner_slots(partners: dict[str, Any]) -> dict[str, str]:
+    """Custom partner ID → "partner_a"/"partner_b" slot.
+
+    Twin of budget_api.services.report_builder._partner_slot_map (keep in
+    sync) — v4_pipeline cannot import budget_api (report_builder imports
+    accounting). Same ordering rule: sorted partner IDs, first → partner_a,
+    second → partner_b. Same passthrough rule as the twin: account
+    owner/partner_id values equal to a literal slot token
+    ("partner_a"/"partner_b") are never pool members — when the partners
+    block uses custom IDs they pass through to owners unchanged (applied in
+    load_unified_account_mapping). Unlike the twin, only partners-block keys
+    feed the map (labels live in that block, so it is mandatory here); the
+    twin also scans account partner_id values because its partners block may
+    be absent. Legacy literal "partner_a"/"partner_b" keys map identically.
+    """
+    return {
+        pid: f"partner_{chr(ord('a') + i)}"
+        for i, pid in enumerate(sorted(partners))
+        if i < 2
+    }
+
+
 def load_unified_account_mapping(
     mapping_path: str | Path | None = None,
 ) -> tuple[dict[str, str], dict[str, str], dict[str, dict[str, Any]]]:
@@ -191,14 +213,19 @@ def load_unified_account_mapping(
     partners = _required_mapping(
         mapping["partners"], "unified account mapping.partners"
     )
-    if set(partners) != set(PARTNERS):
+    # Depersonalized schema — partners block keys are user-defined IDs, not
+    # the literal slots. Require exactly two.
+    if len(partners) != 2:
         raise AccountingValidationError(
             "Unified account mapping must define exactly both partners"
         )
+    slots = _partner_slots(partners)
+    slot_ids = {slot: pid for pid, slot in slots.items()}
     labels = {}
     for owner in PARTNERS:
         partner = _required_mapping(
-            partners[owner], f"unified account mapping.partners.{owner}"
+            partners[slot_ids[owner]],
+            f"unified account mapping.partners.{slot_ids[owner]}",
         )
         # savings_category_id optional (bills feature), no other extra keys allowed.
         if set(partner) - {"label", "savings_category_id"}:
@@ -242,9 +269,11 @@ def load_unified_account_mapping(
             raise AccountingValidationError(
                 "Unified account mapping has an invalid account name"
             )
-        # owner/partner_id may be None for joint accounts.
+        # owner/partner_id may be None for joint accounts. Custom partner IDs
+        # resolve to their slot; literal slots pass through unchanged.
         if owner_value is not None and (
-            not isinstance(owner_value, str) or owner_value not in PARTNERS
+            not isinstance(owner_value, str)
+            or (owner_value not in slots and owner_value not in PARTNERS)
         ):
             raise AccountingValidationError(
                 "Unified account mapping has an invalid owner"
@@ -253,7 +282,10 @@ def load_unified_account_mapping(
             raise AccountingValidationError(
                 "Unified account mapping has an invalid exclusion"
             )
-        parsed_accounts[account_id] = {**account, "owner": owner_value}
+        parsed_accounts[account_id] = {
+            **account,
+            "owner": slots.get(owner_value, owner_value),
+        }
     return (
         {
             account_id: account["owner"]
@@ -1215,38 +1247,42 @@ def detailed_net_section(
         total_b += net_b
 
         pairs = _paired_reimbursements(group)
+        group_paired_rows: list[dict[str, Any]] = []
         for first, second in pairs:
             received = first if first["amount"] > 0 else second
             amount = abs(received["amount"])
             pa_val = amount if received["owner"] == "partner_a" else -amount
             pb_val = -pa_val
-            paired_rows.append(
-                {
-                    "category_title": group["title"],
-                    "partner_a": pa_val,
-                    "partner_a_class": _sign_class(pa_val),
-                    "partner_b": pb_val,
-                    "partner_b_class": _sign_class(pb_val),
-                    "total": 0.0,
-                    "total_class": "zero",
-                }
-            )
+            paired_row = {
+                "category_title": group["title"],
+                "partner_a": pa_val,
+                "partner_a_class": _sign_class(pa_val),
+                "partner_b": pb_val,
+                "partner_b_class": _sign_class(pb_val),
+                "total": 0.0,
+                "total_class": "zero",
+            }
+            group_paired_rows.append(paired_row)
+            paired_rows.append(paired_row)
 
-        # Skip category row only if fully paired (net 0).
-        if not pairs or g_total != 0:
-            rows.append(
-                {
-                    "category_title": group["title"],
-                    "partner_a_net": net_a,
-                    "partner_a_net_class": _sign_class(net_a),
-                    "partner_b_net": net_b,
-                    "partner_b_net_class": _sign_class(net_b),
-                    "total": g_total,
-                    "total_class": _sign_class(g_total),
-                    "g_share_partner_a": _safe_pct(net_a, g_total),
-                    "g_share_partner_b": _safe_pct(net_b, g_total),
-                }
-            )
+        # Always emit the category row — fully-paired (zero-net) categories
+        # now carry their transparency rows nested in `paired_reimbursements`,
+        # so skipping the row would leave the pair rows no anchor. Section-level
+        # `paired_reimbursements` stays flattened for backward compatibility.
+        rows.append(
+            {
+                "category_title": group["title"],
+                "partner_a_net": net_a,
+                "partner_a_net_class": _sign_class(net_a),
+                "partner_b_net": net_b,
+                "partner_b_net_class": _sign_class(net_b),
+                "total": g_total,
+                "total_class": _sign_class(g_total),
+                "g_share_partner_a": _safe_pct(net_a, g_total),
+                "g_share_partner_b": _safe_pct(net_b, g_total),
+                "paired_reimbursements": group_paired_rows,
+            }
+        )
 
     total = total_a + total_b
     return {

@@ -1,7 +1,7 @@
 {
   "month": "2026-04",
   "contract_version": 2,
-  "calculation_version": 7,
+  "calculation_version": 8,
   "txn_count": 43,
   "normalized_transactions": [
     {
@@ -1242,7 +1242,18 @@
           "total": 1800.0,
           "total_class": "pos",
           "g_share_partner_a": 94.44444444444444,
-          "g_share_partner_b": 5.555555555555555
+          "g_share_partner_b": 5.555555555555555,
+          "paired_reimbursements": [
+            {
+              "category_title": "Test Home",
+              "partner_a": -500.0,
+              "partner_a_class": "neg",
+              "partner_b": 500.0,
+              "partner_b_class": "pos",
+              "total": 0.0,
+              "total_class": "zero"
+            }
+          ]
         }
       ],
       "paired_reimbursements": [
@@ -1276,7 +1287,8 @@
           "total": 11000.0,
           "total_class": "pos",
           "g_share_partner_a": 0.0,
-          "g_share_partner_b": 100.0
+          "g_share_partner_b": 100.0,
+          "paired_reimbursements": []
         },
         {
           "category_title": "Test A",
@@ -1287,7 +1299,8 @@
           "total": 5500.0,
           "total_class": "pos",
           "g_share_partner_a": 100.0,
-          "g_share_partner_b": 0.0
+          "g_share_partner_b": 0.0,
+          "paired_reimbursements": []
         }
       ],
       "paired_reimbursements": [],
@@ -1357,7 +1370,8 @@
           "total": 4000.0,
           "total_class": "pos",
           "g_share_partner_a": 62.5,
-          "g_share_partner_b": 37.5
+          "g_share_partner_b": 37.5,
+          "paired_reimbursements": []
         }
       ],
       "paired_reimbursements": [],

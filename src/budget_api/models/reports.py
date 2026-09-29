@@ -129,6 +129,11 @@ class NetCategoryRow(BaseModel):
     total_class: SignClass
     g_share_partner_a: float | None  # partner_a share of this row's total
     g_share_partner_b: float | None
+    # Nested transparency rows for this category's paired reimbursements —
+    # render directly under the category row in the main net table. Default []
+    # so stored reports written before v8 still validate (stale flag → user
+    # regenerates via StaleBadge; regeneration is user-driven, not automatic).
+    paired_reimbursements: list[PairedReimbursementRow] = []
 
 
 class NetSection(BaseModel):

@@ -65,7 +65,7 @@ def test_golden_baseline_detailed_populated() -> None:
     seeded here, so `personal_share`/`kpis` stay None — nullable rule)."""
     golden = json.loads(GOLDEN_PATH.read_text(encoding="utf-8"))
     assert golden["contract_version"] == 2
-    assert golden["calculation_version"] == 7
+    assert golden["calculation_version"] == 8
     assert golden["detailed"] is not None
     # Hand-checked against client/src/components/reports/DetailedSections.tsx
     # formulas on the fixture data (see PR2 report for full derivation).

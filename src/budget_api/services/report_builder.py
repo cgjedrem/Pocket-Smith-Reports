@@ -45,7 +45,9 @@ from budget_api.services import storage
 # PR1: 5 — detailed DTO contract (models/reports.py)
 # PR5: 6 — paired rows display-strings → signed numerics; restored
 # normalized_transactions; income can return None.
-CALCULATION_VERSION = 7
+# 7→8: paired reimbursement rows nested per category row on NetCategoryRow;
+# fully-paired categories now emit their zero-net row (no separate table).
+CALCULATION_VERSION = 8
 
 # Breaking-contract identity marker (contracts/monthly-report-contract-v2.md).
 # Readers must reject stored payloads where this is absent or != 2 BEFORE
@@ -95,6 +97,56 @@ def _load_excluded_account_ids() -> set[str]:
     }
 
 
+# Literal owner-slot tokens. An account partner_id equal to one of these is
+# already a slot, not a custom partner ID — passthrough, never a pool member.
+_LEGACY_SLOTS = frozenset({"partner_a", "partner_b"})
+
+
+def _partner_slot_map(raw: dict) -> dict[str, str]:
+    """Custom partner ID → "partner_a"/"partner_b" slot.
+
+    Depersonalized schema: partner IDs are user-defined (e.g. "alex").
+    Derive v4_pipeline owner slots deterministically from sorted partner IDs,
+    mirroring bills_builder._partner_slot_map's identity-neutral ordering.
+    IDs come from the partners block AND account partner_id values — except
+    literal slot tokens ("partner_a"/"partner_b") found in account
+    partner_id values: when the partners block uses custom IDs those tokens
+    are already slots, not pool members, and pass through to owners
+    unchanged in _load_account_owners (mirrors
+    accounting.load_unified_account_mapping). Legacy files using literal
+    "partner_a"/"partner_b" partners keys map identically. Shared by
+    _load_account_owners and _load_partner_labels so both resolve identical
+    slots for the same file. Twin of accounting._partner_slots (keep in sync).
+    """
+    accounts = raw.get("accounts", {})
+    if not isinstance(accounts, dict):
+        accounts = {}
+    partners = raw.get("partners", {})
+    partner_ids = set(partners) if isinstance(partners, dict) else set()
+    custom_partners = bool(partner_ids - _LEGACY_SLOTS)
+    for acc in accounts.values():
+        if isinstance(acc, dict):
+            pid = acc.get("partner_id")
+            if isinstance(pid, str) and pid:
+                if custom_partners and pid in _LEGACY_SLOTS:
+                    # Already a slot — exclude from pool, passthrough later.
+                    continue
+                partner_ids.add(pid)
+    if len(partner_ids) > 2:
+        # Pipeline is two-owner only — first two sorted IDs win, rest dropped.
+        _logger.warning(
+            "account_mappings.json defines %d partner IDs; only the first two "
+            "(sorted) get owner slots: %s",
+            len(partner_ids),
+            sorted(partner_ids)[:2],
+        )
+    return {
+        pid: f"partner_{chr(ord('a') + i)}"
+        for i, pid in enumerate(sorted(partner_ids))
+        if i < 2
+    }
+
+
 def _load_account_owners() -> dict[str, str]:
     """Load account_id → partner_a/partner_b from account_mappings.json.
 
@@ -108,12 +160,16 @@ def _load_account_owners() -> dict[str, str]:
     accounts = raw.get("accounts", {})
     if not isinstance(accounts, dict):
         return {}
+    slots = _partner_slot_map(raw)
     owners = {}
     for acc_id, acc in accounts.items():
         if not isinstance(acc, dict):
             continue
         partner_id = acc.get("partner_id")
-        if partner_id in ("partner_a", "partner_b"):
+        if partner_id in slots:
+            owners[acc_id] = slots[partner_id]
+        elif partner_id in _LEGACY_SLOTS:
+            # Literal slot under a custom-ID partners block — passthrough.
             owners[acc_id] = partner_id
     return owners
 
@@ -142,12 +198,20 @@ def _load_partner_labels() -> tuple[dict[str, str], list[str]]:
         if isinstance(mappings, dict):
             partners = mappings.get("partners", {})
             if isinstance(partners, dict):
+                # Partners block is keyed by custom IDs — resolve through the
+                # same sorted-slot map _load_account_owners uses, else real
+                # labels never match the partner_a/partner_b slots.
+                slots = _partner_slot_map(mappings)
                 candidate = {
-                    owner: partner.get("label")
-                    for owner in ("partner_a", "partner_b")
-                    if isinstance(partner := partners.get(owner), dict)
+                    slot: partner.get("label")
+                    for pid, slot in slots.items()
+                    if isinstance(partner := partners.get(pid), dict)
                 }
                 raw = candidate or None
+            else:
+                # Malformed partners block — pipe through validator so it
+                # degrades to placeholders with a warning.
+                raw = partners
     return validate_partner_labels(raw)
 
 

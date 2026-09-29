@@ -429,3 +429,422 @@ class TestPartnerLabelRobustness:
             for record in caplog.records
         )
         assert report["warnings"]
+
+
+# --------------------------------------------------------------------------- #
+# _load_account_owners bridge — depersonalized partner_id → owner slots.
+# --------------------------------------------------------------------------- #
+
+
+class TestLoadAccountOwners:
+    def _write_mappings(self, dir_path: Path, mappings: dict) -> None:
+        (dir_path / "account_mappings.json").write_text(
+            json.dumps(mappings), encoding="utf-8"
+        )
+
+    def test_custom_partner_ids_map_to_sorted_slots(
+        self, tmp_private_dir: Path
+    ):
+        """Custom partner IDs (e.g. alex/sam) map deterministically:
+        sorted IDs → partner_a / partner_b. Regression for
+        'transactions[0] has no account-ID owner mapping'."""
+        self._write_mappings(
+            tmp_private_dir,
+            {
+                "schema_version": 1,
+                "partners": {
+                    "alex": {"label": "Alex"},
+                    "sam": {"label": "Sam"},
+                },
+                "accounts": {
+                    "100": {"partner_id": "sam"},
+                    "200": {"partner_id": "alex"},
+                },
+            },
+        )
+        owners = report_builder._load_account_owners()
+        # "alex" sorts before "sam" → partner_a.
+        assert owners == {"200": "partner_a", "100": "partner_b"}
+
+    def test_custom_ids_without_partners_block(self, tmp_private_dir: Path):
+        """Partner IDs are collected from account partner_id values too,
+        so a partners block is not required for slot derivation."""
+        self._write_mappings(
+            tmp_private_dir,
+            {
+                "schema_version": 1,
+                "partners": {},
+                "accounts": {
+                    "100": {"partner_id": "zeta"},
+                    "200": {"partner_id": "alpha"},
+                },
+            },
+        )
+        owners = report_builder._load_account_owners()
+        assert owners == {"200": "partner_a", "100": "partner_b"}
+
+    def test_legacy_partner_ids_unchanged(self, tmp_private_dir: Path):
+        """Legacy literal partner_a/b files map identically (regression)."""
+        self._write_mappings(tmp_private_dir, _mock_account_mappings())
+        owners = report_builder._load_account_owners()
+        assert owners == {"1100001": "partner_a", "1100007": "partner_b"}
+
+    def test_deterministic_regardless_of_key_order(self, tmp_private_dir: Path):
+        """JSON key order must not affect slot assignment."""
+        reversed_mappings = {
+            "accounts": {
+                "200": {"partner_id": "alex"},
+                "100": {"partner_id": "sam"},
+            },
+            "partners": {
+                "sam": {"label": "Sam"},
+                "alex": {"label": "Alex"},
+            },
+            "schema_version": 1,
+        }
+        self._write_mappings(tmp_private_dir, reversed_mappings)
+        assert report_builder._load_account_owners() == {
+            "200": "partner_a",
+            "100": "partner_b",
+        }
+
+    def test_third_partner_excluded(self, tmp_private_dir: Path):
+        """Beyond the two-owner cap, partners get no slot (loud failure
+        downstream is intentional — the pipeline is two-owner only)."""
+        self._write_mappings(
+            tmp_private_dir,
+            {
+                "schema_version": 1,
+                "partners": {},
+                "accounts": {
+                    "100": {"partner_id": "a_first"},
+                    "200": {"partner_id": "b_second"},
+                    "300": {"partner_id": "c_third"},
+                },
+            },
+        )
+        owners = report_builder._load_account_owners()
+        assert owners == {"100": "partner_a", "200": "partner_b"}
+
+    def test_mixed_schema_literal_slot_token_passthrough(
+        self, tmp_private_dir: Path
+    ):
+        """Custom partners block + one account already keyed by a literal
+        slot: the token is NOT a pool member (else a third sorted ID could
+        displace a real partner), passes through unchanged, and labels still
+        resolve the real partners. Mirrors v4's
+        load_unified_account_mapping rule on the same file shape."""
+        self._write_mappings(
+            tmp_private_dir,
+            {
+                "schema_version": 1,
+                "partners": {
+                    "alex": {"label": "Alex"},
+                    "sam": {"label": "Sam"},
+                },
+                "accounts": {
+                    "100": {"partner_id": "sam"},
+                    "200": {"partner_id": "alex"},
+                    "300": {"partner_id": "partner_a"},
+                },
+            },
+        )
+        owners = report_builder._load_account_owners()
+        # alex→partner_a, sam→partner_b, literal slot stays partner_a.
+        assert owners == {
+            "200": "partner_a",
+            "300": "partner_a",
+            "100": "partner_b",
+        }
+        labels, warnings = report_builder._load_partner_labels()
+        assert labels == {"partner_a": "Alex", "partner_b": "Sam"}
+        assert warnings == []
+
+    def test_missing_file_returns_empty(self, tmp_private_dir: Path):
+        assert not (tmp_private_dir / "account_mappings.json").exists()
+        assert report_builder._load_account_owners() == {}
+
+    def test_malformed_file_returns_empty(self, tmp_private_dir: Path):
+        (tmp_private_dir / "account_mappings.json").write_text(
+            '["not", "a", "dict"]', encoding="utf-8"
+        )
+        assert report_builder._load_account_owners() == {}
+
+    def test_build_report_with_custom_partner_ids(
+        self, tmp_private_dir: Path
+    ):
+        """End-to-end: full report generation succeeds with custom IDs."""
+        (tmp_private_dir / "account_mappings.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "partners": {
+                        "alex": {"label": "Alex"},
+                        "sam": {"label": "Sam"},
+                    },
+                    "accounts": {
+                        "1100001": {
+                            "name": "FxA Check Nordic Bank",
+                            "partner_id": "alex",
+                            "type": "checking",
+                            "excluded": False,
+                        },
+                        "1100007": {
+                            "name": "FxB Check Nordic Bank",
+                            "partner_id": "sam",
+                            "type": "checking",
+                            "excluded": False,
+                        },
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        (tmp_private_dir / "detailed_section_mapping.json").write_text(
+            json.dumps(_mock_detailed_section_mapping()), encoding="utf-8"
+        )
+        (tmp_private_dir / "category_roles.json").write_text(
+            json.dumps(_mock_category_roles()), encoding="utf-8"
+        )
+        (tmp_private_dir / "category_catalog.json").write_text(
+            json.dumps(_mock_category_catalog()), encoding="utf-8"
+        )
+        (tmp_private_dir / "2026-07_ps_raw.json").write_text(
+            json.dumps({"transactions": _mock_transactions()}),
+            encoding="utf-8",
+        )
+        report = report_builder.build_report("2026-07")
+        assert report["contract_version"] == report_builder.CONTRACT_VERSION
+
+
+# --------------------------------------------------------------------------- #
+# _load_partner_labels — custom-ID fallback, precedence, degradation.
+# --------------------------------------------------------------------------- #
+
+
+class TestLoadPartnerLabels:
+    def _write_mappings(self, dir_path: Path, mappings: dict) -> None:
+        (dir_path / "account_mappings.json").write_text(
+            json.dumps(mappings), encoding="utf-8"
+        )
+
+    def test_custom_partner_ids_resolve_real_labels(self, tmp_private_dir: Path):
+        """Regression: partners block keyed by custom IDs ("alex"/"sam")
+        must resolve through the same sorted-slot map _load_account_owners
+        uses — a literal partner_a/partner_b lookup finds nothing and the
+        report silently shows placeholders."""
+        self._write_mappings(
+            tmp_private_dir,
+            {
+                "schema_version": 1,
+                "partners": {
+                    "sam": {"label": "Sam"},
+                    "alex": {"label": "Alex"},
+                },
+                "accounts": {
+                    "100": {"partner_id": "sam"},
+                    "200": {"partner_id": "alex"},
+                },
+            },
+        )
+        labels, warnings = report_builder._load_partner_labels()
+        # "alex" sorts before "sam" → partner_a.
+        assert labels == {"partner_a": "Alex", "partner_b": "Sam"}
+        assert warnings == []
+
+    def test_partner_labels_json_wins_when_present(self, tmp_private_dir: Path):
+        """partner_labels.json takes precedence over the mappings fallback."""
+        self._write_mappings(
+            tmp_private_dir,
+            {
+                "schema_version": 1,
+                "partners": {
+                    "alex": {"label": "Alex"},
+                    "sam": {"label": "Sam"},
+                },
+                "accounts": {},
+            },
+        )
+        (tmp_private_dir / "partner_labels.json").write_text(
+            json.dumps({"partner_a": "Fixture A", "partner_b": "Fixture B"}),
+            encoding="utf-8",
+        )
+        labels, warnings = report_builder._load_partner_labels()
+        assert labels == {"partner_a": "Fixture A", "partner_b": "Fixture B"}
+        assert warnings == []
+
+    def test_malformed_partners_block_degrades_to_placeholders(
+        self, tmp_private_dir: Path
+    ):
+        """Non-dict partners block → placeholders + warning, never raises."""
+        self._write_mappings(
+            tmp_private_dir,
+            {"schema_version": 1, "partners": "bogus", "accounts": {}},
+        )
+        labels, warnings = report_builder._load_partner_labels()
+        assert labels == {"partner_a": "Partner A", "partner_b": "Partner B"}
+        assert warnings
+
+    def test_missing_files_give_defaults_without_warnings(
+        self, tmp_private_dir: Path
+    ):
+        labels, warnings = report_builder._load_partner_labels()
+        assert labels == {"partner_a": "Partner A", "partner_b": "Partner B"}
+        assert warnings == []
+
+
+# --------------------------------------------------------------------------- #
+# detailed DTO — nested paired_reimbursements contract.
+# --------------------------------------------------------------------------- #
+
+
+class TestDetailedNetSectionDto:
+    def _build_pair_report(self, dir_path: Path) -> dict:
+        """Full build with one fully-paired common pair (-500 pa / +500 pb)."""
+        (dir_path / "account_mappings.json").write_text(
+            json.dumps(_mock_account_mappings()), encoding="utf-8"
+        )
+        (dir_path / "detailed_section_mapping.json").write_text(
+            json.dumps(_mock_detailed_section_mapping()), encoding="utf-8"
+        )
+        (dir_path / "category_roles.json").write_text(
+            json.dumps(_mock_category_roles()), encoding="utf-8"
+        )
+        (dir_path / "category_catalog.json").write_text(
+            json.dumps(_mock_category_catalog()), encoding="utf-8"
+        )
+        (dir_path / "partner_labels.json").write_text(
+            json.dumps({"partner_a": "Fixture A", "partner_b": "Fixture B"}),
+            encoding="utf-8",
+        )
+        transactions = [
+            {
+                "id": 100001,
+                "date": "2026-07-03",
+                "amount": -500.00,
+                "payee": "Shop",
+                "note": None,
+                "is_transfer": False,
+                "account": {"id": "1100001", "name": "FxA Check Nordic Bank"},
+                "category": {
+                    "id": 2100005,
+                    "title": "Supermarket",
+                    "parent_id": 2100003,
+                },
+                "category_hierarchy": [
+                    {"id": "2100003", "title": "Groceries"},
+                    {"id": "2100005", "title": "Supermarket"},
+                ],
+            },
+            {
+                "id": 100002,
+                "date": "2026-07-04",
+                "amount": 500.00,
+                "payee": "Repayment",
+                "note": None,
+                "is_transfer": False,
+                "account": {"id": "1100007", "name": "FxB Check Nordic Bank"},
+                "category": {
+                    "id": 2100005,
+                    "title": "Supermarket",
+                    "parent_id": 2100003,
+                },
+                "category_hierarchy": [
+                    {"id": "2100003", "title": "Groceries"},
+                    {"id": "2100005", "title": "Supermarket"},
+                ],
+            },
+        ]
+        (dir_path / "2026-07_ps_raw.json").write_text(
+            json.dumps({"transactions": transactions}), encoding="utf-8"
+        )
+        return report_builder.build_report("2026-07")
+
+    def test_category_rows_carry_nested_paired_reimbursements(
+        self, tmp_private_dir: Path
+    ):
+        """Fully-paired common category keeps its zero-net row; the pair is
+        nested under it AND still present in the flattened section list."""
+        report = self._build_pair_report(tmp_private_dir)
+        common = report["detailed"]["common"]
+        assert len(common["rows"]) == 1
+        row = common["rows"][0]
+        assert row["total"] == 0.0
+        assert row["total_class"] == "zero"
+        assert row["g_share_partner_a"] is None
+        assert len(row["paired_reimbursements"]) == 1
+        nested = row["paired_reimbursements"][0]
+        assert nested["category_title"] == "Groceries / Supermarket"
+        assert nested["partner_a"] == -500.0
+        assert nested["partner_a_class"] == "neg"
+        assert nested["partner_b"] == 500.0
+        assert nested["partner_b_class"] == "pos"
+        assert nested["total"] == 0.0
+        assert nested["total_class"] == "zero"
+        # Section-level flattened list unchanged (backward compat).
+        assert common["paired_reimbursements"] == row["paired_reimbursements"]
+
+
+# --------------------------------------------------------------------------- #
+# Mega namespace bridging — partner_label_map temp file.
+# --------------------------------------------------------------------------- #
+
+
+class TestMegaNamespacePartnerLabels:
+    def test_real_labels_write_temp_map_file(self, tmp_private_dir: Path):
+        """Resolved real labels (not placeholder defaults) → temp JSON map
+        file with the partner_a/partner_b slot shape, cleaned up after."""
+        from budget_api.services import mega_builder
+
+        (tmp_private_dir / "partner_labels.json").write_text(
+            json.dumps({"partner_a": "Fixture A", "partner_b": "Fixture B"}),
+            encoding="utf-8",
+        )
+        args = mega_builder._build_namespace("2026-01", "2026-02")
+        tmp_path = args.partner_label_map
+        try:
+            assert tmp_path is not None
+            assert Path(tmp_path).exists()
+            loaded = json.loads(Path(tmp_path).read_text(encoding="utf-8"))
+            assert loaded == {"partner_a": "Fixture A", "partner_b": "Fixture B"}
+        finally:
+            mega_builder._cleanup_namespace(args)
+        assert not Path(tmp_path).exists()
+
+    def test_custom_id_labels_resolved_via_mappings(self, tmp_private_dir: Path):
+        """Mega reports get real labels even with custom partner IDs — the
+        account_mappings partners fallback now bridges through."""
+        from budget_api.services import mega_builder
+
+        (tmp_private_dir / "account_mappings.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "partners": {
+                        "alex": {"label": "Alex"},
+                        "sam": {"label": "Sam"},
+                    },
+                    "accounts": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+        args = mega_builder._build_namespace("2026-01", "2026-02")
+        try:
+            assert args.partner_label_map is not None
+            loaded = json.loads(
+                Path(args.partner_label_map).read_text(encoding="utf-8")
+            )
+            assert loaded == {"partner_a": "Alex", "partner_b": "Sam"}
+        finally:
+            mega_builder._cleanup_namespace(args)
+
+    def test_placeholder_defaults_pass_none(self, tmp_private_dir: Path):
+        """Placeholder defaults (no config) → None, as before."""
+        from budget_api.services import mega_builder
+
+        args = mega_builder._build_namespace("2026-01", "2026-02")
+        try:
+            assert args.partner_label_map is None
+        finally:
+            mega_builder._cleanup_namespace(args)

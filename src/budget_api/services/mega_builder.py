@@ -39,6 +39,9 @@ from budget_api.services.report_builder import (
     _load_partner_labels,
 )
 
+# report_builder put v4_pipeline on sys.path above.
+from accounting import DEFAULT_PARTNER_LABELS  # noqa: E402
+
 MEGA_CALCULATION_VERSION = 1
 
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
@@ -50,12 +53,16 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _build_namespace(start: str, end: str) -> argparse.Namespace:
+def _build_namespace(
+    start: str, end: str, partner_labels: dict[str, str] | None = None
+) -> argparse.Namespace:
     """Construct argparse.Namespace build_context expects.
 
     Bridges budget_api account_mappings partner_id schema → mega expected
     account_owner_map path format ({account_id: "partner_a"|"partner_b"}).
     Writes bridged owners dict to temp JSON, passes temp path, cleans up.
+    partner_labels: pass pre-loaded labels to skip a second file load
+    (build_mega_report loads once and logs the warnings); None loads here.
     """
     private = storage.PRIVATE_DATA_DIR
 
@@ -72,10 +79,20 @@ def _build_namespace(start: str, end: str) -> argparse.Namespace:
             tmp_path = tmp.name
         account_owner_map = tmp_path
 
-    # partner_label_map — use partner_labels.json if exists.
-    partner_label_map = None
-    if storage.PARTNER_LABELS_PATH.exists():
-        partner_label_map = str(storage.PARTNER_LABELS_PATH)
+    # partner_label_map — bridge via _load_partner_labels so the
+    # account_mappings partners fallback (custom IDs) resolves too. Only real
+    # labels get a temp map; placeholder defaults keep None (mega build's own
+    # placeholder fallback path).
+    labels = partner_labels if partner_labels is not None else _load_partner_labels()[0]
+    label_tmp_path: str | None = None
+    partner_label_map: str | None = None
+    if labels != DEFAULT_PARTNER_LABELS:
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", suffix=".json", delete=False
+        ) as tmp:
+            json.dump(labels, tmp)
+            label_tmp_path = tmp.name
+        partner_label_map = label_tmp_path
 
     # category_role_map — optional.
     category_role_map = None
@@ -112,16 +129,18 @@ def _build_namespace(start: str, end: str) -> argparse.Namespace:
         name="mega_report",
         output_dir=storage.REPOSITORY_ROOT / "out",
     )
-    # Stash tmp path for cleanup by caller via _cleanup_namespace.
+    # Stash tmp paths for cleanup by caller via _cleanup_namespace.
     args._owner_map_tmp = tmp_path
+    args._label_map_tmp = label_tmp_path
     return args
 
 
 def _cleanup_namespace(args: argparse.Namespace) -> None:
-    """Remove temp account_owner_map file if created."""
-    tmp_path = getattr(args, "_owner_map_tmp", None)
-    if tmp_path:
-        Path(tmp_path).unlink(missing_ok=True)
+    """Remove temp account_owner_map/partner_label_map files if created."""
+    for attr in ("_owner_map_tmp", "_label_map_tmp"):
+        tmp_path = getattr(args, attr, None)
+        if tmp_path:
+            Path(tmp_path).unlink(missing_ok=True)
 
 
 def _monthly_kpi_pages(
@@ -216,7 +235,11 @@ def build_mega_report(start: str, end: str) -> dict[str, Any]:
     monthly_kpi_pages + txn_counts.
     """
     _validate_months(start, end)
-    args = _build_namespace(start, end)
+    # Load labels once — _build_namespace reuses them (no second file read).
+    partner_labels, label_warnings = _load_partner_labels()
+    for warning in label_warnings:
+        _logger.warning("partner-label validation: %s", warning)
+    args = _build_namespace(start, end, partner_labels=partner_labels)
     try:
         context = build_context(args)
     finally:
@@ -226,9 +249,6 @@ def build_mega_report(start: str, end: str) -> dict[str, Any]:
     detail_agg = context["detail_agg"]
     salary_allocation = context["salary_allocation"]
     recommendations = context.get("recommendations")
-    partner_labels, label_warnings = _load_partner_labels()
-    for warning in label_warnings:
-        _logger.warning("partner-label validation: %s", warning)
 
     return {
         "start": start,

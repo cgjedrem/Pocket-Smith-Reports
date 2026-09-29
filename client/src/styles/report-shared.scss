@@ -54,6 +54,9 @@ tr { break-inside: avoid-page; page-break-inside: avoid; }
 .legacy-table .pos { color: #2ca02c; }
 .legacy-table .neg { color: #d62728; }
 .legacy-table .zero { color: #888; }
+// Paired-reimbursement transparency rows — visually subordinate under their
+// category row: muted + indented label. Sign colors stay per-cell (.pos/.neg/.zero).
+.legacy-table tr.reimb-row td:first-child { color: #5d6c75; font-style: italic; padding-left: 20px; }
 .overview-charts { display: flex; flex: 1; flex-direction: column; gap: 10px; min-height: 0; }
 .overview-chart { align-items: flex-start; background: #fff; border: 1px solid #d8e3ec; border-radius: 4px; display: flex; flex: 1; min-height: 0; overflow: hidden; padding: 8px; }
 .overview-chart svg { display: block; height: auto; margin: 0 auto; max-width: 720px; width: 100%; }
