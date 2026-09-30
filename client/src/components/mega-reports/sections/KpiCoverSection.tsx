@@ -9,7 +9,7 @@ import {
 import { TrendBarLineChart } from "@/components/mega-reports/charts/TrendBarLineChart";
 import { TrendLineChart } from "@/components/mega-reports/charts/TrendLineChart";
 import { compactNOK, formatNOK, partnerLabel, sumArr } from "@/components/mega-reports/sections/helpers";
-import type { MegaReportResponse } from "@/types/mega_report";
+import type { MegaReportResponse, SplitSection } from "@/types/mega_report";
 
 import styles from "./KpiCoverSection.module.css";
 
@@ -23,6 +23,66 @@ function KpiCard({ label, value }: { label: string; value: number }) {
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-lg font-semibold tabular-nums">{formatNOK(value)}</div>
     </div>
+  );
+}
+
+// Common-economy split summary — settlement headline + compact per-category
+// breakdown. Same DTO shape as monthly detailed.split, aggregated across the
+// mega window (mega_builder.py, same compute_split() + label resolution).
+interface SplitSummaryCardProps {
+  splitSummary: SplitSection;
+  aLabel: string;
+  bLabel: string;
+}
+
+function SplitSummaryCard({ splitSummary, aLabel, bLabel }: SplitSummaryCardProps) {
+  const settlement = splitSummary.settlement;
+  return (
+    <Card>
+      <CardHeader className="pb-1">
+        <CardTitle className="text-sm font-medium">Common economy split</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <p className="text-sm font-semibold">
+          {settlement
+            ? `${settlement.from_partner} pays ${settlement.to_partner} ${formatNOK(settlement.amount)}`
+            : "—"}
+        </p>
+        {splitSummary.rows.length > 0 && (
+          <>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left">
+                  <th className="py-1 text-left">Category</th>
+                  <th className="py-1 text-right">{aLabel} actual</th>
+                  <th className="py-1 text-right">{aLabel} fair</th>
+                  <th className="py-1 text-right">Delta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {splitSummary.rows.map((r) => (
+                  <tr key={r.category_id} className="border-b border-border">
+                    <td className="py-1">{r.label}</td>
+                    <td className="py-1 text-right tabular-nums">{formatNOK(r.actual)}</td>
+                    <td className="py-1 text-right tabular-nums">{formatNOK(r.fair)}</td>
+                    <td className="py-1 text-right tabular-nums">{formatNOK(r.delta)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {/* Rows are partner_a's perspective — shares sum to 100%, so
+                partner_b's numbers are the exact complement (see backend
+                compute_split() docstring). Spell that out so the {aLabel}
+                columns don't read as "the only partner who split anything". */}
+            <p className="text-xs text-muted-foreground">
+              Actual/fair/delta shown from {aLabel}&apos;s perspective — a positive delta
+              means {aLabel} paid more than their fair share (owed by {bLabel}); negative
+              means the reverse.
+            </p>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -91,6 +151,15 @@ export function KpiCoverSection({ report }: KpiCoverSectionProps) {
           <KpiCard label={`${aLabel} income`} value={aIncome} />
           <KpiCard label={`${bLabel} income`} value={bIncome} />
         </div>
+
+        {/* Common-economy split summary — additive (mega calculation_version
+            2), aggregated across the window. Null/undefined -> feature off,
+            no config, or a pre-field stored report; omit the whole block,
+            never a fabricated em-dash placeholder (same convention as the
+            monthly detailed.split renderer). */}
+        {report.split_summary && (
+          <SplitSummaryCard splitSummary={report.split_summary} aLabel={aLabel} bLabel={bLabel} />
+        )}
 
         {/* Bar chart — full width */}
         <Card>

@@ -75,6 +75,46 @@ export interface ApiKeyUpdate {
   api_key: string;
 }
 
+// Common-economy split — GET/PUT /api/settings/split
+// (src/budget_api/models/settings.py: SplitShares/SplitConfig/SplitConfigUpdate).
+// Slot-keyed (partner_a/partner_b), not real partner IDs — same convention
+// as report.detailed.split.shares.
+export interface SplitShares {
+  partner_a: number;
+  partner_b: number;
+}
+
+// Candidate sections today — subset of DetailedSection eligible to feed
+// compute_split (src/budget_api/models/settings.py SPLIT_ELIGIBLE_SECTIONS).
+export type SplitEligibleSection = "home" | "common" | "trips";
+
+export const SPLIT_ELIGIBLE_SECTIONS: SplitEligibleSection[] = [
+  "home",
+  "common",
+  "trips",
+];
+
+export interface SplitConfig {
+  enabled: boolean;
+  shares: SplitShares;
+  sections: string[];
+}
+
+// PUT body — same shape as SplitConfig; validated server-side (shares sum
+// to 100 -> 422, unknown section -> 400).
+export type SplitConfigUpdate = SplitConfig;
+
+// GET /api/settings/split response — SplitConfig + display-only real
+// partner labels (src/budget_api/models/settings.py::SplitConfigResponse).
+// labels: {partner_a: <real label>, partner_b: <real label>} resolved
+// server-side via the same slot-map path report_builder uses — NEVER
+// "partner_a"/"partner_b" ids re-looked-up against listPartners() (custom
+// partner ids, e.g. "alex", don't match those slot keys). Display-only:
+// never persisted, so PUT keeps taking/returning plain SplitConfig.
+export interface SplitConfigResponse extends SplitConfig {
+  labels: Record<string, string>;
+}
+
 export interface Category {
   id: string;
   title: string;

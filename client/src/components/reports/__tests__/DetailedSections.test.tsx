@@ -15,6 +15,7 @@ import type {
   PairedReimbursementRow,
   ReportResponse,
   SignClass,
+  SplitSection as SplitSectionDto,
 } from "@/types/report";
 
 import { DetailedSections } from "../DetailedSections";
@@ -237,5 +238,80 @@ describe("NetSection — nested paired reimbursements", () => {
     ]);
     expect(rows[2][0]).toBe("reimb-row");
     expect(rows[2][1]).toContain("+100.00");
+  });
+});
+
+// 10. Common-economy split (calculation_version 9, additive). split is
+// optional/nullable — feature off, no config, or a stored v7/v8 payload
+// that predates the field entirely (test that as `undefined`, not just
+// `null`, since older reports literally lack the key).
+describe("CommonEconomySplitSection", () => {
+  function splitRow(
+    category_id: string,
+    label: string,
+    actual: number,
+    fair: number,
+  ): SplitSectionDto["rows"][number] {
+    return { category_id, label, actual, fair, delta: actual - fair };
+  }
+
+  it("renders no block at all when split is null", () => {
+    render(<DetailedSections report={mkReport({ split: null })} />);
+    expect(screen.queryByRole("heading", { name: /Common Economy Split/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("—")).not.toBeInTheDocument();
+  });
+
+  it("renders no block at all when split is undefined (pre-field stored report)", () => {
+    // mkReport spreads `...partial` over a base with no `split` key —
+    // omitting it entirely from `partial` reproduces a v7/v8 payload.
+    render(<DetailedSections report={mkReport({})} />);
+    expect(screen.queryByRole("heading", { name: /Common Economy Split/i })).not.toBeInTheDocument();
+  });
+
+  it("renders the per-category actual/fair/delta table when split is populated", () => {
+    const split: SplitSectionDto = {
+      shares: { partner_a: 60, partner_b: 40 },
+      sections: ["home", "common", "trips"],
+      rows: [splitRow("cat-1", "Groceries", 600, 500), splitRow("cat-2", "Rent", 1000, 900)],
+      settlement: null,
+    };
+    render(<DetailedSections report={mkReport({ split })} />);
+
+    const section = sectionOf("10. Common Economy Split");
+    expect(within(section).getByText("Groceries")).toBeInTheDocument();
+    expect(within(section).getByText("Rent")).toBeInTheDocument();
+    // Column headers carry partner_a's real display label (Alex here), not
+    // generic "Actual"/"Fair share"/"Delta" — parity with the HTML/PDF twin
+    // (accounting_html.py::_legacy_split_section uses partner_labels["partner_a"]).
+    const headers = Array.from(section.querySelectorAll("thead th")).map((th) => th.textContent);
+    expect(headers).toEqual(["Category", "Alex actual", "Alex fair share", "Alex delta"]);
+    // actual=600.00, fair=500.00, delta=+100.00 (fmtSigned prefixes "+").
+    const rows = Array.from(section.querySelectorAll("tbody tr"));
+    const groceriesCells = Array.from(rows[0].querySelectorAll("td")).map((td) => td.textContent);
+    expect(groceriesCells).toEqual(["Groceries", "600.00", "500.00", "+100.00"]);
+  });
+
+  it("renders em-dash when settlement is null but rows exist", () => {
+    const split: SplitSectionDto = {
+      shares: { partner_a: 50, partner_b: 50 },
+      sections: ["home"],
+      rows: [splitRow("cat-1", "Home", 500, 500)],
+      settlement: null,
+    };
+    render(<DetailedSections report={mkReport({ split })} />);
+    const section = sectionOf("10. Common Economy Split");
+    expect(within(section).getByText("—")).toBeInTheDocument();
+  });
+
+  it("renders the settlement direction text using real partner labels verbatim", () => {
+    const split: SplitSectionDto = {
+      shares: { partner_a: 60, partner_b: 40 },
+      sections: ["home", "common", "trips"],
+      rows: [splitRow("cat-1", "Groceries", 1234, 0)],
+      settlement: { from_partner: "Sam", to_partner: "Alex", amount: 1234 },
+    };
+    render(<DetailedSections report={mkReport({ split })} />);
+    const section = sectionOf("10. Common Economy Split");
+    expect(within(section).getByText("Sam pays Alex 1,234.00")).toBeInTheDocument();
   });
 });

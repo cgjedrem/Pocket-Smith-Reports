@@ -39,6 +39,7 @@ import type {
   ReportResponse,
   SavingsPartnerRow,
   SignClass,
+  SplitSection as SplitSectionDto,
 } from "@/types/report";
 
 // Percent cell — null denominator (division by 0 server-side) -> em-dash,
@@ -162,6 +163,8 @@ export function DetailedSections({ report }: DetailedSectionsProps) {
         pbLabel={pbLabel}
         drilldown={<SectionDrilldown txns={sectionTxns["excluded"] ?? []} />}
       />
+
+      <CommonEconomySplitSection section={detailed.split ?? null} paLabel={paLabel} />
     </div>
   );
 }
@@ -602,6 +605,65 @@ function ExcludedSection({ section, paLabel, pbLabel, drilldown }: ExcludedSecti
       </table>
       <p className="note">Only categories explicitly mapped to Excluded appear here.</p>
       {drilldown}
+    </section>
+  );
+}
+
+// 10. Common economy split (calculation_version 9, additive). Per-category
+// actual/fair/delta + one netted settlement across every enabled section.
+// Omit the whole section — no block, no em-dash placeholder — when split
+// is null/undefined (feature off, no config, or a stored v7/v8 payload that
+// predates the field). Never fabricate a table with no underlying data.
+interface CommonEconomySplitSectionProps {
+  section: SplitSectionDto | null;
+  // partner_a's real display label — rows are partner_a's perspective
+  // (see compute_split() docstring); backend HTML/PDF twin
+  // (accounting_html.py::_legacy_split_section) labels these same 3
+  // columns "{label_a} actual/fair share/delta" using
+  // partner_labels["partner_a"], not the settlement (settlement can be
+  // null when already even). Mirror that here.
+  paLabel: string;
+}
+
+function CommonEconomySplitSection({ section, paLabel }: CommonEconomySplitSectionProps) {
+  if (!section) return null;
+
+  const settlementText = section.settlement
+    ? `${section.settlement.from_partner} pays ${section.settlement.to_partner} ${fmt(section.settlement.amount)}`
+    : "—";
+
+  return (
+    <section className="report-section legacy-section">
+      <h2>10. Common Economy Split</h2>
+      <table className="legacy-table split-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>{paLabel} actual</th>
+            <th>{paLabel} fair share</th>
+            <th>{paLabel} delta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {section.rows.length === 0 ? (
+            <tr>
+              <td colSpan={4} role="status">
+                No categories in the selected split sections this month.
+              </td>
+            </tr>
+          ) : (
+            section.rows.map((r) => (
+              <tr key={r.category_id}>
+                <td>{r.label}</td>
+                <td className={cls(signOf(r.actual))}>{fmt(r.actual)}</td>
+                <td className={cls(signOf(r.fair))}>{fmt(r.fair)}</td>
+                <td className={cls(signOf(r.delta))}>{fmtSigned(r.delta)}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+      <p className="note split-settlement">{settlementText}</p>
     </section>
   );
 }

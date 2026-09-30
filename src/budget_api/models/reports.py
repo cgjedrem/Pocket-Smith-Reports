@@ -230,6 +230,42 @@ class HouseholdTotals(BaseModel):
     total_class: SignClass
 
 
+class SplitCategoryRow(BaseModel):
+    """One category row within the common-economy split.
+
+    actual/fair/delta are partner_a's perspective — a two-partner system
+    where shares sum to 100% makes partner_b's numbers the exact complement
+    (actual_b = total - actual, fair_b = total - fair, delta_b = -delta).
+    Documented convention, not a general n-partner design.
+    """
+
+    category_id: str
+    label: str
+    actual: float
+    fair: float
+    delta: float
+
+
+class SplitSettlement(BaseModel):
+    """Single netted transfer for the whole split — real partner labels,
+    resolved from the slot-keyed compute_split() output one layer up."""
+
+    from_partner: str
+    to_partner: str
+    amount: float
+
+
+class SplitSection(BaseModel):
+    """detailed.split — global %, per-category rows across every enabled
+    section, one netted settlement. None on the parent DetailedSections when
+    no split config exists or the feature is disabled (never fabricate)."""
+
+    shares: dict[str, float]
+    sections: list[str]
+    rows: list[SplitCategoryRow]
+    settlement: SplitSettlement | None = None
+
+
 class DetailedSections(BaseModel):
     """report.detailed — one fully pre-computed object per report section.
 
@@ -248,6 +284,9 @@ class DetailedSections(BaseModel):
     cc_payments: CcPaymentsSection | None = None
     excluded: ExcludedSection | None = None
     household_totals: HouseholdTotals | None = None
+    # Additive (calculation_version 9) — common-economy split. None when no
+    # split_config.json or the feature is disabled.
+    split: SplitSection | None = None
 
 
 class ReportResponse(BaseModel):

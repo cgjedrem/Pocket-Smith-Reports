@@ -3,7 +3,12 @@
 from html import escape
 from pathlib import Path
 
-from accounting import _paired_reimbursements
+from accounting import (
+    SPLIT_ELIGIBLE_SECTIONS,
+    _paired_reimbursements,
+    compute_split,
+    net_category_totals,
+)
 from charts import (
     COLOR_PARTNER_A,
     COLOR_PARTNER_B,
@@ -917,12 +922,82 @@ def _legacy_excluded_section(
     return "".join(parts)
 
 
+def _legacy_split_section(
+    records: list[dict],
+    mapping: dict[str, dict[str, str]],
+    partner_labels: dict[str, str],
+    split_config: dict | None,
+) -> str:
+    """Common economy split — parity block. Reuses accounting.py's pure
+    net_category_totals/compute_split (twin of _category_groups/
+    _routed_section vs this file's _legacy_category_groups/
+    _routed_detailed_section) so numbers match the JSON DTO and this same
+    page's home/common/trips tables exactly. Empty string when the feature
+    is off or no section selected — no split_config.json => identical
+    output to before this feature existed.
+    """
+    if split_config is None:
+        return ""
+    section_nets = {
+        section: net_category_totals(records, section, mapping)
+        for section in SPLIT_ELIGIBLE_SECTIONS
+    }
+    split = compute_split(section_nets, split_config["shares"], split_config["sections"])
+    if split is None:
+        return ""
+    label_a = partner_labels.get("partner_a", "Partner A")
+    label_b = partner_labels.get("partner_b", "Partner B")
+    parts = ['<section class="report-section legacy-section"><h2>Common economy split</h2>']
+    parts.append(
+        f'<p class="note">Global split: {escape(label_a)} '
+        f'{split["shares"]["partner_a"]:.1f}% / {escape(label_b)} '
+        f'{split["shares"]["partner_b"]:.1f}% — sections: '
+        f'{escape(", ".join(split["sections"]))}.</p>'
+    )
+    if not split["rows"]:
+        parts.append('<p class="empty">No data this month.</p></section>')
+        return "".join(parts)
+    row_html = []
+    for row in split["rows"]:
+        row_html.append(
+            f'<tr><td>{escape(row["label"])}</td>'
+            f'<td>{_amount(row["actual"])}</td>'
+            f'<td>{_amount(row["fair"])}</td>'
+            f'<td>{_amount(row["delta"])}</td></tr>'
+        )
+    parts.extend(
+        [
+            '<table class="legacy-table split-table"><thead><tr><th>Category</th>'
+            f"<th>{escape(label_a)} actual</th><th>{escape(label_a)} fair share</th>"
+            f"<th>{escape(label_a)} delta</th></tr></thead><tbody>",
+            "".join(row_html),
+            "</tbody></table>",
+        ]
+    )
+    settlement = split["settlement"]
+    if settlement is None:
+        # Never fabricate a zero-amount transfer — em-dash convention.
+        parts.append('<p class="note">Settlement: — (already even).</p>')
+    else:
+        from_label = partner_labels.get(
+            settlement["from_partner"], settlement["from_partner"]
+        )
+        to_label = partner_labels.get(settlement["to_partner"], settlement["to_partner"])
+        parts.append(
+            f'<p class="note"><b>Settlement: {escape(from_label)} owes '
+            f'{escape(to_label)} {_amount(settlement["amount"])}.</b></p>'
+        )
+    parts.append("</section>")
+    return "".join(parts)
+
+
 def _legacy_sections(
     records: list[dict],
     savings_summary: dict[str, dict[str, float]],
     partner_labels: dict[str, str],
     theme: dict[str, str],
     mapping: dict[str, dict[str, str]],
+    split_config: dict | None = None,
 ) -> str:
     return (
         _income_section(records, partner_labels, mapping)
@@ -957,6 +1032,7 @@ def _legacy_sections(
         )
         + _cc_payments_section(records, partner_labels, mapping)
         + _legacy_excluded_section(records, partner_labels, mapping)
+        + _legacy_split_section(records, mapping, partner_labels, split_config)
     )
 
 
@@ -965,6 +1041,7 @@ def render(
     month: str,
     partner_labels: dict[str, str] | None = None,
     theme_name: str = "minimal",
+    split_config: dict | None = None,
 ) -> str:
     """Render a report with categories, transfer appendix, and reconciliation."""
     reconciliation = contract["reconciliation"]
@@ -1101,7 +1178,7 @@ def render(
         f"{partner_markup}</section>"
         '<section class="overview-charts">'
         f"{_kpi_overview_charts(kpis, partner_labels, theme) if kpis else '<p class=\"empty\">KPI role map required for overview charts.</p>'}</section></section>"
-        f"{_legacy_sections(contract.get('normalized_transactions', []), contract['savings_summary'], partner_labels, theme, detailed_section_mapping)}</body></html>"
+        f"{_legacy_sections(contract.get('normalized_transactions', []), contract['savings_summary'], partner_labels, theme, detailed_section_mapping, split_config)}</body></html>"
     )
 
 

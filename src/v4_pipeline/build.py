@@ -28,6 +28,7 @@ from accounting import (
     load_category_roles,
     load_detailed_section_mapping,
     load_partner_labels,
+    load_split_config,
 )
 from accounting_html import render as render_html
 from data_loader import load
@@ -219,6 +220,7 @@ def build_month_html(
     theme: str = "minimal",
     savings_account_ids: list[str] | None = None,
     unified_excluded_account_ids: set[str] | None = None,
+    split_config_path: str | Path | None = None,
 ) -> dict[str, object]:
     """Build a monthly report body and rendering context before publishing."""
     excluded_account_ids = set(exclude_account_ids or [])
@@ -242,6 +244,9 @@ def build_month_html(
         partner_labels["partner_a"] = partner_a_label
     if partner_b_label:
         partner_labels["partner_b"] = partner_b_label
+    # Common-economy split — optional; missing file/disabled => None (no
+    # block rendered, identical output to before the feature existed).
+    split_config = load_split_config(split_config_path)
     contract = build_month_contract(
         transactions,
         account_owners=account_owners,
@@ -250,7 +255,9 @@ def build_month_html(
         detailed_section_mapping=detailed_section_mapping,
         category_parents=category_parents,
     )
-    html = render_html(contract, month, partner_labels, theme)
+    html = render_html(
+        contract, month, partner_labels, theme, split_config=split_config
+    )
     body_start = html.index(">", html.index("<body")) + 1
     body_end = html.rindex("</body>")
     css_start = html.index("<style>") + len("<style>")
@@ -316,6 +323,12 @@ def main():
         default=None,
         help="Account ID included in net-savings movement (repeatable)",
     )
+    parser.add_argument(
+        "--split-config",
+        default=None,
+        help="JSON common-economy split config (enabled, shares, sections); "
+        "defaults to the private split_config.json, gracefully off if absent",
+    )
     args = parser.parse_args()
 
     try:
@@ -340,6 +353,7 @@ def main():
         theme=args.theme,
         savings_account_ids=args.savings_account_id,
         unified_excluded_account_ids=unified_excluded_account_ids,
+        split_config_path=args.split_config,
     )
     html = str(build_result["html"])
     output_name = args.name or f"{args.month.replace('-', '')}_partner_report"

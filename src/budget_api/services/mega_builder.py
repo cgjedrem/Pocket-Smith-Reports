@@ -37,12 +37,21 @@ from budget_api.services.report_builder import (
     IncompatibleContractError,
     _load_account_owners,
     _load_partner_labels,
+    _resolve_split_settlement,
 )
 
 # report_builder put v4_pipeline on sys.path above.
-from accounting import DEFAULT_PARTNER_LABELS  # noqa: E402
+from accounting import (  # noqa: E402
+    AccountingValidationError,
+    DEFAULT_PARTNER_LABELS,
+    SPLIT_ELIGIBLE_SECTIONS,
+    compute_split,
+    load_split_config,
+)
 
-MEGA_CALCULATION_VERSION = 1
+# PR1: mega parity marker; 1→2: common-economy split — split_summary
+# (aggregated from detail_agg["cats"], additive).
+MEGA_CALCULATION_VERSION = 2
 
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 _MEGA_REPORT_FILE_RE = re.compile(r"^(\d{4}-\d{2})_(\d{4}-\d{2})_mega_report\.json$")
@@ -208,6 +217,32 @@ def _monthly_kpi_pages(
     return pages
 
 
+def _split_section_nets(cats: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """detail_agg["cats"] → net_category_totals()-shaped rows per section,
+    summed across the whole mega window.
+
+    Recomputed from detail_agg rather than aggregating monthly reports'
+    split rows: detail_agg is the SAME source mega's own home/common/trips
+    totals already come from (build_mega.py section_series), so this stays
+    drift-free against what the mega report already displays and doesn't
+    require every constituent month to have an up-to-date stored report.
+    """
+    result: dict[str, list[dict[str, Any]]] = {}
+    for category_id, category in cats.items():
+        section = category.get("section")
+        if section not in SPLIT_ELIGIBLE_SECTIONS:
+            continue
+        result.setdefault(section, []).append(
+            {
+                "category_id": category_id,
+                "category_title": category["title"],
+                "net_partner_a": sum(category["partner_a_net"]),
+                "net_partner_b": sum(category["partner_b_net"]),
+            }
+        )
+    return result
+
+
 def _txn_counts(monthly_results: list[tuple[str, dict[str, Any]]]) -> dict[str, int]:
     """Per-month len of ps_raw transactions (raw source count)."""
     counts: dict[str, int] = {}
@@ -250,6 +285,24 @@ def build_mega_report(start: str, end: str) -> dict[str, Any]:
     salary_allocation = context["salary_allocation"]
     recommendations = context.get("recommendations")
 
+    # Common-economy split — optional, missing/disabled => split_summary=None.
+    try:
+        split_config = load_split_config(storage.SPLIT_CONFIG_PATH)
+    except AccountingValidationError as exc:
+        raise AccountingValidationError(
+            f"split config invalid for mega {start}..{end}: {exc}"
+        ) from exc
+    split_summary = None
+    if split_config is not None:
+        section_nets = _split_section_nets(detail_agg["cats"])
+        split_summary = compute_split(
+            section_nets, split_config["shares"], split_config["sections"]
+        )
+        if split_summary is not None:
+            split_summary["settlement"] = _resolve_split_settlement(
+                split_summary["settlement"], partner_labels
+            )
+
     return {
         "start": start,
         "end": end,
@@ -264,6 +317,7 @@ def build_mega_report(start: str, end: str) -> dict[str, Any]:
         "recommendations": recommendations,
         "monthly_kpi_pages": _monthly_kpi_pages(monthly_results, detail_agg),
         "appendix_transactions": context.get("appendix_transactions", {}),
+        "split_summary": split_summary,
     }
 
 

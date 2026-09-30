@@ -223,6 +223,39 @@ export interface HouseholdTotals {
   total_class: SignClass;
 }
 
+// Common-economy split (calculation_version 9, additive). One category row
+// within detailed.split — actual/fair/delta are partner_a's perspective
+// (two-partner system, shares sum to 100%, so partner_b's numbers are the
+// exact complement: actual_b = total - actual, etc.). Matches backend
+// src/budget_api/models/reports.py::SplitCategoryRow.
+export interface SplitCategoryRow {
+  category_id: string;
+  label: string;
+  actual: number;
+  fair: number;
+  delta: number;
+}
+
+// Single netted transfer for the whole split. from_partner/to_partner are
+// REAL display labels (already resolved server-side in report_builder.py —
+// never render these as "partner_a"/"partner_b" slot keys).
+export interface SplitSettlement {
+  from_partner: string;
+  to_partner: string;
+  amount: number;
+}
+
+// detailed.split — global %, per-category rows across every enabled
+// section, one netted settlement. Null on the parent DetailedSections when
+// no split config exists or the feature is disabled (never fabricate).
+// `shares` stays slot-keyed (partner_a/partner_b), unlike settlement.
+export interface SplitSection {
+  shares: { partner_a: number; partner_b: number };
+  sections: string[];
+  rows: SplitCategoryRow[];
+  settlement: SplitSettlement | null;
+}
+
 // report.detailed — one fully pre-computed object per section. Each section
 // is null when its underlying data is unavailable (never a fabricated
 // zero). Not populated until PR2; PR1 only adds the contract.
@@ -237,6 +270,10 @@ export interface DetailedSections {
   cc_payments: CcPaymentsSection | null;
   excluded: ExcludedSection | null;
   household_totals: HouseholdTotals | null;
+  // Additive (calculation_version 9) — common-economy split. Optional:
+  // stored v7/v8 reports predate this field entirely (not just null) —
+  // consumers must handle `undefined` the same as `null`.
+  split?: SplitSection | null;
 }
 
 export interface ReportResponse {

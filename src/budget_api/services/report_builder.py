@@ -23,7 +23,9 @@ if str(_V4_DIR) not in sys.path:
 
 from accounting import (  # noqa: E402
     AccountingValidationError,
+    SPLIT_ELIGIBLE_SECTIONS,
     build_month_contract,
+    compute_split,
     detailed_cc_payments_section,
     detailed_excluded_section,
     detailed_household_totals,
@@ -36,6 +38,8 @@ from accounting import (  # noqa: E402
     load_category_roles,
     load_detailed_section_mapping,
     load_partner_labels,
+    load_split_config,
+    net_category_totals,
     validate_partner_labels,
 )
 from data_loader import load  # noqa: E402
@@ -47,7 +51,8 @@ from budget_api.services import storage
 # normalized_transactions; income can return None.
 # 7→8: paired reimbursement rows nested per category row on NetCategoryRow;
 # fully-paired categories now emit their zero-net row (no separate table).
-CALCULATION_VERSION = 8
+# 8→9: common-economy split — detailed.split (SplitSection | None), additive.
+CALCULATION_VERSION = 9
 
 # Breaking-contract identity marker (contracts/monthly-report-contract-v2.md).
 # Readers must reject stored payloads where this is absent or != 2 BEFORE
@@ -277,10 +282,29 @@ def _partner_panels(
 # --------------------------------------------------------------------------- #
 
 
+def _resolve_split_settlement(
+    settlement: dict[str, Any] | None, partner_labels: dict[str, str]
+) -> dict[str, Any] | None:
+    """Slot-keyed settlement (partner_a/partner_b) → real display labels."""
+    if settlement is None:
+        return None
+    return {
+        "from_partner": partner_labels.get(
+            settlement["from_partner"], settlement["from_partner"]
+        ),
+        "to_partner": partner_labels.get(
+            settlement["to_partner"], settlement["to_partner"]
+        ),
+        "amount": settlement["amount"],
+    }
+
+
 def _detailed(
     normalized_transactions: list[dict[str, Any]],
     detailed_section_mapping: dict[str, Any] | None,
     savings_summary: dict[str, Any] | None,
+    split_config: dict[str, Any] | None = None,
+    partner_labels: dict[str, str] | None = None,
 ) -> dict[str, Any] | None:
     """Compose the `detailed` DTO from accounting.py's section builders.
 
@@ -299,6 +323,19 @@ def _detailed(
         if has_income_records(records, mapping)
         else None
     )
+    split = None
+    if split_config is not None:
+        section_nets = {
+            section: net_category_totals(records, section, mapping)
+            for section in SPLIT_ELIGIBLE_SECTIONS
+        }
+        split = compute_split(
+            section_nets, split_config["shares"], split_config["sections"]
+        )
+        if split is not None:
+            split["settlement"] = _resolve_split_settlement(
+                split["settlement"], partner_labels or {}
+            )
     return {
         "income": income,
         "savings": detailed_savings_section(records, savings_summary, mapping),
@@ -310,6 +347,7 @@ def _detailed(
         "cc_payments": detailed_cc_payments_section(records, mapping),
         "excluded": detailed_excluded_section(records, mapping),
         "household_totals": detailed_household_totals(records, mapping),
+        "split": split,
     }
 
 
@@ -413,6 +451,14 @@ def build_report(month: str) -> dict[str, Any]:
     if catalog_path.exists():
         category_parents = load_category_parents(catalog_path)
 
+    # Common-economy split config — optional, missing/disabled => split=None.
+    try:
+        split_config = load_split_config(storage.SPLIT_CONFIG_PATH)
+    except AccountingValidationError as exc:
+        raise AccountingValidationError(
+            f"split config invalid for month {month}: {exc}"
+        ) from exc
+
     contract = build_month_contract(
         transactions,
         account_owners=account_owners,
@@ -447,7 +493,13 @@ def build_report(month: str) -> dict[str, Any]:
         "partner_panels": partner_panels,
         "partner_labels": partner_labels,
         "warnings": label_warnings,
-        "detailed": _detailed(records, detailed_mapping, contract["savings_summary"]),
+        "detailed": _detailed(
+            records,
+            detailed_mapping,
+            contract["savings_summary"],
+            split_config,
+            partner_labels,
+        ),
         "personal_share": _personal_share(kpis),
         "personal_share_partner_a": _partner_personal_share(kpis, "partner_a"),
         "personal_share_partner_b": _partner_personal_share(kpis, "partner_b"),

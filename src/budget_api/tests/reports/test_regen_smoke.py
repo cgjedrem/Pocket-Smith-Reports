@@ -89,7 +89,7 @@ def sample_month_seed(tmp_private_dir: Path) -> Path:
 def test_monthly_regen_is_v2_and_clean(sample_month_seed):
     report = report_builder.build_report("2026-04")
     assert report["contract_version"] == 2
-    assert report["calculation_version"] == 8
+    assert report["calculation_version"] == 9
     assert "personal_partner_a" in report["detailed"]
     assert "personal_partner_b" in report["detailed"]
     _assert_no_legacy_strings(report)

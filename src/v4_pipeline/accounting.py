@@ -30,6 +30,12 @@ DETAILED_ACCOUNT_ROLES = {
     "savings_partner_a",
     "savings_partner_b",
 }
+# Common-economy split — candidate sections today (design doc "common economy
+# split" Gate 1). Subset of DETAILED_CATEGORY_SECTIONS: only sections shaped
+# like a NetSection (per-category paid/received per partner) can feed
+# compute_split. Twin of budget_api.models.settings.SPLIT_ELIGIBLE_SECTIONS
+# (keep in sync — v4_pipeline cannot import budget_api).
+SPLIT_ELIGIBLE_SECTIONS = frozenset({"home", "common", "trips"})
 PRIVATE_ACCOUNT_MAPPING = (
     Path(__file__).resolve().parents[2] / "data" / "private" / "account_mappings.json"
 )
@@ -41,6 +47,9 @@ PRIVATE_DETAILED_SECTION_MAP = (
 )
 PRIVATE_CATEGORY_CATALOG = (
     Path(__file__).resolve().parents[2] / "data" / "private" / "category_catalog.json"
+)
+PRIVATE_SPLIT_CONFIG = (
+    Path(__file__).resolve().parents[2] / "data" / "private" / "split_config.json"
 )
 DEFAULT_PARTNER_LABELS = {"partner_a": "Partner A", "partner_b": "Partner B"}
 MAX_PARTNER_LABEL_LENGTH = 64
@@ -1108,6 +1117,7 @@ def _category_groups(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         group = groups.setdefault(
             category["id"],
             {
+                "category_id": category["id"],
                 "title": title,
                 "paid": {"partner_a": 0.0, "partner_b": 0.0},
                 "received": {"partner_a": 0.0, "partner_b": 0.0},
@@ -1297,6 +1307,200 @@ def detailed_net_section(
         "share_partner_a": _safe_pct(total_a, total),
         "share_partner_b": _safe_pct(total_b, total),
     }
+
+
+# --------------------------------------------------------------------------- #
+# Common-economy split (design doc "common economy split" Gate 1).
+#
+# One global partner_a/partner_b % pair (sums to 100, validated at the API
+# boundary in budget_api.routers.settings) applied to per-category net
+# totals across user-chosen sections (subset of SPLIT_ELIGIBLE_SECTIONS).
+# Pure — no file I/O, no partner-label resolution (config + output stay in
+# slot terms; real labels are resolved one layer up by report_builder /
+# accounting_html using the same partner-label loader).
+# --------------------------------------------------------------------------- #
+
+
+def net_category_totals(
+    records: list[dict[str, Any]], section: str, mapping: dict[str, dict[str, str]]
+) -> list[dict[str, Any]]:
+    """Per-category net totals for one section, WITH category_id.
+
+    Twin data source to detailed_net_section (same _category_groups
+    grouping) — detailed_net_section's rows omit category_id (DTO shape is
+    frozen); compute_split needs it, so this is a separate, minimal
+    extraction rather than a change to the existing DTO-producing function.
+    """
+    groups = _category_groups(_records_in_section(records, section, mapping))
+    rows = []
+    for group in groups:
+        net_a = group["paid"]["partner_a"] - group["received"]["partner_a"]
+        net_b = group["paid"]["partner_b"] - group["received"]["partner_b"]
+        rows.append(
+            {
+                "category_id": group["category_id"],
+                "category_title": group["title"],
+                "net_partner_a": net_a,
+                "net_partner_b": net_b,
+            }
+        )
+    return rows
+
+
+def compute_split(
+    section_category_nets: dict[str, list[dict[str, Any]]],
+    shares: dict[str, float],
+    sections: list[str],
+) -> dict[str, Any] | None:
+    """Common-economy split — per-category actual/fair/delta + one netted
+    settlement across every enabled section.
+
+    section_category_nets: {section_key: [net_category_totals() rows]} — the
+    caller supplies whichever section nets it already has (typically all of
+    SPLIT_ELIGIBLE_SECTIONS); sections not present or not enabled are simply
+    not summed in.
+    shares: {"partner_a": pct, "partner_b": pct} — trusted to already sum to
+    100 (validated at the API boundary); this function does not re-validate.
+    sections: enabled section keys, in display order.
+
+    Rows are partner_a's perspective (two-partner system, shares sum to
+    100%, so partner_b's numbers are the exact complement per category:
+    actual_b = total - actual, fair_b = total - fair, delta_b = -delta).
+    Documented convention, not a general n-partner design.
+
+    Returns None when `sections` is empty (nothing selected — nothing to
+    split). settlement is None when the net imbalance is exactly 0 (no
+    transfer needed) — never fabricate a zero-amount transfer.
+    """
+    if not sections:
+        return None
+    share_a_fraction = shares["partner_a"] / 100.0
+    rows: list[dict[str, Any]] = []
+    delta_total_a = 0.0
+    for section in sections:
+        for category in section_category_nets.get(section, []):
+            net_a = category["net_partner_a"]
+            net_b = category["net_partner_b"]
+            total = net_a + net_b
+            fair_a = total * share_a_fraction
+            delta_a = net_a - fair_a
+            delta_total_a += delta_a
+            rows.append(
+                {
+                    "category_id": category["category_id"],
+                    "label": category["category_title"],
+                    "actual": net_a,
+                    "fair": fair_a,
+                    "delta": delta_a,
+                }
+            )
+    settlement = None
+    # Tolerance, not `!= 0` — float sums over many non-round-share
+    # categories land on ~1e-15 noise for a genuinely balanced split
+    # (33.33/66.67 etc). Same tolerance convention as the shares-sum check
+    # in normalize_split_config. Row-level actual/fair/delta stay unrounded
+    # (display-layer rounding only) — this only guards the settlement gate.
+    if abs(delta_total_a) > 1e-6:
+        if delta_total_a > 0:
+            # partner_a paid more than their fair share overall — partner_b
+            # owes them the difference.
+            settlement = {
+                "from_partner": "partner_b",
+                "to_partner": "partner_a",
+                "amount": delta_total_a,
+            }
+        else:
+            settlement = {
+                "from_partner": "partner_a",
+                "to_partner": "partner_b",
+                "amount": -delta_total_a,
+            }
+    return {
+        "shares": {"partner_a": shares["partner_a"], "partner_b": shares["partner_b"]},
+        "sections": list(sections),
+        "rows": rows,
+        "settlement": settlement,
+    }
+
+
+def normalize_split_config(raw: Any) -> dict[str, Any] | None:
+    """Validate + normalize a parsed split_config.json. None when disabled.
+
+    {enabled, shares: {partner_a, partner_b} summing to 100 (tolerance
+    1e-6), sections: subset of SPLIT_ELIGIBLE_SECTIONS}. Writes are already
+    validated at the API boundary (budget_api.routers.settings) — this is a
+    defensive re-check for report-build time (manual file edits, drift);
+    raises loudly like the other private-config loaders in this module, it
+    does not silently degrade a malformed file.
+    """
+    raw = _required_mapping(raw, "split config")
+    if set(raw) - {"enabled", "shares", "sections"}:
+        raise AccountingValidationError("Split config has invalid fields")
+    enabled = raw.get("enabled")
+    if type(enabled) is not bool:
+        raise AccountingValidationError("Split config.enabled must be a boolean")
+    if not enabled:
+        return None
+    shares_raw = _required_mapping(raw.get("shares"), "split config.shares")
+    if set(shares_raw) != {"partner_a", "partner_b"}:
+        raise AccountingValidationError(
+            "Split config.shares must have exactly partner_a and partner_b"
+        )
+    shares: dict[str, float] = {}
+    for key, value in shares_raw.items():
+        if type(value) not in (int, float) or type(value) is bool:
+            raise AccountingValidationError(
+                f"Split config.shares.{key} must be numeric"
+            )
+        # NaN/Inf compare false in every range/sum check below (NaN < 0 is
+        # False, NaN > 100 is False, abs(NaN + x - 100) > 1e-6 is False too)
+        # — reject non-finite explicitly, before any range/sum math runs.
+        if not math.isfinite(value):
+            raise AccountingValidationError(
+                f"Split config.shares.{key} must be a finite number"
+            )
+        if value < 0 or value > 100:
+            raise AccountingValidationError(
+                f"Split config.shares.{key} must be between 0 and 100"
+            )
+        shares[key] = float(value)
+    if abs(shares["partner_a"] + shares["partner_b"] - 100.0) > 1e-6:
+        raise AccountingValidationError("Split config.shares must sum to 100")
+    sections_raw = raw.get("sections")
+    if not isinstance(sections_raw, list) or any(
+        type(section) is not str for section in sections_raw
+    ):
+        raise AccountingValidationError(
+            "Split config.sections must be a list of strings"
+        )
+    unknown = sorted(set(sections_raw) - SPLIT_ELIGIBLE_SECTIONS)
+    if unknown:
+        raise AccountingValidationError(
+            f"Split config.sections has unknown section(s): {', '.join(unknown)}"
+        )
+    seen: set[str] = set()
+    sections: list[str] = []
+    for section in sections_raw:
+        if section not in seen:
+            seen.add(section)
+            sections.append(section)
+    return {"shares": shares, "sections": sections}
+
+
+def load_split_config(
+    config_path: str | Path | None = None,
+) -> dict[str, Any] | None:
+    """Load common-economy split config. None when the file is absent or the
+    feature is disabled — additive: no split_config.json means behavior is
+    identical to before the feature existed."""
+    path = Path(config_path) if config_path is not None else PRIVATE_SPLIT_CONFIG
+    if not path.exists():
+        return None
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise AccountingValidationError("Split config is unreadable") from error
+    return normalize_split_config(raw)
 
 
 def _net_section_total(groups: list[dict[str, Any]]) -> float:

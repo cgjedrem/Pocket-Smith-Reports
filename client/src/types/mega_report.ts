@@ -1,6 +1,8 @@
 // Mega report TS types — match backend models/mega_reports.py + design doc L4.
 // GenerateStatus imported from report.ts (F1.2 — no redefinition).
 
+import type { SplitSection } from "./report";
+
 export interface MegaReportRange {
   start: string;
   end: string;
@@ -12,6 +14,9 @@ export interface MegaReportList {
 
 // Re-export GenerateStatus for convenience.
 export type { GenerateStatus, GenerateStatusType } from "./report";
+// Re-export SplitSection et al — split_summary is the same shape as
+// detailed.split (mega_builder.py aggregates from the same compute_split()).
+export type { SplitCategoryRow, SplitSection, SplitSettlement } from "./report";
 
 export interface SalaryAllocationEntry {
   id: string;
@@ -149,6 +154,14 @@ export interface MegaReportResponse {
   appendix_transactions?: Record<string, AppendixTransaction[]> | null;
   // Server-side partner label resolution warnings (US4 additive).
   warnings?: string[];
+  // Additive (calculation_version 2 on mega) — common-economy split,
+  // aggregated across the mega window from detail_agg["cats"] (same shape
+  // as monthly detailed.split). Optional: reports predating this field lack
+  // the key entirely. Backend types this loosely as `dict | None`
+  // (src/budget_api/models/mega_reports.py) — typed here as SplitSection
+  // since mega_builder.py builds it via the same compute_split() +
+  // _resolve_split_settlement() as the monthly path. [Inference]
+  split_summary?: SplitSection | null;
 }
 
 // Appendix transaction — shape mirrors src/mom/sections/section_appendices.py.

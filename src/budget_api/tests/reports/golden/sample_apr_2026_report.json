@@ -1,7 +1,7 @@
 {
   "month": "2026-04",
   "contract_version": 2,
-  "calculation_version": 8,
+  "calculation_version": 9,
   "txn_count": 43,
   "normalized_transactions": [
     {
@@ -1414,7 +1414,8 @@
       "partner_b_class": "pos",
       "total": 24500.0,
       "total_class": "pos"
-    }
+    },
+    "split": null
   },
   "personal_share": null,
   "personal_share_partner_a": null,

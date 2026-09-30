@@ -69,6 +69,8 @@ tr { break-inside: avoid-page; page-break-inside: avoid; }
 .legacy-table .legacy-total td { font-weight: 700; }
 .legacy-chart { margin: 16px 0; padding: 12px; page-break-inside: avoid; }
 .legacy-chart svg { display: block; height: auto; max-width: 100%; width: 100%; }
+// Common-economy split settlement headline — bolder than a regular .note.
+.split-settlement { font-weight: 700; font-style: normal; }
 
 // Screen-only overrides — print layout breaks browser.
 @media screen {
