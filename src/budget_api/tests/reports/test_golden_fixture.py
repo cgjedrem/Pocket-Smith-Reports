@@ -65,7 +65,7 @@ def test_golden_baseline_detailed_populated() -> None:
     seeded here, so `personal_share`/`kpis` stay None — nullable rule)."""
     golden = json.loads(GOLDEN_PATH.read_text(encoding="utf-8"))
     assert golden["contract_version"] == 2
-    assert golden["calculation_version"] == 9
+    assert golden["calculation_version"] == 10
     assert golden["detailed"] is not None
     # Hand-checked against client/src/components/reports/DetailedSections.tsx
     # formulas on the fixture data (see PR2 report for full derivation).
@@ -210,9 +210,13 @@ def _populated_detailed() -> dict:
                 {
                     "category_id": "cat-1",
                     "label": "Fixture",
+                    "section": "home",
                     "actual": 1.0,
                     "fair": 0.55,
                     "delta": 0.45,
+                    "actual_b": 0.0,
+                    "fair_b": 0.45,
+                    "delta_b": -0.45,
                 }
             ],
             "settlement": {

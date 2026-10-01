@@ -282,6 +282,106 @@ class TestStaleCheck:
         }
         assert report_builder.check_stale("2026-07", report) is True
 
+    @staticmethod
+    def _seed_excluded_account(private_dir: Path) -> None:
+        """Add excluded savings account 1100099 to account_mappings."""
+        path = private_dir / "account_mappings.json"
+        if path.exists():
+            mappings = json.loads(path.read_text(encoding="utf-8"))
+        else:
+            mappings = _mock_account_mappings()
+        mappings["accounts"]["1100099"] = {
+            "name": "Fx Savings Nordic Bank",
+            "partner_id": "partner_a",
+            "type": "savings",
+            "excluded": True,
+        }
+        path.write_text(json.dumps(mappings), encoding="utf-8")
+
+    def test_not_stale_ignores_excluded_account_txns(self, tmp_private_dir):
+        """Excluded-account txns in ps_raw must not trip the count check."""
+        self._seed_excluded_account(tmp_private_dir)
+        (tmp_private_dir / "2026-07_ps_raw.json").write_text(
+            json.dumps(
+                [
+                    {"id": 1, "account": {"id": "1100001"}},
+                    # Modern shape on excluded account.
+                    {"id": 2, "account": {"id": "1100099"}},
+                    # Legacy shape on excluded account.
+                    {"id": 3, "transaction_account": {"id": 1100099}},
+                ]
+            ),
+            encoding="utf-8",
+        )
+        report = {
+            "calculation_version": report_builder.CALCULATION_VERSION,
+            "txn_count": 1,
+        }
+        assert report_builder.check_stale("2026-07", report) is False
+
+    def test_fresh_after_build_with_excluded_account_txns(self, seeded_private_dir):
+        """Report built from raw with excluded-account txns is not stale."""
+        self._seed_excluded_account(seeded_private_dir)
+        ps_raw_path = seeded_private_dir / "2026-07_ps_raw.json"
+        payload = json.loads(ps_raw_path.read_text(encoding="utf-8"))
+        excluded_txn = {
+            "id": 100003,
+            "date": "2026-07-15",
+            "amount": 100.0,
+            "payee": "Interest",
+            "account": {"id": "1100099", "name": "Fx Savings Nordic Bank"},
+            "category": {"id": 2200001, "title": "Interest income"},
+        }
+        payload["transactions"].append(excluded_txn)
+        ps_raw_path.write_text(json.dumps(payload), encoding="utf-8")
+
+        report = report_builder.build_report("2026-07")
+        assert report["txn_count"] == 2
+        assert report_builder.check_stale("2026-07", report) is False
+
+        # Extra non-excluded txn in raw → stale again.
+        extra = dict(excluded_txn)
+        extra["id"] = 100004
+        extra["account"] = {"id": "1100001", "name": "FxA Check Nordic Bank"}
+        payload["transactions"].append(extra)
+        ps_raw_path.write_text(json.dumps(payload), encoding="utf-8")
+        assert report_builder.check_stale("2026-07", report) is True
+
+    def test_stale_corrupt_account_mappings(self, tmp_private_dir):
+        """Corrupt (hand-edited) account_mappings must not 500 the probe."""
+        (tmp_private_dir / "account_mappings.json").write_text(
+            '{"accounts": {"1100001":', encoding="utf-8"
+        )
+        (tmp_private_dir / "2026-07_ps_raw.json").write_text(
+            json.dumps([{"id": 1}, {"id": 2}]), encoding="utf-8"
+        )
+        report = {
+            "calculation_version": report_builder.CALCULATION_VERSION,
+            "txn_count": 2,
+        }
+        assert report_builder.check_stale("2026-07", report) is True
+
+    @pytest.mark.parametrize(
+        "ps_raw_text",
+        [
+            "null",
+            json.dumps("nope"),
+            json.dumps(42),
+            json.dumps({"transactions": None}),
+            json.dumps({"transactions": {"id": 1}}),
+        ],
+    )
+    def test_stale_wrong_shape_ps_raw(self, tmp_private_dir, ps_raw_text):
+        """Valid JSON with uncountable shape → stale, never raise."""
+        (tmp_private_dir / "2026-07_ps_raw.json").write_text(
+            ps_raw_text, encoding="utf-8"
+        )
+        report = {
+            "calculation_version": report_builder.CALCULATION_VERSION,
+            "txn_count": 0,
+        }
+        assert report_builder.check_stale("2026-07", report) is True
+
 
 # --------------------------------------------------------------------------- #
 # Status transitions — write/read status.

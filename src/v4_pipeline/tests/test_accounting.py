@@ -1384,6 +1384,110 @@ def test_detailed_section_mapping_rejects_unmapped_leaf_category_id():
         )
 
 
+def test_detailed_section_mapping_error_surfaces_offending_transaction():
+    """Regression: error must name the txn, not just the category ID."""
+    with pytest.raises(AccountingValidationError) as exc:
+        build_month_contract(
+            [
+                _transaction(
+                    42,
+                    -1234.5,
+                    {"id": "uncategorized", "title": "Uncategorized"},
+                    payee="Alex's Coffee Shop",
+                )
+            ],
+            OWNERS,
+            detailed_section_mapping=DETAILED_SECTION_MAPPING,
+        )
+    message = str(exc.value)
+    assert (
+        "Detailed section mapping has no section for category ID 'uncategorized'"
+        in message
+    )
+    assert (
+        "category ID 'uncategorized' = transaction has no category assigned "
+        "in PocketSmith" in message
+    )
+    assert "id=42" in message
+    assert "date='2030-04-01'" in message
+    assert "Alex's Coffee Shop" in message
+    assert "amount=-1234.5" in message
+
+
+def test_category_role_mapping_error_surfaces_offending_transaction():
+    """Regression: KPI-role errors used to omit the category ID entirely."""
+    with pytest.raises(AccountingValidationError) as exc:
+        build_month_contract(
+            [
+                _transaction(
+                    7,
+                    -50.0,
+                    {"id": "mystery", "title": "Mystery"},
+                    payee="Sam's Garage",
+                )
+            ],
+            OWNERS,
+            category_roles={"income": "income"},
+        )
+    message = str(exc.value)
+    assert "A reportable category has no KPI role for category ID 'mystery'" in message
+    assert "id=7" in message
+    assert "Sam's Garage" in message
+    assert "amount=-50.0" in message
+
+
+def test_category_catalog_missing_category_id_surfaces_transaction_and_hint():
+    """Regression: catalog-missing errors used to give no transaction hint."""
+    with pytest.raises(AccountingValidationError) as exc:
+        build_month_contract(
+            [
+                _transaction(
+                    99,
+                    -19.99,
+                    {"id": "uncategorized", "title": "Uncategorized"},
+                    payee="Sam's Bakery",
+                )
+            ],
+            OWNERS,
+            detailed_section_mapping={
+                "category_sections": {},
+                "account_roles": {},
+            },
+            category_parents={},
+        )
+    message = str(exc.value)
+    assert "Category catalog has no category ID 'uncategorized'" in message
+    assert (
+        "category ID 'uncategorized' = transaction has no category assigned "
+        "in PocketSmith" in message
+    )
+    assert "id=99" in message
+    assert "Sam's Bakery" in message
+    assert "amount=-19.99" in message
+
+
+def test_unmapped_category_error_bounds_to_ten_transactions_plus_more():
+    """Regression: many offending txns must not dump an unbounded list."""
+    transactions = [
+        _transaction(
+            index,
+            -1.0,
+            {"id": "uncategorized", "title": "Uncategorized"},
+            payee=f"Merchant {index}",
+        )
+        for index in range(12)
+    ]
+    with pytest.raises(AccountingValidationError) as exc:
+        build_month_contract(
+            transactions,
+            OWNERS,
+            detailed_section_mapping=DETAILED_SECTION_MAPPING,
+        )
+    message = str(exc.value)
+    assert message.count("payee=") == 10
+    assert "+2 more" in message
+
+
 def test_explicit_savings_account_ids_override_mapping_roles_after_map_validation():
     income = {"id": "income", "title": "Income"}
     savings = {"id": "savings", "title": "Savings"}

@@ -9,7 +9,11 @@ from unittest.mock import patch, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from budget_api.models.reports import PairedReimbursementRow, ReportResponse
+from budget_api.models.reports import (
+    PairedReimbursementRow,
+    ReportResponse,
+    SplitSection,
+)
 from budget_api.services import report_builder, storage
 
 # --------------------------------------------------------------------------- #
@@ -321,3 +325,36 @@ class TestReportResponseCompat:
         assert row.partner_a_class == "zero"
         assert row.partner_b == 0.0
         assert row.partner_b_class == "zero"
+
+    def test_pre_bside_split_row_defaults_section_and_partner_b_fields(self):
+        """v9-era stored split rows (5 original keys: category_id, label,
+        actual, fair, delta — no derived `section`, no b-side; see
+        git show HEAD~ src/budget_api/models/reports.py SplitCategoryRow)
+        validate with defaults instead of 500ing — the report is stale
+        (calculation_version) and regenerates on user action. Regression
+        guard for the v10 additive row change."""
+        split = SplitSection.model_validate(
+            {
+                "shares": {"partner_a": 55.0, "partner_b": 45.0},
+                "sections": ["home", "common"],
+                "rows": [
+                    {
+                        "category_id": "cat-1",
+                        "label": "Groceries",
+                        "actual": 500.0,
+                        "fair": 275.0,
+                        "delta": 225.0,
+                    }
+                ],
+                "settlement": {
+                    "from_partner": "Fixture A",
+                    "to_partner": "Fixture B",
+                    "amount": 225.0,
+                },
+            }
+        )
+        row = split.rows[0]
+        assert row.section is None
+        assert row.actual_b is None
+        assert row.fair_b is None
+        assert row.delta_b is None

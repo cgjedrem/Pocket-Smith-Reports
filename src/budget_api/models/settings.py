@@ -19,22 +19,26 @@ class ApiKeyUpdate(BaseModel):
 
 # --------------------------------------------------------------------------- #
 # Common-economy split — global % config (design doc "common economy split"
-# Gate 1). One global partner_a/partner_b % pair (sums to 100) + which
-# category sections participate. Slot-keyed (partner_a/partner_b), not real
-# partner IDs — settlement resolves real labels one layer up (report_builder).
+# Gate 1, category-level selection Gate 2). One global partner_a/partner_b %
+# pair (sums to 100) + which CATEGORY IDs participate (any catalog tree
+# level — a selected parent expands to its descendants at report-build
+# time). Slot-keyed (partner_a/partner_b), not real partner IDs — settlement
+# resolves real labels one layer up (report_builder).
 # --------------------------------------------------------------------------- #
 
-# Candidate sections today. Subset of
-# budget_api.models.category_mappings.DETAILED_CATEGORY_SECTIONS: only
-# sections shaped like a NetSection (per-category paid/received per partner)
-# can feed compute_split. Twin of accounting.SPLIT_ELIGIBLE_SECTIONS (keep in
-# sync — v4_pipeline cannot import budget_api, so this is not import-shared).
+# Legacy candidate sections (Gate 1) — no longer an eligibility restriction
+# on `categories` (the split picker lists every catalog category). Kept for
+# migrating an old sections-only split_config.json and for the derived
+# `sections` display field's known-good vocabulary. Twin of
+# accounting.SPLIT_ELIGIBLE_SECTIONS (keep in sync — v4_pipeline cannot
+# import budget_api, so this is not import-shared).
 SPLIT_ELIGIBLE_SECTIONS = {"home", "common", "trips"}
 
-# Missing split_config.json default — feature off, sections default to all
-# 3 candidates once the user enables (hard constraint 5).
+# Missing split_config.json default — feature off, no categories preselected
+# (with every catalog category eligible there's no sensible default subset;
+# the user picks explicitly once they enable the feature).
 DEFAULT_SPLIT_SHARES = {"partner_a": 50.0, "partner_b": 50.0}
-DEFAULT_SPLIT_SECTIONS = ["home", "common", "trips"]
+DEFAULT_SPLIT_CATEGORIES: list[str] = []
 
 
 class SplitShares(BaseModel):
@@ -48,21 +52,31 @@ class SplitConfig(BaseModel):
     """GET/PUT /api/settings/split — global split config.
 
     enabled=False means the feature is off (detailed.split stays None on
-    monthly/mega reports) regardless of what shares/sections hold.
+    monthly/mega reports) regardless of what shares/categories hold.
+
+    categories: source of truth — any catalog category ID, any tree level
+    (parent selection implies its descendants at report-build time).
+    sections: derived/back-compat field — the distinct
+    home/common/trips/personal_*/... sections `categories` maps to, server-
+    computed (never client-supplied) and persisted alongside `categories`
+    for readers that still expect a sections list.
     """
 
     enabled: bool
     shares: SplitShares
-    sections: list[str]
+    categories: list[str]
+    sections: list[str] = []
 
 
 class SplitConfigUpdate(BaseModel):
-    """PUT /api/settings/split body — same shape as SplitConfig, validated
-    in the router (shares sum to 100 -> 422, unknown section -> 400)."""
+    """PUT /api/settings/split body — categories is the write contract;
+    sections is NOT accepted from the client (router computes + persists it
+    from categories). Validated in the router (shares sum to 100 -> 422,
+    unknown category ID -> 400)."""
 
     enabled: bool
     shares: SplitShares
-    sections: list[str]
+    categories: list[str]
 
 
 class SplitConfigResponse(SplitConfig):
@@ -74,6 +88,17 @@ class SplitConfigResponse(SplitConfig):
     (report_builder._load_partner_labels). Display-only — never persisted
     to split_config.json (SplitConfig/SplitConfigUpdate stay unchanged, so
     the write path can't leak this field into the stored file).
+
+    warning: additive, machine-readable, None in the normal case. Set when
+    an on-disk legacy sections-only config can't be translated to
+    categories because detailed_section_mapping.json is missing —
+    settings-page GET must never data-loss the user's saved selection just
+    because a sidecar file is stale/absent (iteration 4, finding 2). Report
+    build (accounting.normalize_split_config) intentionally keeps the
+    stricter behavior and RAISES in this same situation instead — that path
+    computes real numbers from the translation, a silent/best-effort result
+    there would be a silent miscalculation, not just a display gap.
     """
 
     labels: dict[str, str]
+    warning: str | None = None

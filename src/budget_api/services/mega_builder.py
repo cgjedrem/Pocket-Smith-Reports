@@ -44,14 +44,24 @@ from budget_api.services.report_builder import (
 from accounting import (  # noqa: E402
     AccountingValidationError,
     DEFAULT_PARTNER_LABELS,
-    SPLIT_ELIGIBLE_SECTIONS,
+    _resolve_allowed_category_ids,
     compute_split,
+    load_category_parents,
+    load_detailed_section_mapping,
     load_split_config,
+    net_category_totals,
 )
 
 # PR1: mega parity marker; 1→2: common-economy split — split_summary
-# (aggregated from detail_agg["cats"], additive).
-MEGA_CALCULATION_VERSION = 2
+# (aggregated per-month via accounting.net_category_totals(), additive;
+# iteration 4 finding 1: was detail_agg["cats"], switched to fix
+# transfer double-counting — see _split_category_nets).
+# 2→3: two-sided split columns — split_summary rows share SplitCategoryRow
+# with the monthly build, so they gain the same derived `section` + b-side
+# actual_b/fair_b/delta_b. Same under-populated stored-payload risk as
+# monthly 9→10 (pre-v3 rows validate with None defaults → em-dash), so bumped
+# in lockstep.
+MEGA_CALCULATION_VERSION = 3
 
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 _MEGA_REPORT_FILE_RE = re.compile(r"^(\d{4}-\d{2})_(\d{4}-\d{2})_mega_report\.json$")
@@ -217,30 +227,46 @@ def _monthly_kpi_pages(
     return pages
 
 
-def _split_section_nets(cats: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    """detail_agg["cats"] → net_category_totals()-shaped rows per section,
-    summed across the whole mega window.
+def _split_category_nets(
+    monthly_results: list[tuple[str, dict[str, Any]]],
+    allowed_category_ids: set[str],
+    detailed_section_mapping: dict[str, dict[str, str]],
+) -> list[dict[str, Any]]:
+    """Per-category net totals for the mega split, summed across every
+    constituent month.
 
-    Recomputed from detail_agg rather than aggregating monthly reports'
-    split rows: detail_agg is the SAME source mega's own home/common/trips
-    totals already come from (build_mega.py section_series), so this stays
-    drift-free against what the mega report already displays and doesn't
-    require every constituent month to have an up-to-date stored report.
+    Calls accounting.net_category_totals() PER MONTH on that month's own
+    normalized_transactions, then sums the resulting rows by category_id —
+    reuses the EXACT SAME transfer-drop predicate monthly reports use (a
+    transfer whose natural section isn't home/savings/excluded isn't real
+    partner spend, dropped) so mega split dollar totals match summed
+    monthly split totals instead of double-counting transfer noise.
+
+    Fixed (iteration 4, finding 1): previously summed detail_agg["cats"]
+    partner nets — detail_agg aggregates ALL normalized records with NO
+    is_transfer gate (build_mega.py::_detail_agg feeds mega's own
+    home/common/trips totals, a different, unconditional aggregation
+    that's out of scope here) — reusing it for the split double-counted
+    transfers vs monthly split sums.
     """
-    result: dict[str, list[dict[str, Any]]] = {}
-    for category_id, category in cats.items():
-        section = category.get("section")
-        if section not in SPLIT_ELIGIBLE_SECTIONS:
-            continue
-        result.setdefault(section, []).append(
-            {
-                "category_id": category_id,
-                "category_title": category["title"],
-                "net_partner_a": sum(category["partner_a_net"]),
-                "net_partner_b": sum(category["partner_b_net"]),
-            }
-        )
-    return result
+    totals: dict[str, dict[str, Any]] = {}
+    for _month, result in monthly_results:
+        records = result["contract"].get("normalized_transactions", [])
+        rows = net_category_totals(records, allowed_category_ids, detailed_section_mapping)
+        for row in rows:
+            entry = totals.setdefault(
+                row["category_id"],
+                {
+                    "category_id": row["category_id"],
+                    "category_title": row["category_title"],
+                    "section": row["section"],
+                    "net_partner_a": 0.0,
+                    "net_partner_b": 0.0,
+                },
+            )
+            entry["net_partner_a"] += row["net_partner_a"]
+            entry["net_partner_b"] += row["net_partner_b"]
+    return list(totals.values())
 
 
 def _txn_counts(monthly_results: list[tuple[str, dict[str, Any]]]) -> dict[str, int]:
@@ -260,6 +286,51 @@ def _txn_counts(monthly_results: list[tuple[str, dict[str, Any]]]) -> dict[str, 
             len(raw) if isinstance(raw, list) else len(raw.get("transactions", []))
         )
     return counts
+
+
+def compute_mega_split_summary(
+    start: str,
+    end: str,
+    monthly_results: list[tuple[str, dict[str, Any]]],
+    partner_labels: dict[str, str],
+) -> dict[str, Any] | None:
+    """Common-economy split_summary for a mega window — SINGLE source of
+    truth reused by both build_mega_report (JSON/API path) and mega_pdf
+    (HTML/PDF path, via assemble_html's split_summary param) so neither
+    duplicates the split math. None when missing/disabled config, or
+    detailed_section_mapping absent (net_category_totals() needs it to
+    derive each record's natural section — same gate report_builder.
+    _detailed() uses for monthly).
+    """
+    try:
+        detailed_section_mapping = None
+        if storage.DETAILED_SECTION_MAPPING_PATH.exists():
+            detailed_section_mapping = load_detailed_section_mapping(
+                storage.DETAILED_SECTION_MAPPING_PATH
+            )
+        category_parents = None
+        if storage.CATEGORY_CATALOG_PATH.exists():
+            category_parents = load_category_parents(storage.CATEGORY_CATALOG_PATH)
+        split_config = load_split_config(
+            storage.SPLIT_CONFIG_PATH, category_parents, detailed_section_mapping
+        )
+    except AccountingValidationError as exc:
+        raise AccountingValidationError(
+            f"split config invalid for mega {start}..{end}: {exc}"
+        ) from exc
+    if split_config is None or detailed_section_mapping is None:
+        return None
+    allowed_ids = _resolve_allowed_category_ids(
+        split_config["categories"], category_parents
+    )
+    category_nets = _split_category_nets(
+        monthly_results, allowed_ids, detailed_section_mapping
+    )
+    split_summary = compute_split(category_nets, split_config["shares"])
+    split_summary["settlement"] = _resolve_split_settlement(
+        split_summary["settlement"], partner_labels
+    )
+    return split_summary
 
 
 def build_mega_report(start: str, end: str) -> dict[str, Any]:
@@ -286,22 +357,9 @@ def build_mega_report(start: str, end: str) -> dict[str, Any]:
     recommendations = context.get("recommendations")
 
     # Common-economy split — optional, missing/disabled => split_summary=None.
-    try:
-        split_config = load_split_config(storage.SPLIT_CONFIG_PATH)
-    except AccountingValidationError as exc:
-        raise AccountingValidationError(
-            f"split config invalid for mega {start}..{end}: {exc}"
-        ) from exc
-    split_summary = None
-    if split_config is not None:
-        section_nets = _split_section_nets(detail_agg["cats"])
-        split_summary = compute_split(
-            section_nets, split_config["shares"], split_config["sections"]
-        )
-        if split_summary is not None:
-            split_summary["settlement"] = _resolve_split_settlement(
-                split_summary["settlement"], partner_labels
-            )
+    split_summary = compute_mega_split_summary(
+        start, end, monthly_results, partner_labels
+    )
 
     return {
         "start": start,

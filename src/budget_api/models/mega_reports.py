@@ -49,4 +49,6 @@ class MegaReportResponse(BaseModel):
     # Additive (calculation_version 2) — common-economy split, aggregated
     # across the mega window from detail_agg["cats"] (same shape as monthly
     # detailed.split). None when no split_config.json or feature disabled.
+    # Rows share SplitCategoryRow — section + b-side fields arrived in
+    # calculation_version 3, None on stored v2 rows (see reports.py).
     split_summary: SplitSection | None = None

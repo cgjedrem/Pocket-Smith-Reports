@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import re
@@ -10,6 +11,14 @@ import sys
 from datetime import date
 from pathlib import Path
 from typing import Any
+
+# New pattern for this module (iteration 4, finding 3): accounting.py was
+# previously logging-free/pure (see the compute_split section docstring
+# below). Adding just enough logging to surface an otherwise-silent
+# best-effort degradation (_resolve_allowed_category_ids, catalog-absent
+# case) in report-build logs — same _logger convention already used by
+# report_builder.py/mega_builder.py, extended here on purpose.
+_logger = logging.getLogger(__name__)
 
 PARTNERS = ("partner_a", "partner_b")
 KPI_ROLES = {"income", "savings", "spend", "personal_spend", "investment", "exclude"}
@@ -30,11 +39,14 @@ DETAILED_ACCOUNT_ROLES = {
     "savings_partner_a",
     "savings_partner_b",
 }
-# Common-economy split — candidate sections today (design doc "common economy
-# split" Gate 1). Subset of DETAILED_CATEGORY_SECTIONS: only sections shaped
-# like a NetSection (per-category paid/received per partner) can feed
-# compute_split. Twin of budget_api.models.settings.SPLIT_ELIGIBLE_SECTIONS
-# (keep in sync — v4_pipeline cannot import budget_api).
+# Common-economy split — Gate 1's 3 candidate sections. Since Gate 2
+# (category-level split selection), this is no longer an eligibility
+# restriction for compute_split (any catalog category can be selected) —
+# it's kept only for legacy split_config.json migration semantics
+# (migrate_legacy_split_sections rejects an old sections-only file whose
+# values fall outside this set) and the GET-default response shape. Twin of
+# budget_api.models.settings.SPLIT_ELIGIBLE_SECTIONS (keep in sync —
+# v4_pipeline cannot import budget_api).
 SPLIT_ELIGIBLE_SECTIONS = frozenset({"home", "common", "trips"})
 PRIVATE_ACCOUNT_MAPPING = (
     Path(__file__).resolve().parents[2] / "data" / "private" / "account_mappings.json"
@@ -524,7 +536,11 @@ def savings_summary(
         category_id = record["category_path"][-1]["id"]
         role = (
             _resolve_category_mapping(
-                category_id, roles, category_parents, "Category role mapping"
+                category_id,
+                roles,
+                category_parents,
+                "Category role mapping",
+                records,
             )
             if roles is not None
             else None
@@ -615,7 +631,59 @@ def _validate_detailed_section_categories(
             category_sections,
             category_parents,
             "Detailed section mapping",
+            records,
         )
+
+
+def _category_id_hint(category_id: str) -> str:
+    """Extra context for the synthetic 'uncategorized' catalog ID."""
+    if category_id == "uncategorized":
+        return (
+            " (category ID 'uncategorized' = transaction has no category "
+            "assigned in PocketSmith)"
+        )
+    return ""
+
+
+def _format_affected_transactions(
+    records: list[dict[str, Any]] | None, category_id: str, limit: int = 10
+) -> str:
+    """Render up to `limit` txns whose category path touches category_id.
+
+    For error messages only — lets user find/fix the offending data. Bounded
+    so one bad mapping doesn't dump a whole month of txns into a string.
+    """
+    if not records:
+        return ""
+    matches = [
+        record
+        for record in records
+        if any(
+            node.get("id") == category_id
+            for node in record.get("category_path", [])
+        )
+    ]
+    if not matches:
+        return ""
+    lines = []
+    for record in matches[:limit]:
+        leaf = record["category_path"][-1]
+        lines.append(
+            "id={!r} date={!r} payee={!r} amount={!r} category={!r} "
+            "(category_id={!r})".format(
+                record.get("id"),
+                record.get("date"),
+                record.get("payee"),
+                record.get("amount"),
+                leaf.get("title"),
+                leaf.get("id"),
+            )
+        )
+    suffix = " Affected transactions: " + "; ".join(lines)
+    remaining = len(matches) - limit
+    if remaining > 0:
+        suffix += f"; +{remaining} more"
+    return suffix
 
 
 def _resolve_category_mapping(
@@ -623,6 +691,7 @@ def _resolve_category_mapping(
     mapping: dict[str, str],
     category_parents: dict[str, str | None] | None,
     label: str,
+    records: list[dict[str, Any]] | None = None,
 ) -> str:
     current_id = category_id
     visited: set[str] = set()
@@ -631,26 +700,40 @@ def _resolve_category_mapping(
         if mapped is not None:
             return mapped
         if category_parents is None:
-            raise _unmapped_category_error(label, category_id)
+            raise _unmapped_category_error(label, category_id, records)
         if current_id in visited:
             raise AccountingValidationError("Category catalog hierarchy has a cycle")
         visited.add(current_id)
         if current_id not in category_parents:
             raise AccountingValidationError(
                 f"Category catalog has no category ID {current_id!r}"
+                + _category_id_hint(current_id)
+                + _format_affected_transactions(records, category_id)
             )
         parent_id = category_parents[current_id]
         if parent_id is None:
-            raise _unmapped_category_error(label, category_id)
+            raise _unmapped_category_error(label, category_id, records)
         current_id = parent_id
 
 
-def _unmapped_category_error(label: str, category_id: str) -> AccountingValidationError:
+def _unmapped_category_error(
+    label: str,
+    category_id: str,
+    records: list[dict[str, Any]] | None = None,
+) -> AccountingValidationError:
+    hint = _category_id_hint(category_id)
+    details = _format_affected_transactions(records, category_id)
     if label == "Detailed section mapping":
         return AccountingValidationError(
             f"Detailed section mapping has no section for category ID {category_id!r}"
+            + hint
+            + details
         )
-    return AccountingValidationError("A reportable category has no KPI role")
+    return AccountingValidationError(
+        f"A reportable category has no KPI role for category ID {category_id!r}"
+        + hint
+        + details
+    )
 
 
 def _synthetic_owner(
@@ -902,7 +985,7 @@ def _role_kpis(
         amount = record["amount"]
         category_id = record["category_path"][-1]["id"]
         role = _resolve_category_mapping(
-            category_id, roles, category_parents, "Category role mapping"
+            category_id, roles, category_parents, "Category role mapping", records
         )
         if role == "exclude":
             continue
@@ -1310,36 +1393,153 @@ def detailed_net_section(
 
 
 # --------------------------------------------------------------------------- #
-# Common-economy split (design doc "common economy split" Gate 1).
+# Common-economy split (design doc "common economy split" Gate 1, category-
+# level selection Gate 2).
 #
 # One global partner_a/partner_b % pair (sums to 100, validated at the API
 # boundary in budget_api.routers.settings) applied to per-category net
-# totals across user-chosen sections (subset of SPLIT_ELIGIBLE_SECTIONS).
+# totals across user-chosen CATEGORY IDs (any catalog tree level — a
+# selected parent expands to every descendant via
+# _resolve_allowed_category_ids). Section is now a DERIVED, per-row display
+# grouping, not the selection unit — SPLIT_ELIGIBLE_SECTIONS only matters
+# for legacy sections-only config migration/GET-default semantics.
 # Pure — no file I/O, no partner-label resolution (config + output stay in
 # slot terms; real labels are resolved one layer up by report_builder /
-# accounting_html using the same partner-label loader).
+# accounting_html using the same partner-label loader). One documented
+# exception: _resolve_allowed_category_ids logs (module-level _logger) on
+# the catalog-absent best-effort path (iteration 4, finding 3) — a
+# diagnostic side effect only, return value is unaffected.
 # --------------------------------------------------------------------------- #
+
+# Display grouping order for split rows/sections — home/common/trips first
+# (original Gate 1 candidates), then the two personal sections, then
+# anything else (cc_payments, excluded, savings, income_*, ...) alphabetically.
+_SPLIT_SECTION_CANONICAL_ORDER = (
+    "home",
+    "common",
+    "trips",
+    "personal_partner_a",
+    "personal_partner_b",
+)
+
+
+def _split_section_sort_key(section: str) -> tuple[int, Any]:
+    if section in _SPLIT_SECTION_CANONICAL_ORDER:
+        return (0, _SPLIT_SECTION_CANONICAL_ORDER.index(section))
+    return (1, section)
+
+
+def _ordered_sections(sections: Any) -> list[str]:
+    """Distinct section values, canonical order first then alpha for the rest."""
+    unique = set(sections)
+    canonical = [s for s in _SPLIT_SECTION_CANONICAL_ORDER if s in unique]
+    extra = sorted(unique - set(_SPLIT_SECTION_CANONICAL_ORDER))
+    return canonical + extra
+
+
+def _resolve_allowed_category_ids(
+    selected_ids: Any,
+    category_parents: dict[str, str | None] | None,
+) -> set[str]:
+    """Expand selected category IDs (any catalog tree level) to the full
+    descendant closure — selecting a parent category includes every
+    descendant (leaf or intermediate) beneath it.
+
+    Single source of truth for "parent selection includes descendants" —
+    every caller (report_builder, accounting_html, mega_builder, the CLI
+    build.py path) reuses this instead of independently re-deriving
+    inclusion from category_path ancestors. Matching mechanism chosen:
+    expand-then-leaf-membership-check, not ancestor-walk-per-record — one
+    set built once per report, then a plain `in` check per record.
+
+    category_parents: child_id -> parent_id map covering every catalog
+    node (accounting.load_category_parents). None (no catalog on disk) =>
+    no expansion possible; selected IDs pass through unchanged (same
+    permissive-skip convention as the rest of this module when the catalog
+    is unavailable — a leaf-only selection still works correctly).
+
+    category_parents=None + a non-empty selection is undiagnosable here —
+    with no catalog we can't tell a parent ID (which needed expansion and
+    silently gets zero leaf matches) from a leaf ID (which works fine) — so
+    this doesn't raise (best-effort convention: split still computes,
+    leaf-only selections still work). It DOES log loudly so a fresh-install
+    silent-empty-split isn't invisible in report build logs (iteration 4,
+    finding 3).
+    """
+    selected = set(selected_ids)
+    if category_parents is None:
+        if selected:
+            _logger.warning(
+                "split category selection resolved with no category catalog "
+                "loaded — %d selected id(s) treated as literal leaf matches, "
+                "any that are actually parent-category IDs will match zero "
+                "records (best-effort, not raised): %s",
+                len(selected),
+                sorted(selected),
+            )
+        return selected
+    children: dict[str, list[str]] = {}
+    for child_id, parent_id in category_parents.items():
+        if parent_id is not None:
+            children.setdefault(parent_id, []).append(child_id)
+    allowed: set[str] = set()
+    stack = list(selected)
+    while stack:
+        current = stack.pop()
+        if current in allowed:
+            continue
+        allowed.add(current)
+        stack.extend(children.get(current, []))
+    return allowed
 
 
 def net_category_totals(
-    records: list[dict[str, Any]], section: str, mapping: dict[str, dict[str, str]]
+    records: list[dict[str, Any]],
+    allowed_category_ids: set[str],
+    mapping: dict[str, dict[str, str]],
 ) -> list[dict[str, Any]]:
-    """Per-category net totals for one section, WITH category_id.
+    """Per-category net totals for the common-economy split, filtered by
+    leaf category-ID membership (category-level selection — the caller
+    expands any selected parent categories via
+    _resolve_allowed_category_ids() first and passes the resulting set).
 
-    Twin data source to detailed_net_section (same _category_groups
-    grouping) — detailed_net_section's rows omit category_id (DTO shape is
-    frozen); compute_split needs it, so this is a separate, minimal
-    extraction rather than a change to the existing DTO-producing function.
+    Each row carries its derived `section`
+    (home/common/trips/personal_partner_a/personal_partner_b/... — no
+    eligibility restriction any more; SPLIT_ELIGIBLE_SECTIONS is legacy-
+    config migration/default semantics only).
+
+    Same transfer-routing rule as _records_in_section/_routed_section: a
+    record whose natural (unrouted) section isn't home/savings/excluded is
+    dropped when it's a transfer (internal money movement, not real
+    partner spend) — keeps split numbers identical to the sibling
+    detailed_net_section/detailed_personal_sections DTO blocks for the
+    same categories (and to a legacy sections-only config translated to
+    its equivalent category-ID set).
     """
-    groups = _category_groups(_records_in_section(records, section, mapping))
+    kept = []
+    for record in records:
+        leaf_id = record["category_path"][-1]["id"]
+        if leaf_id not in allowed_category_ids:
+            continue
+        natural_section = _section_of(record, mapping)
+        if record.get("is_transfer") and natural_section not in {
+            "home",
+            "savings",
+            "excluded",
+        }:
+            continue
+        kept.append(record)
+    groups = _category_groups(kept)
     rows = []
     for group in groups:
         net_a = group["paid"]["partner_a"] - group["received"]["partner_a"]
         net_b = group["paid"]["partner_b"] - group["received"]["partner_b"]
+        section = mapping["category_sections"].get(group["category_id"], "common")
         rows.append(
             {
                 "category_id": group["category_id"],
                 "category_title": group["title"],
+                "section": section,
                 "net_partner_a": net_a,
                 "net_partner_b": net_b,
             }
@@ -1348,52 +1548,70 @@ def net_category_totals(
 
 
 def compute_split(
-    section_category_nets: dict[str, list[dict[str, Any]]],
+    category_nets: list[dict[str, Any]],
     shares: dict[str, float],
-    sections: list[str],
-) -> dict[str, Any] | None:
+) -> dict[str, Any]:
     """Common-economy split — per-category actual/fair/delta + one netted
-    settlement across every enabled section.
+    settlement across whatever categories the caller already filtered in.
 
-    section_category_nets: {section_key: [net_category_totals() rows]} — the
-    caller supplies whichever section nets it already has (typically all of
-    SPLIT_ELIGIBLE_SECTIONS); sections not present or not enabled are simply
-    not summed in.
+    category_nets: net_category_totals()-shaped rows (category_id,
+    category_title, section, net_partner_a, net_partner_b) — already
+    filtered to the selected categories (any derived section, no
+    eligibility restriction). This function only nets + sorts; it does not
+    filter by category or section any more (that's net_category_totals'
+    / _split_category_nets' job, category-ID-based, upstream of this call).
     shares: {"partner_a": pct, "partner_b": pct} — trusted to already sum to
     100 (validated at the API boundary); this function does not re-validate.
-    sections: enabled section keys, in display order.
 
-    Rows are partner_a's perspective (two-partner system, shares sum to
-    100%, so partner_b's numbers are the exact complement per category:
-    actual_b = total - actual, fair_b = total - fair, delta_b = -delta).
-    Documented convention, not a general n-partner design.
+    Rows carry partner_a's perspective (actual/fair/delta) AND partner_b's
+    exact complement (actual_b/fair_b/delta_b) additively — two-partner
+    system, shares sum to 100%, so actual_b = total - actual,
+    fair_b = total * share_b_fraction (== total - fair), delta_b = -delta.
+    a-side fields unchanged for backward compat; b-side added on top.
 
-    Returns None when `sections` is empty (nothing selected — nothing to
-    split). settlement is None when the net imbalance is exactly 0 (no
-    transfer needed) — never fabricate a zero-amount transfer.
+    Rows are grouped by derived section in canonical display order (home,
+    common, trips, personal_partner_a, personal_partner_b, then anything
+    else alphabetically) — stable sort, so within each section rows keep
+    net_category_totals' original (abs-amount-descending) order.
+
+    Always returns a dict (never None) — an empty `category_nets` (e.g. an
+    enabled config with zero categories selected) is a valid, allowed
+    state: empty rows, settlement None, sections []. settlement is None
+    when the net imbalance is exactly 0 (within tolerance) — never
+    fabricate a zero-amount transfer.
     """
-    if not sections:
-        return None
     share_a_fraction = shares["partner_a"] / 100.0
+    share_b_fraction = shares["partner_b"] / 100.0
     rows: list[dict[str, Any]] = []
     delta_total_a = 0.0
-    for section in sections:
-        for category in section_category_nets.get(section, []):
-            net_a = category["net_partner_a"]
-            net_b = category["net_partner_b"]
-            total = net_a + net_b
-            fair_a = total * share_a_fraction
-            delta_a = net_a - fair_a
-            delta_total_a += delta_a
-            rows.append(
-                {
-                    "category_id": category["category_id"],
-                    "label": category["category_title"],
-                    "actual": net_a,
-                    "fair": fair_a,
-                    "delta": delta_a,
-                }
-            )
+    for category in category_nets:
+        net_a = category["net_partner_a"]
+        net_b = category["net_partner_b"]
+        total = net_a + net_b
+        fair_a = total * share_a_fraction
+        delta_a = net_a - fair_a
+        delta_total_a += delta_a
+        # b-side additive — exact complement of a-side (shares sum to 100%).
+        actual_b = total - net_a
+        fair_b = total * share_b_fraction
+        delta_b = actual_b - fair_b
+        rows.append(
+            {
+                "category_id": category["category_id"],
+                "label": category["category_title"],
+                "section": category["section"],
+                "actual": net_a,
+                "fair": fair_a,
+                "delta": delta_a,
+                "actual_b": actual_b,
+                "fair_b": fair_b,
+                "delta_b": delta_b,
+            }
+        )
+    # Stable sort — groups rows by derived section without disturbing the
+    # abs-amount-descending order net_category_totals already produced
+    # within each section.
+    rows.sort(key=lambda row: _split_section_sort_key(row["section"]))
     settlement = None
     # Tolerance, not `!= 0` — float sums over many non-round-share
     # categories land on ~1e-15 noise for a genuinely balanced split
@@ -1417,24 +1635,104 @@ def compute_split(
             }
     return {
         "shares": {"partner_a": shares["partner_a"], "partner_b": shares["partner_b"]},
-        "sections": list(sections),
+        "sections": _ordered_sections(row["section"] for row in rows),
         "rows": rows,
         "settlement": settlement,
     }
 
 
-def normalize_split_config(raw: Any) -> dict[str, Any] | None:
+def migrate_legacy_split_sections(
+    sections: list[str], detailed_section_mapping: dict[str, dict[str, str]]
+) -> list[str]:
+    """Legacy sections-only split_config.json (pre category-picker) ->
+    equivalent category-ID list.
+
+    Via detailed_section_mapping.json's LEAF keys, NOT catalog-parent
+    expansion — a category is included iff its currently-mapped section
+    was in the legacy `sections` list (design doc: "leaf mapping; not
+    catalog expansion"). Sorted for deterministic output (dict iteration
+    order isn't a stable contract).
+    """
+    legacy_sections = set(sections)
+    category_sections = detailed_section_mapping.get("category_sections", {})
+    return sorted(
+        category_id
+        for category_id, section in category_sections.items()
+        if section in legacy_sections
+    )
+
+
+def derive_split_sections(
+    categories: list[str],
+    detailed_section_mapping: dict[str, dict[str, str]] | None,
+    category_parents: dict[str, str | None] | None,
+) -> list[str]:
+    """Distinct sections the given (unexpanded) selected category IDs
+    resolve to, in canonical display order — SplitConfig.sections
+    (backward-compat derived field on GET/PUT responses).
+
+    Best-effort / non-raising (unlike _resolve_category_mapping): a
+    selected category with no section mapping anywhere in its ancestor
+    chain (e.g. a catalog category with zero historical transactions, so
+    detailed_section_mapping.json never got an entry for it) is simply
+    skipped, not an error — this is a display-only derived field, not the
+    strict report-build-time resolution path (net_category_totals, which
+    only ever sees leaf IDs that already have real transactions and are
+    therefore already validated/resolved).
+    """
+    if detailed_section_mapping is None:
+        return []
+    allowed = _resolve_allowed_category_ids(categories, category_parents)
+    category_sections = detailed_section_mapping.get("category_sections", {})
+    present: set[str] = set()
+    for category_id in allowed:
+        section = category_sections.get(category_id)
+        if section is None and category_parents is not None:
+            current = category_parents.get(category_id)
+            visited: set[str] = set()
+            while current is not None and current not in visited:
+                visited.add(current)
+                section = category_sections.get(current)
+                if section is not None:
+                    break
+                current = category_parents.get(current)
+        if section is not None:
+            present.add(section)
+    return _ordered_sections(present)
+
+
+def normalize_split_config(
+    raw: Any,
+    valid_category_ids: set[str] | None = None,
+    detailed_section_mapping: dict[str, dict[str, str]] | None = None,
+) -> dict[str, Any] | None:
     """Validate + normalize a parsed split_config.json. None when disabled.
 
-    {enabled, shares: {partner_a, partner_b} summing to 100 (tolerance
-    1e-6), sections: subset of SPLIT_ELIGIBLE_SECTIONS}. Writes are already
-    validated at the API boundary (budget_api.routers.settings) — this is a
-    defensive re-check for report-build time (manual file edits, drift);
-    raises loudly like the other private-config loaders in this module, it
-    does not silently degrade a malformed file.
+    New schema (category-level split selection): {enabled, shares,
+    categories, sections}. `categories` (list of catalog category IDs, any
+    tree level) is the source of truth and is what this function returns;
+    `sections` is a derived/back-compat field the API writes alongside it
+    but is ignored here whenever `categories` is present.
+
+    A config with only `sections` (pre-category-picker file) is
+    auto-translated via migrate_legacy_split_sections() — requires
+    `detailed_section_mapping`; raises if it's not supplied.
+
+    valid_category_ids: full catalog ID set — an explicit `categories`
+    entry not in this set raises (defensive re-check; PUT already
+    validates at the API boundary). None skips validation (some
+    callers/tests don't have a catalog handy) — legacy-translated
+    categories are never re-validated against the catalog (they come from
+    the leaf mapping file, already known-valid).
+
+    Writes are already validated at the API boundary
+    (budget_api.routers.settings) — this is a defensive re-check for
+    report-build time (manual file edits, drift); raises loudly like the
+    other private-config loaders in this module, it does not silently
+    degrade a malformed file.
     """
     raw = _required_mapping(raw, "split config")
-    if set(raw) - {"enabled", "shares", "sections"}:
+    if set(raw) - {"enabled", "shares", "categories", "sections"}:
         raise AccountingValidationError("Split config has invalid fields")
     enabled = raw.get("enabled")
     if type(enabled) is not bool:
@@ -1466,33 +1764,74 @@ def normalize_split_config(raw: Any) -> dict[str, Any] | None:
         shares[key] = float(value)
     if abs(shares["partner_a"] + shares["partner_b"] - 100.0) > 1e-6:
         raise AccountingValidationError("Split config.shares must sum to 100")
-    sections_raw = raw.get("sections")
-    if not isinstance(sections_raw, list) or any(
-        type(section) is not str for section in sections_raw
-    ):
-        raise AccountingValidationError(
-            "Split config.sections must be a list of strings"
+
+    if "categories" in raw:
+        categories_raw = raw.get("categories")
+        if not isinstance(categories_raw, list) or any(
+            type(category_id) is not str for category_id in categories_raw
+        ):
+            raise AccountingValidationError(
+                "Split config.categories must be a list of strings"
+            )
+        if valid_category_ids is not None:
+            unknown = sorted(set(categories_raw) - valid_category_ids)
+            if unknown:
+                raise AccountingValidationError(
+                    "Split config.categories has unknown category ID(s): "
+                    + ", ".join(unknown)
+                )
+    elif "sections" in raw:
+        sections_raw = raw.get("sections")
+        if not isinstance(sections_raw, list) or any(
+            type(section) is not str for section in sections_raw
+        ):
+            raise AccountingValidationError(
+                "Split config.sections must be a list of strings"
+            )
+        unknown_sections = sorted(set(sections_raw) - SPLIT_ELIGIBLE_SECTIONS)
+        if unknown_sections:
+            raise AccountingValidationError(
+                "Split config.sections has unknown section(s): "
+                + ", ".join(unknown_sections)
+            )
+        if detailed_section_mapping is None:
+            raise AccountingValidationError(
+                "Split config.sections (legacy) requires the detailed "
+                "section mapping to translate into category IDs"
+            )
+        categories_raw = migrate_legacy_split_sections(
+            sections_raw, detailed_section_mapping
         )
-    unknown = sorted(set(sections_raw) - SPLIT_ELIGIBLE_SECTIONS)
-    if unknown:
+    else:
         raise AccountingValidationError(
-            f"Split config.sections has unknown section(s): {', '.join(unknown)}"
+            "Split config must have a categories or sections field"
         )
+
     seen: set[str] = set()
-    sections: list[str] = []
-    for section in sections_raw:
-        if section not in seen:
-            seen.add(section)
-            sections.append(section)
-    return {"shares": shares, "sections": sections}
+    categories: list[str] = []
+    for category_id in categories_raw:
+        if category_id not in seen:
+            seen.add(category_id)
+            categories.append(category_id)
+    return {"shares": shares, "categories": categories}
 
 
 def load_split_config(
     config_path: str | Path | None = None,
+    category_parents: dict[str, str | None] | None = None,
+    detailed_section_mapping: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any] | None:
     """Load common-economy split config. None when the file is absent or the
     feature is disabled — additive: no split_config.json means behavior is
-    identical to before the feature existed."""
+    identical to before the feature existed.
+
+    category_parents: full catalog ID->parent map — its keys double as the
+    valid-category-ID universe for defensive re-validation. None skips
+    validation (catalog file missing).
+    detailed_section_mapping: needed only to translate a legacy
+    sections-only config file (see normalize_split_config); None + a
+    legacy file raises.
+    """
     path = Path(config_path) if config_path is not None else PRIVATE_SPLIT_CONFIG
     if not path.exists():
         return None
@@ -1500,7 +1839,10 @@ def load_split_config(
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise AccountingValidationError("Split config is unreadable") from error
-    return normalize_split_config(raw)
+    valid_category_ids = (
+        set(category_parents) if category_parents is not None else None
+    )
+    return normalize_split_config(raw, valid_category_ids, detailed_section_mapping)
 
 
 def _net_section_total(groups: list[dict[str, Any]]) -> float:

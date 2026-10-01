@@ -1,8 +1,9 @@
 // Common-economy split settings — GET/PUT /api/settings/split.
 // Enable toggle + partner_a/partner_b % shares (must sum to 100, checked
 // client-side before PUT — server re-validates: 422 sum!=100, 400 shape/
-// section errors) + section checkboxes (home/common/trips, the only
-// SPLIT_ELIGIBLE_SECTIONS today).
+// category errors) + category-level picker (CategoryTreeSelect, category-
+// level split selection Gate 2 — `categories` is the write contract;
+// `sections` is server-derived/read-only display, never sent on PUT).
 //
 // Partner slot labels (partner_a/partner_b -> display name) come straight
 // off the GET response's `labels` field (SplitConfigResponse — real names
@@ -16,21 +17,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getSplitConfig, updateSplitConfig } from "@/api/settings";
+import { BillsWarningBanner } from "@/components/bills/BillsWarningBanner";
 import { ErrorAlert } from "@/components/ErrorAlert";
+import { CategoryTreeSelect } from "@/components/settings/CategoryTreeSelect";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import {
-  SPLIT_ELIGIBLE_SECTIONS,
-  type SplitConfig,
-  type SplitEligibleSection,
-} from "@/types/api";
-
-const SECTION_LABELS: Record<SplitEligibleSection, string> = {
-  home: "Home",
-  common: "Common",
-  trips: "Trips",
-};
+import type { SplitConfig } from "@/types/api";
 
 function sumsTo100(a: number, b: number): boolean {
   return Math.abs(a + b - 100) <= 1e-6;
@@ -47,9 +40,17 @@ export function SplitConfigSection() {
   // Kept as strings while editing — numeric inputs, parsed on save/validate.
   const [shareA, setShareA] = useState("50");
   const [shareB, setShareB] = useState("50");
+  const [categories, setCategories] = useState<string[]>([]);
+  // Server-derived, read-only display only — never sent back on PUT.
   const [sections, setSections] = useState<string[]>([]);
 
   const [partnerLabels, setPartnerLabels] = useState<Record<string, string>>({});
+  // Additive, GET-response-only (SplitConfigResponse.warning) — legacy
+  // sections-only config that couldn't translate to categories because
+  // detailed_section_mapping.json is missing. Cleared on a successful save
+  // (PUT always writes the categories shape, so the condition can't
+  // immediately recur).
+  const [warning, setWarning] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -61,6 +62,7 @@ export function SplitConfigSection() {
       // round-trip in handleSave (server's PUT response is plain
       // SplitConfig, no `labels`), so labels persist across saves.
       setPartnerLabels(config.labels ?? {});
+      setWarning(config.warning ?? null);
     } catch (err) {
       setLoadError((err as { detail?: string })?.detail ?? "Cannot reach server");
     } finally {
@@ -72,6 +74,7 @@ export function SplitConfigSection() {
     setEnabled(config.enabled);
     setShareA(String(config.shares.partner_a));
     setShareB(String(config.shares.partner_b));
+    setCategories(config.categories);
     setSections(config.sections);
   }
 
@@ -93,15 +96,6 @@ export function SplitConfigSection() {
     return null;
   }, [sharesAreNumeric, parsedA, parsedB]);
 
-  const toggleSection = useCallback((section: string, checked: boolean) => {
-    setSections((prev) => {
-      if (checked) {
-        return prev.includes(section) ? prev : [...prev, section];
-      }
-      return prev.filter((s) => s !== section);
-    });
-  }, []);
-
   const handleSave = useCallback(async () => {
     setSaveError(null);
     setSaved(false);
@@ -115,16 +109,17 @@ export function SplitConfigSection() {
       const updated = await updateSplitConfig({
         enabled,
         shares: { partner_a: parsedA, partner_b: parsedB },
-        sections,
+        categories,
       });
       applyConfig(updated);
+      setWarning(null);
       setSaved(true);
     } catch (err) {
       setSaveError((err as { detail?: string })?.detail ?? "Cannot reach server");
     } finally {
       setSaving(false);
     }
-  }, [sumError, enabled, parsedA, parsedB, sections]);
+  }, [sumError, enabled, parsedA, parsedB, categories]);
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Loading...</p>;
@@ -133,6 +128,7 @@ export function SplitConfigSection() {
   return (
     <div className="flex flex-col gap-3">
       {loadError && <ErrorAlert message={loadError} />}
+      {warning && <BillsWarningBanner warnings={[warning]} title="Split configuration warning" />}
 
       <div className="flex items-center gap-2">
         <Checkbox
@@ -183,19 +179,13 @@ export function SplitConfigSection() {
       )}
 
       <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Sections included</span>
-        <div className="flex items-center gap-4">
-          {SPLIT_ELIGIBLE_SECTIONS.map((section) => (
-            <div key={section} className="flex items-center gap-2">
-              <Checkbox
-                id={`split-section-${section}`}
-                checked={sections.includes(section)}
-                onCheckedChange={(v) => toggleSection(section, Boolean(v))}
-              />
-              <Label htmlFor={`split-section-${section}`}>{SECTION_LABELS[section]}</Label>
-            </div>
-          ))}
-        </div>
+        <span className="text-sm font-medium">Categories included</span>
+        <CategoryTreeSelect selected={categories} onChange={setCategories} />
+        {sections.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Included sections: {sections.join(", ")}
+          </p>
+        )}
       </div>
 
       <div className="flex items-center gap-2">

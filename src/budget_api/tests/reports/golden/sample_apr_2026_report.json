@@ -1,7 +1,7 @@
 {
   "month": "2026-04",
   "contract_version": 2,
-  "calculation_version": 9,
+  "calculation_version": 10,
   "txn_count": 43,
   "normalized_transactions": [
     {

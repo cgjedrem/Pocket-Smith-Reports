@@ -246,7 +246,9 @@ def build_month_html(
         partner_labels["partner_b"] = partner_b_label
     # Common-economy split — optional; missing file/disabled => None (no
     # block rendered, identical output to before the feature existed).
-    split_config = load_split_config(split_config_path)
+    split_config = load_split_config(
+        split_config_path, category_parents, detailed_section_mapping
+    )
     contract = build_month_contract(
         transactions,
         account_owners=account_owners,
@@ -256,7 +258,8 @@ def build_month_html(
         category_parents=category_parents,
     )
     html = render_html(
-        contract, month, partner_labels, theme, split_config=split_config
+        contract, month, partner_labels, theme, split_config=split_config,
+        category_parents=category_parents,
     )
     body_start = html.index(">", html.index("<body")) + 1
     body_end = html.rindex("</body>")
@@ -326,7 +329,7 @@ def main():
     parser.add_argument(
         "--split-config",
         default=None,
-        help="JSON common-economy split config (enabled, shares, sections); "
+        help="JSON common-economy split config (enabled, shares, categories); "
         "defaults to the private split_config.json, gracefully off if absent",
     )
     args = parser.parse_args()

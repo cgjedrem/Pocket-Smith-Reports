@@ -23,7 +23,7 @@ if str(_V4_DIR) not in sys.path:
 
 from accounting import (  # noqa: E402
     AccountingValidationError,
-    SPLIT_ELIGIBLE_SECTIONS,
+    _resolve_allowed_category_ids,
     build_month_contract,
     compute_split,
     detailed_cc_payments_section,
@@ -42,7 +42,7 @@ from accounting import (  # noqa: E402
     net_category_totals,
     validate_partner_labels,
 )
-from data_loader import load  # noqa: E402
+from data_loader import _transaction_account_id, load  # noqa: E402
 
 from budget_api.services import storage
 
@@ -52,7 +52,12 @@ from budget_api.services import storage
 # 7→8: paired reimbursement rows nested per category row on NetCategoryRow;
 # fully-paired categories now emit their zero-net row (no separate table).
 # 8→9: common-economy split — detailed.split (SplitSection | None), additive.
-CALCULATION_VERSION = 9
+# 9→10: two-sided split columns — SplitCategoryRow gains derived `section` +
+# b-side actual_b/fair_b/delta_b, additive (Optional defaults keep pre-v10
+# stored rows loadable). Version bump per PR53/57 precedent (design doc
+# L450-461): additive fields without a bump leave reports non-stale with no
+# user path to discovering the new columns.
+CALCULATION_VERSION = 10
 
 # Breaking-contract identity marker (contracts/monthly-report-contract-v2.md).
 # Readers must reject stored payloads where this is absent or != 2 BEFORE
@@ -305,6 +310,7 @@ def _detailed(
     savings_summary: dict[str, Any] | None,
     split_config: dict[str, Any] | None = None,
     partner_labels: dict[str, str] | None = None,
+    category_parents: dict[str, str | None] | None = None,
 ) -> dict[str, Any] | None:
     """Compose the `detailed` DTO from accounting.py's section builders.
 
@@ -325,17 +331,14 @@ def _detailed(
     )
     split = None
     if split_config is not None:
-        section_nets = {
-            section: net_category_totals(records, section, mapping)
-            for section in SPLIT_ELIGIBLE_SECTIONS
-        }
-        split = compute_split(
-            section_nets, split_config["shares"], split_config["sections"]
+        allowed_ids = _resolve_allowed_category_ids(
+            split_config["categories"], category_parents
         )
-        if split is not None:
-            split["settlement"] = _resolve_split_settlement(
-                split["settlement"], partner_labels or {}
-            )
+        category_nets = net_category_totals(records, allowed_ids, mapping)
+        split = compute_split(category_nets, split_config["shares"])
+        split["settlement"] = _resolve_split_settlement(
+            split["settlement"], partner_labels or {}
+        )
     return {
         "income": income,
         "savings": detailed_savings_section(records, savings_summary, mapping),
@@ -453,7 +456,9 @@ def build_report(month: str) -> dict[str, Any]:
 
     # Common-economy split config — optional, missing/disabled => split=None.
     try:
-        split_config = load_split_config(storage.SPLIT_CONFIG_PATH)
+        split_config = load_split_config(
+            storage.SPLIT_CONFIG_PATH, category_parents, detailed_section_mapping
+        )
     except AccountingValidationError as exc:
         raise AccountingValidationError(
             f"split config invalid for month {month}: {exc}"
@@ -499,6 +504,7 @@ def build_report(month: str) -> dict[str, Any]:
             contract["savings_summary"],
             split_config,
             partner_labels,
+            category_parents,
         ),
         "personal_share": _personal_share(kpis),
         "personal_share_partner_a": _partner_personal_share(kpis, "partner_a"),
@@ -550,9 +556,28 @@ def check_stale(month: str, report_dict: dict[str, Any]) -> bool:
     except (json.JSONDecodeError, OSError):
         return True
     # ps_raw is a list of transactions (sync_runner writes list directly).
-    raw_count = len(raw) if isinstance(raw, list) else len(raw.get("transactions", []))
+    # Wrong-shape JSON → uncountable → stale (data_loader.load coerces such
+    # files to empty, so this is the conservative side).
+    if isinstance(raw, list):
+        txns = raw
+    elif isinstance(raw, dict) and isinstance(raw.get("transactions"), list):
+        txns = raw["transactions"]
+    else:
+        return True
+    # txn_count is normalized (filtered) — drop excluded-account txns before
+    # comparing, same filter as _load_transactions → data_loader.load.
+    try:
+        excluded = _load_excluded_account_ids()
+    except (json.JSONDecodeError, OSError):
+        return True  # corrupt mappings → can't filter → stale
+    if excluded and isinstance(txns, list):
+        txns = [
+            t
+            for t in txns
+            if not (isinstance(t, dict) and _transaction_account_id(t) in excluded)
+        ]
     report_count = report_dict.get("txn_count", 0)
-    return raw_count != report_count
+    return len(txns) != report_count
 
 
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")

@@ -228,17 +228,39 @@ export interface HouseholdTotals {
 // (two-partner system, shares sum to 100%, so partner_b's numbers are the
 // exact complement: actual_b = total - actual, etc.). Matches backend
 // src/budget_api/models/reports.py::SplitCategoryRow.
+// section: derived display grouping (home/common/trips/personal_partner_a/
+// personal_partner_b/...) — category-level selection is the source of
+// truth, section is NOT an eligibility filter anymore.
 export interface SplitCategoryRow {
   category_id: string;
   label: string;
+  // Nullable for the same stored-v9 compat reason as the b-side fields
+  // below: v9 stored rows carry only 5 keys (no section, no b-side).
+  section: string | null;
   actual: number;
   fair: number;
   delta: number;
+  // partner_b's perspective (additive on top of the a-side fields above —
+  // exact complement: actual_b = total - actual, fair_b = total - fair,
+  // delta_b = -delta). Optional + nullable: compute_split() always
+  // populates these for freshly-built reports, but stored
+  // CALCULATION_VERSION=9 reports persisted before this change only carry
+  // the 5 original keys — render em-dash for those, never fabricate 0.
+  actual_b?: number | null;
+  fair_b?: number | null;
+  delta_b?: number | null;
 }
 
 // Single netted transfer for the whole split. from_partner/to_partner are
 // REAL display labels (already resolved server-side in report_builder.py —
 // never render these as "partner_a"/"partner_b" slot keys).
+// Rendered again (restored 2026-10-01, user request): both frontend
+// surfaces draw a settlement sentence below the split tables' totals
+// rows (DetailedSections.tsx CommonEconomySplitSection, KpiCoverSection.tsx
+// SplitSummaryCard) — "X pays Y …" wording; balanced (null) renders the
+// original em-dash wording, zero-rows renders nothing. Mirrors the backend
+// twin restoration in accounting_html.py / build_mega.py (which use
+// "Settlement: X owes Y N." phrasing — NOT mirrored on React).
 export interface SplitSettlement {
   from_partner: string;
   to_partner: string;

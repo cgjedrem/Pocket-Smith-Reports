@@ -246,13 +246,40 @@ describe("NetSection — nested paired reimbursements", () => {
 // that predates the field entirely (test that as `undefined`, not just
 // `null`, since older reports literally lack the key).
 describe("CommonEconomySplitSection", () => {
+  // a-side only — b-side fields omitted (undefined), simulating a stale
+  // stored v9 row persisted before the b-side columns existed.
   function splitRow(
     category_id: string,
     label: string,
+    section: string,
     actual: number,
     fair: number,
   ): SplitSectionDto["rows"][number] {
-    return { category_id, label, actual, fair, delta: actual - fair };
+    return { category_id, label, section, actual, fair, delta: actual - fair };
+  }
+
+  // Full 7-field row — both a-side and b-side (b-side is the exact
+  // complement per compute_split()'s docstring: actual_b = total - actual).
+  function splitRowFull(
+    category_id: string,
+    label: string,
+    section: string,
+    actual: number,
+    fair: number,
+    actual_b: number,
+    fair_b: number,
+  ): SplitSectionDto["rows"][number] {
+    return {
+      category_id,
+      label,
+      section,
+      actual,
+      fair,
+      delta: actual - fair,
+      actual_b,
+      fair_b,
+      delta_b: actual_b - fair_b,
+    };
   }
 
   it("renders no block at all when split is null", () => {
@@ -268,50 +295,332 @@ describe("CommonEconomySplitSection", () => {
     expect(screen.queryByRole("heading", { name: /Common Economy Split/i })).not.toBeInTheDocument();
   });
 
-  it("renders the per-category actual/fair/delta table when split is populated", () => {
+  it("renders the per-category actual/fair/delta table (7 columns, both partners), grouped under a per-section subheading", () => {
     const split: SplitSectionDto = {
       shares: { partner_a: 60, partner_b: 40 },
       sections: ["home", "common", "trips"],
-      rows: [splitRow("cat-1", "Groceries", 600, 500), splitRow("cat-2", "Rent", 1000, 900)],
+      rows: [
+        splitRowFull("cat-1", "Groceries", "common", 600, 500, 150, 100),
+        splitRowFull("cat-2", "Rent", "home", 1000, 900, 300, 250),
+      ],
       settlement: null,
     };
     render(<DetailedSections report={mkReport({ split })} />);
 
     const section = sectionOf("10. Common Economy Split");
-    expect(within(section).getByText("Groceries")).toBeInTheDocument();
-    expect(within(section).getByText("Rent")).toBeInTheDocument();
-    // Column headers carry partner_a's real display label (Alex here), not
-    // generic "Actual"/"Fair share"/"Delta" — parity with the HTML/PDF twin
-    // (accounting_html.py::_legacy_split_section uses partner_labels["partner_a"]).
+    // Column headers carry BOTH partners' real display labels (Alex/Sam
+    // here), not generic "Actual"/"Fair share"/"Delta" — parity with the
+    // HTML/PDF twin (accounting_html.py::_legacy_split_section uses
+    // partner_labels["partner_a"] / partner_labels["partner_b"]).
     const headers = Array.from(section.querySelectorAll("thead th")).map((th) => th.textContent);
-    expect(headers).toEqual(["Category", "Alex actual", "Alex fair share", "Alex delta"]);
-    // actual=600.00, fair=500.00, delta=+100.00 (fmtSigned prefixes "+").
-    const rows = Array.from(section.querySelectorAll("tbody tr"));
-    const groceriesCells = Array.from(rows[0].querySelectorAll("td")).map((td) => td.textContent);
-    expect(groceriesCells).toEqual(["Groceries", "600.00", "500.00", "+100.00"]);
+    expect(headers).toEqual([
+      "Category",
+      "Alex actual",
+      "Alex fair share",
+      "Alex delta",
+      "Sam actual",
+      "Sam fair share",
+      "Sam delta",
+    ]);
+
+    // Group order follows section.sections ("home" before "common") even
+    // though the row for "home" (Rent) comes second in `rows` — subheadings
+    // use the same raw section-key label the category-mapping editor's
+    // detailedSectionLabel() falls back to for non-personal sections.
+    const headings = Array.from(section.querySelectorAll("tr.split-section-heading")).map(
+      (tr) => tr.textContent,
+    );
+    expect(headings).toEqual(["home", "common"]);
+
+    // Rent (home) row cells — a-side actual=1000.00/fair=900.00/delta=+100.00,
+    // b-side (Sam) actual=300.00/fair=250.00/delta=+50.00.
+    const rentRow = within(section).getByText("Rent").closest("tr")!;
+    expect(Array.from(rentRow.querySelectorAll("td")).map((td) => td.textContent)).toEqual([
+      "Rent",
+      "1,000.00",
+      "900.00",
+      "+100.00",
+      "300.00",
+      "250.00",
+      "+50.00",
+    ]);
+    // Groceries (common) row cells — a-side actual=600.00/fair=500.00/delta=+100.00,
+    // b-side (Sam) actual=150.00/fair=100.00/delta=+50.00.
+    const groceriesRow = within(section).getByText("Groceries").closest("tr")!;
+    expect(Array.from(groceriesRow.querySelectorAll("td")).map((td) => td.textContent)).toEqual([
+      "Groceries",
+      "600.00",
+      "500.00",
+      "+100.00",
+      "150.00",
+      "100.00",
+      "+50.00",
+    ]);
+
+    // Grand-totals row — LAST tbody row, ONE row across both section
+    // groups (not per group). Hand-computed column sums:
+    //   actual   600 + 1000 = 1,600.00
+    //   fair     500 +  900 = 1,400.00
+    //   delta    100 +  100 = +200.00
+    //   actual_b 150 +  300 =   450.00
+    //   fair_b   100 +  250 =   350.00
+    //   delta_b   50 +   50 = +100.00
+    const bodyRows = Array.from(section.querySelectorAll("tbody tr"));
+    const totalsRow = bodyRows[bodyRows.length - 1];
+    expect(totalsRow.className).toBe("legacy-total");
+    expect(Array.from(totalsRow.querySelectorAll("td")).map((td) => td.textContent)).toEqual([
+      "Total",
+      "1,600.00",
+      "1,400.00",
+      "+200.00",
+      "450.00",
+      "350.00",
+      "+100.00",
+    ]);
   });
 
-  it("renders em-dash when settlement is null but rows exist", () => {
+  it("renders em-dash for b-side cells when actual_b/fair_b/delta_b are null (stale stored CALCULATION_VERSION=9 row, predates b-side columns)", () => {
+    const split: SplitSectionDto = {
+      shares: { partner_a: 60, partner_b: 40 },
+      sections: ["home"],
+      rows: [
+        {
+          category_id: "cat-1",
+          label: "Rent",
+          section: "home",
+          actual: 1000,
+          fair: 900,
+          delta: 100,
+          actual_b: null,
+          fair_b: null,
+          delta_b: null,
+        },
+      ],
+      settlement: null,
+    };
+    render(<DetailedSections report={mkReport({ split })} />);
+
+    const section = sectionOf("10. Common Economy Split");
+    const rentRow = within(section).getByText("Rent").closest("tr")!;
+    expect(Array.from(rentRow.querySelectorAll("td")).map((td) => td.textContent)).toEqual([
+      "Rent",
+      "1,000.00",
+      "900.00",
+      "+100.00",
+      "—",
+      "—",
+      "—",
+    ]);
+
+    // Totals row: a-side sums render normally; EVERY b-side totals cell is
+    // an em-dash (one null contributor poisons the column sum — never a
+    // fabricated 0, mirroring the backend "never fabricate" convention).
+    const bodyRows = Array.from(section.querySelectorAll("tbody tr"));
+    const totalsRow = bodyRows[bodyRows.length - 1];
+    expect(totalsRow.className).toBe("legacy-total");
+    expect(Array.from(totalsRow.querySelectorAll("td")).map((td) => td.textContent)).toEqual([
+      "Total",
+      "1,000.00",
+      "900.00",
+      "+100.00",
+      "—",
+      "—",
+      "—",
+    ]);
+  });
+
+  it("groups a row with section: null under the fallback 'unknown' heading without crashing (stale CALCULATION_VERSION=9 stored row, predates the derived section key)", () => {
+    const split: SplitSectionDto = {
+      shares: { partner_a: 60, partner_b: 40 },
+      sections: ["home"],
+      rows: [
+        splitRowFull("cat-1", "Rent", "home", 1000, 900, 300, 250),
+        {
+          category_id: "cat-2",
+          label: "Old Category",
+          section: null,
+          actual: 50,
+          fair: 40,
+          delta: 10,
+        },
+      ],
+      settlement: null,
+    };
+    render(<DetailedSections report={mkReport({ split })} />);
+
+    const section = sectionOf("10. Common Economy Split");
+    // Canonical "home" first; stray "unknown" appended after in first-seen
+    // order. detailedSectionLabel returns the raw key verbatim for
+    // non-personal sections, so the fallback heading renders literally
+    // "unknown" (ugly but acceptable — v9 stored reports are regenerable).
+    const headings = Array.from(section.querySelectorAll("tr.split-section-heading")).map(
+      (tr) => tr.textContent,
+    );
+    expect(headings).toEqual(["home", "unknown"]);
+
+    // Null-section row sits directly under the "unknown" heading, and its
+    // omitted b-side fields (v9 rows carry none) render as em-dashes.
+    const unknownHeading = within(section).getByText("unknown").closest("tr")!;
+    const staleRow = unknownHeading.nextElementSibling as HTMLTableRowElement;
+    expect(Array.from(staleRow.querySelectorAll("td")).map((td) => td.textContent)).toEqual([
+      "Old Category",
+      "50.00",
+      "40.00",
+      "+10.00",
+      "—",
+      "—",
+      "—",
+    ]);
+  });
+
+  it("labels a personal_partner_a/b group 'Personal — {label}', mirroring detailedSectionLabel", () => {
+    const split: SplitSectionDto = {
+      shares: { partner_a: 50, partner_b: 50 },
+      sections: ["personal_partner_a", "personal_partner_b"],
+      rows: [
+        splitRow("cat-1", "Hobby", "personal_partner_a", 200, 200),
+        splitRow("cat-2", "Gym", "personal_partner_b", 100, 100),
+      ],
+      settlement: null,
+    };
+    render(<DetailedSections report={mkReport({ split })} />);
+    const section = sectionOf("10. Common Economy Split");
+    const headings = Array.from(section.querySelectorAll("tr.split-section-heading")).map(
+      (tr) => tr.textContent,
+    );
+    expect(headings).toEqual(["Personal — Alex", "Personal — Sam"]);
+  });
+
+  it("renders no transfer text when balanced (settlement null); delta totals snap to 0.00", () => {
     const split: SplitSectionDto = {
       shares: { partner_a: 50, partner_b: 50 },
       sections: ["home"],
-      rows: [splitRow("cat-1", "Home", 500, 500)],
+      rows: [splitRowFull("cat-1", "Home", "home", 500, 500, 500, 500)],
       settlement: null,
     };
     render(<DetailedSections report={mkReport({ split })} />);
     const section = sectionOf("10. Common Economy Split");
-    expect(within(section).getByText("—")).toBeInTheDocument();
+    // No fabricated transfer — balanced (settlement null with real rows)
+    // renders the ORIGINAL balanced wording: a bare em-dash sentence below
+    // the totals row, never a 0.00 "pays" text.
+    expect(within(section).queryByText(/pays/)).not.toBeInTheDocument();
+    const bodyRows = Array.from(section.querySelectorAll("tbody tr"));
+    const totalsRow = bodyRows[bodyRows.length - 1];
+    expect(totalsRow.className).toBe("legacy-total");
+    const settlementP = section.querySelector("p.note.split-settlement");
+    expect(settlementP).not.toBeNull();
+    expect(settlementP!.textContent).toBe("—");
+    // ORDER — sentence sits after the totals row in DOM order.
+    expect(
+      totalsRow.compareDocumentPosition(settlementP!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // Single row Home 500/500 (b-side 500/500) — sums are the row values.
+    expect(Array.from(totalsRow.querySelectorAll("td")).map((td) => td.textContent)).toEqual([
+      "Total",
+      "500.00",
+      "500.00",
+      "0.00", // float dust snapped; no "-0.00", no spurious "+"
+      "500.00",
+      "500.00",
+      "0.00",
+    ]);
   });
 
-  it("renders the settlement direction text using real partner labels verbatim", () => {
+  it("totals row sums raw floats then formats once — NOT sum of rounded rows", () => {
+    // Twin of backend test_totals_row_sums_raw_then_formats_once
+    // (test_split_html.py). Two categories each A-paid 0.008 at 50/50:
+    // each row's fair (0.004) and delta (0.004) format 0.00, but the raw
+    // totals (0.008) format 0.01 — a round-then-sum implementation would
+    // print 0.00. 0.008 > 0.005 so the totals snapDust never engages here.
+    const split: SplitSectionDto = {
+      shares: { partner_a: 50, partner_b: 50 },
+      sections: ["home", "common"],
+      rows: [
+        splitRowFull("cat-1", "Home thing", "home", 0.008, 0.004, 0.0, 0.004),
+        splitRowFull("cat-2", "Common thing", "common", 0.008, 0.004, 0.0, 0.004),
+      ],
+      settlement: null,
+    };
+    render(<DetailedSections report={mkReport({ split })} />);
+
+    const section = sectionOf("10. Common Economy Split");
+    // Per-row cells round individually: fair 0.00, delta +0.00.
+    const homeRow = within(section).getByText("Home thing").closest("tr")!;
+    expect(Array.from(homeRow.querySelectorAll("td")).map((td) => td.textContent)).toEqual([
+      "Home thing",
+      "0.01",
+      "0.00",
+      "+0.00",
+      "0.00",
+      "0.00",
+      "-0.00",
+    ]);
+
+    // Totals row — hand-computed raw sums, formatted once:
+    //   actual   0.008 + 0.008 = 0.016 → 0.02
+    //   fair     0.004 + 0.004 = 0.008 → 0.01   (round-then-sum → 0.00)
+    //   delta    0.004 + 0.004 = 0.008 → +0.01  (round-then-sum → +0.00)
+    //   actual_b 0.000 + 0.000 = 0.000 → 0.00
+    //   fair_b   0.004 + 0.004 = 0.008 → 0.01
+    //   delta_b -0.004 - 0.004 = -0.008 → -0.01 (round-then-sum → -0.00)
+    const bodyRows = Array.from(section.querySelectorAll("tbody tr"));
+    const totalsRow = bodyRows[bodyRows.length - 1];
+    expect(totalsRow.className).toBe("legacy-total");
+    expect(Array.from(totalsRow.querySelectorAll("td")).map((td) => td.textContent)).toEqual([
+      "Total",
+      "0.02",
+      "0.01",
+      "+0.01",
+      "0.00",
+      "0.01",
+      "-0.01",
+    ]);
+  });
+
+  it("renders the settlement sentence BELOW the totals row when settlement is present (original 'pays' wording)", () => {
+    // Restored 2026-10-01 (user request): settlement sentence re-added
+    // after the table — totals row kept AND the plain-language summary.
     const split: SplitSectionDto = {
       shares: { partner_a: 60, partner_b: 40 },
       sections: ["home", "common", "trips"],
-      rows: [splitRow("cat-1", "Groceries", 1234, 0)],
+      rows: [splitRow("cat-1", "Groceries", "common", 1234, 0)],
       settlement: { from_partner: "Sam", to_partner: "Alex", amount: 1234 },
     };
     render(<DetailedSections report={mkReport({ split })} />);
     const section = sectionOf("10. Common Economy Split");
-    expect(within(section).getByText("Sam pays Alex 1,234.00")).toBeInTheDocument();
+    // Original React wording — "{from} pays {to} {fmt(amount)}" — NOT the
+    // backend twin's "Settlement: X owes Y N." phrasing.
+    const settlementP = section.querySelector("p.note.split-settlement");
+    expect(settlementP).not.toBeNull();
+    expect(settlementP!.textContent).toBe("Sam pays Alex 1,234.00");
+
+    // ORDER: the sentence comes AFTER the totals row in DOM order
+    // (totals row is the last tbody row; the <p> follows </table>).
+    const bodyRows = Array.from(section.querySelectorAll("tbody tr"));
+    const totalsRow = bodyRows[bodyRows.length - 1];
+    expect(totalsRow.className).toBe("legacy-total");
+    expect(
+      totalsRow.compareDocumentPosition(settlementP!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("renders NO settlement sentence when there is nothing to settle (zero rows, settlement null)", () => {
+    // Enabled config with zero categories selected is an allowed state —
+    // the empty-state row renders, but no "—" settlement sentence and no
+    // fabricated 0.00 transfer (mirrors the backend twin's empty-rows
+    // early return: empty/null → nothing).
+    const split: SplitSectionDto = {
+      shares: { partner_a: 50, partner_b: 50 },
+      sections: [],
+      rows: [],
+      settlement: null,
+    };
+    render(<DetailedSections report={mkReport({ split })} />);
+    const section = sectionOf("10. Common Economy Split");
+    expect(
+      within(section).getByText("No categories in the selected split sections this month."),
+    ).toBeInTheDocument();
+    expect(section.querySelector("p.split-settlement")).toBeNull();
+    expect(within(section).queryByText(/pays/)).not.toBeInTheDocument();
   });
 });

@@ -233,17 +233,42 @@ class HouseholdTotals(BaseModel):
 class SplitCategoryRow(BaseModel):
     """One category row within the common-economy split.
 
-    actual/fair/delta are partner_a's perspective — a two-partner system
-    where shares sum to 100% makes partner_b's numbers the exact complement
-    (actual_b = total - actual, fair_b = total - fair, delta_b = -delta).
-    Documented convention, not a general n-partner design.
+    actual/fair/delta are partner_a's perspective; actual_b/fair_b/delta_b
+    are partner_b's — a two-partner system where shares sum to 100% makes
+    the b-side the exact complement (actual_b = total - actual,
+    fair_b = total - fair, delta_b = -delta). b-side added additively on
+    top of the original a-side fields (backward compat: a-side unchanged).
+
+    section is derived (home/common/trips/personal_partner_a/
+    personal_partner_b/... — no eligibility restriction since category-
+    level split selection; category-level selection is the source of
+    truth, section is display grouping only).
+
+    section and actual_b/fair_b/delta_b are Optional = None, NOT
+    required — compute_split() (calculation_version 10) always populates
+    them for freshly-built reports, but existing on-disk
+    CALCULATION_VERSION≤9 stored reports (built before this additive
+    change) persist rows with only the 5 original keys (category_id,
+    label, actual, fair, delta — no section, no b-side). GET
+    /reports/monthly/{month} runs ReportResponse.model_validate()
+    unconditionally (even when stale=True — the stale flag doesn't skip
+    validation), so a required field here would 500 on any pre-existing
+    stored report until regenerated. Optional-with-None-default matches
+    this file's existing nullable-semantics convention (never fabricate
+    zeros) and keeps old payloads loadable. Frontend: section + b-side
+    fields may be null/absent on old cached reports — treat as "not yet
+    available" (em-dash / fallback group), not an error.
     """
 
     category_id: str
     label: str
+    section: str | None = None
     actual: float
     fair: float
     delta: float
+    actual_b: float | None = None
+    fair_b: float | None = None
+    delta_b: float | None = None
 
 
 class SplitSettlement(BaseModel):
@@ -256,9 +281,13 @@ class SplitSettlement(BaseModel):
 
 
 class SplitSection(BaseModel):
-    """detailed.split — global %, per-category rows across every enabled
-    section, one netted settlement. None on the parent DetailedSections when
-    no split config exists or the feature is disabled (never fabricate)."""
+    """detailed.split — global %, per-category rows across every selected
+    category (category-level selection — sections is a derived display
+    grouping of the rows actually present, not the selection unit). None
+    on the parent DetailedSections when no split config exists or the
+    feature is disabled; an enabled config with zero categories selected
+    still gets a non-None SplitSection (empty rows, settlement null,
+    sections [])."""
 
     shares: dict[str, float]
     sections: list[str]
@@ -285,7 +314,9 @@ class DetailedSections(BaseModel):
     excluded: ExcludedSection | None = None
     household_totals: HouseholdTotals | None = None
     # Additive (calculation_version 9) — common-economy split. None when no
-    # split_config.json or the feature is disabled.
+    # split_config.json or the feature is disabled. Rows gained derived
+    # section + b-side fields in calculation_version 10 (None on stored
+    # v9 rows — see SplitCategoryRow).
     split: SplitSection | None = None
 
 
