@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from budget_api.models.reports import GenerateStatus  # noqa: F401 — re-exported
+from budget_api.models.reports import GenerateStatus, SplitSection  # noqa: F401 — re-exported
 
 
 class MegaReportRange(BaseModel):
@@ -46,3 +46,9 @@ class MegaReportResponse(BaseModel):
     # Per-month raw txns routed to each detailed section (Income, Savings, etc.).
     # Mirrors the CLI appendix: Date | Payee | Account | Amount per subcat.
     appendix_transactions: dict[str, list[dict]] | None = None
+    # Additive (calculation_version 2) — common-economy split, aggregated
+    # across the mega window from detail_agg["cats"] (same shape as monthly
+    # detailed.split). None when no split_config.json or feature disabled.
+    # Rows share SplitCategoryRow — section + b-side fields arrived in
+    # calculation_version 3, None on stored v2 rows (see reports.py).
+    split_summary: SplitSection | None = None

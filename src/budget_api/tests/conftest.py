@@ -42,6 +42,7 @@ def tmp_private_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         private / "detailed_section_mapping.json",
     )
     monkeypatch.setattr(storage, "PARTNER_LABELS_PATH", private / "partner_labels.json")
+    monkeypatch.setattr(storage, "SPLIT_CONFIG_PATH", private / "split_config.json")
     return private
 
 

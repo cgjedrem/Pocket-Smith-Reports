@@ -33,10 +33,16 @@ except ImportError:
 from accounting_html import render_mom
 from accounting import (
     AccountingValidationError,
+    PRIVATE_SPLIT_CONFIG,
+    _resolve_allowed_category_ids,
+    compute_split,
     load_category_parents,
     load_category_roles,
     load_category_titles,
+    load_detailed_section_mapping,
     load_excluded_account_ids,
+    load_split_config,
+    net_category_totals,
 )
 from build import build_month_html
 from compare import aggregate_normalized_months
@@ -667,8 +673,19 @@ def _main_category_spend(
                 raise MegaValidationError("Category catalog hierarchy has a cycle")
             root_seen.add(root_id)
             if root_id not in category_parents:
+                hint = (
+                    " (category ID 'uncategorized' = transaction has no "
+                    "category assigned in PocketSmith)"
+                    if root_id == "uncategorized"
+                    else ""
+                )
                 raise MegaValidationError(
                     f"Category catalog has no category ID {root_id!r}"
+                    + hint
+                    + " — offending transaction: "
+                    f"id={record.get('id')!r} date={record.get('date')!r} "
+                    f"payee={record.get('payee')!r} amount={record.get('amount')!r} "
+                    f"category={leaf.get('title')!r} (category_id={leaf.get('id')!r})"
                 )
             parent_id = category_parents[root_id]
             if parent_id is None:
@@ -795,8 +812,135 @@ def _render_salary_allocation(salary_allocation):
     )
 
 
+def _split_section_label(section: str, partner_labels: dict) -> str:
+    """Section group heading — twin of client detailedSectionLabel()
+    (category_mappings.ts): personal_partner_a/b get "Personal — {label}",
+    every other section renders its raw key as-is (unstyled, uncapitalized)."""
+    if section == "personal_partner_a":
+        return f"Personal \u2014 {partner_labels.get('partner_a', 'Partner A')}"
+    if section == "personal_partner_b":
+        return f"Personal \u2014 {partner_labels.get('partner_b', 'Partner B')}"
+    return section
+
+
+def _split_total_amount(value):
+    """Totals-cell formatter. None → em-dash (never fabricate 0.00).
+    Snap |v| < half-cent so a balanced split's float dust never prints
+    "-0.00"."""
+    if value is None:
+        return "—"
+    if abs(value) < 0.005:
+        value = 0.0
+    return f"{value:,.2f} NOK"
+
+
+def _render_split_summary(split_summary, partner_labels):
+    """Common economy split — mega HTML/PDF twin of accounting_html.py's
+    _legacy_split_section, aggregated across the whole mega window.
+
+    SOURCE OF TRUTH: split_summary is ALREADY COMPUTED (mega_builder.
+    compute_mega_split_summary — same net_category_totals()/compute_split()
+    math the JSON API and the monthly HTML twin use) — this function only
+    renders, never recomputes. "" when split_summary is None (feature off,
+    no config — omit the block entirely, no fabricated 0.00).
+    """
+    if split_summary is None:
+        return ""
+    # Both partners' actual/fair/delta columns — rows carry partner_a's
+    # perspective AND partner_b's exact complement additively (shares sum
+    # to 100%, see accounting.compute_split docstring).
+    label_a = partner_labels.get("partner_a", "Partner A")
+    label_b = partner_labels.get("partner_b", "Partner B")
+    parts = ['<h3>Common economy split</h3>']
+    rows = split_summary["rows"]
+    if not rows:
+        # Canonical copy — twin of accounting_html._legacy_split_section /
+        # React DetailedSections.tsx empty state.
+        parts.append(
+            "<p>No categories in the selected split sections this month.</p>"
+        )
+        return "".join(parts)
+    # Rows already grouped+sorted by canonical section order by
+    # compute_split() (stable sort) — group consecutive rows by section,
+    # do not re-sort. split_summary["sections"] gives the group order.
+    for section in split_summary["sections"]:
+        section_rows = [row for row in rows if row["section"] == section]
+        if not section_rows:
+            continue
+        row_html = "".join(
+            f"<tr><td>{escape(row['label'])}</td>"
+            f"<td>{row['actual']:,.2f} NOK</td>"
+            f"<td>{row['fair']:,.2f} NOK</td>"
+            f"<td>{row['delta']:,.2f} NOK</td>"
+            f"<td>{row['actual_b']:,.2f} NOK</td>"
+            f"<td>{row['fair_b']:,.2f} NOK</td>"
+            f"<td>{row['delta_b']:,.2f} NOK</td></tr>"
+            for row in section_rows
+        )
+        parts.append(
+            f"<h4>{escape(_split_section_label(section, partner_labels))}</h4>"
+            '<table><thead><tr><th scope="col">Category</th>'
+            f'<th scope="col">{escape(label_a)} actual</th>'
+            f'<th scope="col">{escape(label_a)} fair share</th>'
+            f'<th scope="col">{escape(label_a)} delta</th>'
+            f'<th scope="col">{escape(label_b)} actual</th>'
+            f'<th scope="col">{escape(label_b)} fair share</th>'
+            f'<th scope="col">{escape(label_b)} delta</th></tr></thead><tbody>'
+            f"{row_html}</tbody></table>"
+        )
+    # Grand totals table last — raw-float sums across ALL sections
+    # (mega window aggregates months; deltas still net), formatted once.
+    # "Balanced" reads as delta totals ~ 0.00; the settlement sentence
+    # restored BELOW the table (user request) spells the same signal out
+    # in words. Header repeated so cells stay identifiable outside
+    # a section table.
+    total_keys = ("actual", "fair", "delta", "actual_b", "fair_b", "delta_b")
+    totals = {}
+    for key in total_keys:
+        # None only on stale payloads. Sum raw; None → None → em-dash (0
+        # would hide missing data).
+        values = [row.get(key) for row in rows]
+        totals[key] = None if any(v is None for v in values) else sum(values)
+    totals_cells = "".join(
+        f"<td>{_split_total_amount(totals[key])}</td>" for key in total_keys
+    )
+    parts.append(
+        '<table><thead><tr><th scope="col">Category</th>'
+        f'<th scope="col">{escape(label_a)} actual</th>'
+        f'<th scope="col">{escape(label_a)} fair share</th>'
+        f'<th scope="col">{escape(label_a)} delta</th>'
+        f'<th scope="col">{escape(label_b)} actual</th>'
+        f'<th scope="col">{escape(label_b)} fair share</th>'
+        f'<th scope="col">{escape(label_b)} delta</th></tr></thead><tbody>'
+        f'<tr><th scope="row">Total</th>{totals_cells}</tr>'
+        "</tbody></table>"
+    )
+    # Settlement sentence BELOW the grand-totals table (below the totals
+    # row) — twin of accounting_html._legacy_split_section's restored
+    # callout (user request: keep totals row AND the plain-language
+    # summary). None only when balanced (empty-rows case returned early
+    # above) — never fabricate a 0.00 transfer, em-dash note instead.
+    settlement = split_summary["settlement"]
+    if settlement is None:
+        # Never fabricate a zero-amount transfer — em-dash convention.
+        parts.append("<p>Settlement: — (already even).</p>")
+    else:
+        # slot keys already label-resolved upstream by
+        # mega_builder.compute_mega_split_summary; .get() is a passthrough
+        # then (twin logic of the monthly renderer's slot-key lookup).
+        from_label = partner_labels.get(
+            settlement["from_partner"], settlement["from_partner"]
+        )
+        to_label = partner_labels.get(settlement["to_partner"], settlement["to_partner"])
+        parts.append(
+            f"<p><b>Settlement: {escape(from_label)} owes "
+            f'{escape(to_label)} {settlement["amount"]:,.2f} NOK.</b></p>'
+        )
+    return "".join(parts)
+
+
 def _render_kpi_cover(
-    number, title, agg, partner_labels, period, salary_allocation=None
+    number, title, agg, partner_labels, period, salary_allocation=None, split_summary=None
 ):
     cumulative = agg["cumulative"]
     cards = (
@@ -853,11 +997,20 @@ def _render_kpi_cover(
     salary_allocation_html = _render_salary_allocation(
         salary_allocation or {"income": 0.0, "entries": []}
     )
+    # Common-economy split — additive, omitted entirely (no wrapper markup)
+    # when split_summary is None (see _render_split_summary docstring).
+    split_summary_html = _render_split_summary(split_summary, partner_labels)
+    split_summary_section = (
+        f'<section class="mega-split-summary-wrap">{split_summary_html}</section>'
+        if split_summary_html
+        else ""
+    )
     return (
         f'<section class="mega-section mega-kpi-cover"><h2>{number}. {escape(title)}</h2>'
         f'<h1>Household Report</h1><p class="mega-period">{escape(period)}</p><div class="mega-kpi-grid">{card_html}</div></section>'
         f'<section class="mega-kpi-charts mega-kpi-charts-3col">{"".join(f"<div>{chart}</div>" for chart in charts)}</section>'
         f'<section class="mega-salary-allocation-wrap">{salary_allocation_html}</section>'
+        f"{split_summary_section}"
     )
 
 
@@ -1034,7 +1187,15 @@ def _publisher_lock(output_dir: Path, output_name: str, timeout_seconds: float =
                 fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
-def assemble_html(context: dict[str, object], args: argparse.Namespace) -> str:
+def assemble_html(
+    context: dict[str, object],
+    args: argparse.Namespace,
+    split_summary: dict[str, object] | None = None,
+) -> str:
+    """split_summary: pre-computed common-economy split (API/PDF paths:
+    mega_builder.compute_mega_split_summary; CLI main(): _cli_split_summary)
+    — additive param, default None omits the block. Never recomputed here —
+    see _render_split_summary docstring."""
     monthly_results = context["monthly_results"]
     first_result = monthly_results[0][1]
     recommendations = context["recommendations"]
@@ -1070,6 +1231,7 @@ def assemble_html(context: dict[str, object], args: argparse.Namespace) -> str:
                 partner_labels,
                 period,
                 context["salary_allocation"],
+                split_summary,
             )
         elif section.identifier == "recommendations":
             rendered = _render_recommendations(number, title, recommendations)
@@ -1197,6 +1359,64 @@ def _output_name(args: argparse.Namespace) -> str:
     return args.name
 
 
+def _cli_split_summary(
+    context: dict[str, object], args: argparse.Namespace
+) -> dict[str, object] | None:
+    """Common-economy split summary for the standalone CLI path.
+
+    Mirrors budget_api.services.mega_builder.compute_mega_split_summary
+    (same load_split_config -> _resolve_allowed_category_ids ->
+    net_category_totals-per-month -> compute_split chain) so the CLI emits
+    the same split block the API/PDF paths render when split_config.json
+    is enabled. budget_api itself is NOT imported — the CLI stays
+    standalone (see mega_pdf's header); this re-derives the summary from
+    the same v4_pipeline primitives with the CLI's own file paths.
+
+    None when the feature is off/absent (load_split_config None), when no
+    --split-config path applies (synthetic runs never default to the
+    private config), or when no detailed-section mapping is available
+    (net_category_totals needs it to derive each record's natural section
+    — same gate as the API path). Settlement stays slot-keyed here —
+    _render_split_summary resolves partner labels at render time (its
+    .get() is a passthrough for the API path's already-resolved labels).
+    """
+    if not args.split_config:
+        return None
+    detailed_section_mapping = None
+    if args.detailed_section_map and Path(args.detailed_section_map).exists():
+        detailed_section_mapping = load_detailed_section_mapping(
+            Path(args.detailed_section_map)
+        )
+    category_parents = None
+    if args.category_catalog and Path(args.category_catalog).exists():
+        category_parents = load_category_parents(Path(args.category_catalog))
+    split_config = load_split_config(
+        args.split_config, category_parents, detailed_section_mapping
+    )
+    if split_config is None or detailed_section_mapping is None:
+        return None
+    allowed_ids = _resolve_allowed_category_ids(
+        split_config["categories"], category_parents
+    )
+    totals: dict[str, dict[str, object]] = {}
+    for _month, result in context["monthly_results"]:
+        records = result["contract"].get("normalized_transactions", [])
+        for row in net_category_totals(records, allowed_ids, detailed_section_mapping):
+            entry = totals.setdefault(
+                row["category_id"],
+                {
+                    "category_id": row["category_id"],
+                    "category_title": row["category_title"],
+                    "section": row["section"],
+                    "net_partner_a": 0.0,
+                    "net_partner_b": 0.0,
+                },
+            )
+            entry["net_partner_a"] += row["net_partner_a"]
+            entry["net_partner_b"] += row["net_partner_b"]
+    return compute_split(list(totals.values()), split_config["shares"])
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", required=True)
@@ -1212,6 +1432,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--account-owner-map")
     parser.add_argument("--detailed-section-map", default=None)
     parser.add_argument("--category-catalog", default=None)
+    parser.add_argument("--split-config", default=None)
     parser.add_argument("--partner-a-label")
     parser.add_argument("--partner-b-label")
     parser.add_argument("--partner-label-map")
@@ -1238,6 +1459,12 @@ def main(argv: list[str] | None = None) -> int:
         from accounting import PRIVATE_CATEGORY_CATALOG
 
         args.category_catalog = PRIVATE_CATEGORY_CATALOG
+    if args.split_config is None and args.input_kind == "live":
+        # Same default source as the API path (storage.SPLIT_CONFIG_PATH ==
+        # accounting.PRIVATE_SPLIT_CONFIG). Synthetic runs stay split-free
+        # unless --split-config is passed explicitly — a synthetic fixture
+        # must never pick up the real private household config.
+        args.split_config = str(PRIVATE_SPLIT_CONFIG)
     if args.only and args.only not in valid_ids(include_recommendations=True):
         parser.exit(
             1,
@@ -1246,7 +1473,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     try:
         context = build_context(args)
-        html = assemble_html(context, args)
+        split_summary = _cli_split_summary(context, args)
+        html = assemble_html(context, args, split_summary=split_summary)
     except (MegaValidationError, OSError, ValueError, KeyError, TypeError) as error:
         parser.exit(1, f"{parser.prog}: error: {error}\n")
     try:

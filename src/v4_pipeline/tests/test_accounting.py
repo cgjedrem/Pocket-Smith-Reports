@@ -292,6 +292,57 @@ def test_unified_mapping_supplies_default_report_owners_and_labels(
     assert load_partner_labels() == {"partner_a": "Alex", "partner_b": "Blair"}
 
 
+def test_unified_mapping_mixed_schema_literal_slot_passthrough(
+    tmp_path, monkeypatch
+):
+    """Mixed schema: custom partners IDs + one account already keyed by the
+    literal "partner_a" slot. The token passes through unchanged and must
+    not displace real partners — the same resolution
+    budget_api._partner_slot_map produces on the equivalent file
+    (TestLoadAccountOwners.test_mixed_schema_literal_slot_token_passthrough).
+    """
+    mapping_path = tmp_path / "account_mappings.json"
+    mapping_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "partners": {
+                    "alex": {"label": "Alex"},
+                    "sam": {"label": "Sam"},
+                },
+                "accounts": {
+                    "100": {
+                        "name": "S Account",
+                        "partner_id": "sam",
+                        "excluded": False,
+                    },
+                    "200": {
+                        "name": "A Account",
+                        "partner_id": "alex",
+                        "excluded": False,
+                    },
+                    "300": {
+                        "name": "A Slot Account",
+                        "owner": "partner_a",
+                        "excluded": False,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("accounting.PRIVATE_ACCOUNT_MAPPING", mapping_path)
+
+    # Owners agree with the budget_api twin: alex→partner_a, sam→partner_b,
+    # literal slot token stays on partner_a.
+    assert load_account_owners() == {
+        "200": "partner_a",
+        "300": "partner_a",
+        "100": "partner_b",
+    }
+    assert load_partner_labels() == {"partner_a": "Alex", "partner_b": "Sam"}
+
+
 def test_transaction_drilldown_escapes_configured_owner_label():
     html = _transaction_drilldowns(
         [
@@ -356,18 +407,22 @@ def test_home_section_nets_paired_reimbursement_marked_as_transfer():
     assert "+100.00" in html
     assert "-100.00" in html
     assert "net 0 (paired)" not in html
-    assert "Paired reimbursements (net 0, shown for transparency)" in html
+    # No separate transparency table anymore — pairs nest in the main table.
+    assert "Paired reimbursements (net 0, shown for transparency)" not in html
     # Sign classes mirror the React DTO: recipient pos, payer neg, total zero.
     assert '<td class="pos">+100.00</td>' in html
     assert '<td class="neg">-100.00</td>' in html
     assert '<td class="zero"><b>0.00</b></td>' in html
-    # Paired rows live in a separate transparency table BELOW the category
-    # table + note (React parity), not inline in the category table.
+    # The notes were dropped with the separate table.
+    assert "The Home reimbursement rows" not in html
+    assert "No 50/50 split is assumed." not in html
     home_section = html.split("<h2>3. Home")[1].split("</section>")[0]
-    assert home_section.index("</table>") < home_section.index(
-        "Paired reimbursements"
-    )
-    assert home_section.index("The Home reimbursement rows") < home_section.index(
+    main_table = home_section.split("</table>")[0]
+    # Fully-paired category keeps its (zero-net) row, reimb-row immediately
+    # after it inside the SAME main table.
+    assert main_table.count('class="reimb-row"') == 1
+    assert "<td>Home</td>" in main_table
+    assert main_table.index("<td>Home</td>") < main_table.index(
         "Home (paired reimbursement)"
     )
     assert html.index("Home (paired reimbursement)") < html.index(
@@ -376,10 +431,37 @@ def test_home_section_nets_paired_reimbursement_marked_as_transfer():
     assert html.count("Home (paired reimbursement)") == 1
 
 
+def test_fully_paired_category_row_shares_render_em_dash():
+    # Regression: fully-paired (zero-net) category rows must NOT fabricate
+    # "0.0% / 0.0%" — the DTO sets shares None (_safe_pct never fabricates
+    # 0%) and React renders an em-dash; the HTML row must match.
+    home = {"id": "home", "title": "Home"}
+    transactions = [
+        _transaction(1, 100, home, "account-a", is_transfer=True),
+        _transaction(2, -100, home, "account-b", is_transfer=True),
+    ]
+    contract = build_month_contract(
+        transactions, OWNERS, detailed_section_mapping=DETAILED_SECTION_MAPPING
+    )
+
+    html = render(contract, "2030-04")
+
+    home_section = html.split("<h2>3. Home")[1].split("</section>")[0]
+    main_table = home_section.split("</table>")[0]
+    category_row = main_table.split("<td>Home</td>")[1].split("</tr>")[0]
+    assert "— / —" in category_row
+    assert "0.0%" not in category_row
+    # Section grand total is also 0 here — the Total row follows the same
+    # convention (em-dash, no fabricated 0%).
+    total_row = main_table.split('<tr class="legacy-total">')[1].split("</tr>")[0]
+    assert "— / —" in total_row
+    assert "0.0%" not in total_row
+
+
 def test_fallback_styles_color_paired_sign_classes():
     # The _REPORT_STYLES fallback (used when report-shared.scss is missing)
     # must carry the same .legacy-table sign-color rules, or the paired
-    # reimbursement table loses its green/red/muted cell coloring.
+    # reimbursement rows lose their green/red/muted cell coloring.
     for rule in (
         ".legacy-table .pos { color: #2ca02c; }",
         ".legacy-table .neg { color: #d62728; }",
@@ -415,8 +497,8 @@ def test_mapped_transfers_render_only_in_excluded(category, payee):
 
     assert html.count(payee) == 1
     assert html.index(payee) > html.index("9. Excluded (Internal transfers)")
-    # No pairings anywhere -> no transparency table must be emitted at all.
-    assert "Paired reimbursements (net 0, shown for transparency)" not in html
+    # No pairings anywhere -> no reimbursement rows must be emitted at all.
+    assert 'class="reimb-row"' not in html
 
 
 def test_common_section_renders_multiple_paired_reimbursements_in_one_table():
@@ -444,21 +526,32 @@ def test_common_section_renders_multiple_paired_reimbursements_in_one_table():
     html = render(contract, "2030-04")
 
     common_section = html.split("<h2>4. Common")[1].split("</section>")[0]
-    # Both pairs sit in the single transparency table below the category table.
-    assert common_section.count('class="reimb-row"') == 2
-    block = common_section.split(
-        "Paired reimbursements (net 0, shown for transparency)"
-    )[1].split("</table>")[0]
-    assert "Dining (paired reimbursement)" in block
-    assert "Groceries X (paired reimbursement)" in block
-    assert '<td class="neg">-200.00</td>' in block  # partner_a paid
-    assert '<td class="pos">+200.00</td>' in block  # partner_b received
-    assert '<td class="pos">+300.00</td>' in block  # partner_a received
-    assert '<td class="neg">-300.00</td>' in block  # partner_b paid
-    assert block.count('<td class="zero"><b>0.00</b></td>') == 2
-    # Fully-paired categories still skip their zero-net category row.
-    assert "Dining</td>" not in common_section
-    assert "Groceries X</td>" not in common_section
+    # No separate transparency table — both pairs nest in the main table,
+    # each directly under its own (zero-net) category row.
+    assert "Paired reimbursements (net 0, shown for transparency)" not in html
+    main_table = common_section.split("</table>")[0]
+    assert main_table.count('class="reimb-row"') == 2
+    # Category rows present even though both categories fully pair to net 0.
+    assert "<td>Dining</td>" in main_table
+    assert "<td>Groceries X</td>" in main_table
+    # Document order: each category row immediately followed by its reimb-row.
+    # Groups sort by total abs amount descending — Groceries X (600) before
+    # Dining (400).
+    order = [
+        main_table.index(marker)
+        for marker in (
+            "<td>Groceries X</td>",
+            "Groceries X (paired reimbursement)",
+            "<td>Dining</td>",
+            "Dining (paired reimbursement)",
+        )
+    ]
+    assert order == sorted(order)
+    assert '<td class="neg">-200.00</td>' in main_table  # partner_a paid
+    assert '<td class="pos">+200.00</td>' in main_table  # partner_b received
+    assert '<td class="pos">+300.00</td>' in main_table  # partner_a received
+    assert '<td class="neg">-300.00</td>' in main_table  # partner_b paid
+    assert main_table.count('<td class="zero"><b>0.00</b></td>') == 2
 
 
 def test_cc_payments_use_private_stable_leaf_category_id():
@@ -1289,6 +1382,110 @@ def test_detailed_section_mapping_rejects_unmapped_leaf_category_id():
             OWNERS,
             detailed_section_mapping=DETAILED_SECTION_MAPPING,
         )
+
+
+def test_detailed_section_mapping_error_surfaces_offending_transaction():
+    """Regression: error must name the txn, not just the category ID."""
+    with pytest.raises(AccountingValidationError) as exc:
+        build_month_contract(
+            [
+                _transaction(
+                    42,
+                    -1234.5,
+                    {"id": "uncategorized", "title": "Uncategorized"},
+                    payee="Alex's Coffee Shop",
+                )
+            ],
+            OWNERS,
+            detailed_section_mapping=DETAILED_SECTION_MAPPING,
+        )
+    message = str(exc.value)
+    assert (
+        "Detailed section mapping has no section for category ID 'uncategorized'"
+        in message
+    )
+    assert (
+        "category ID 'uncategorized' = transaction has no category assigned "
+        "in PocketSmith" in message
+    )
+    assert "id=42" in message
+    assert "date='2030-04-01'" in message
+    assert "Alex's Coffee Shop" in message
+    assert "amount=-1234.5" in message
+
+
+def test_category_role_mapping_error_surfaces_offending_transaction():
+    """Regression: KPI-role errors used to omit the category ID entirely."""
+    with pytest.raises(AccountingValidationError) as exc:
+        build_month_contract(
+            [
+                _transaction(
+                    7,
+                    -50.0,
+                    {"id": "mystery", "title": "Mystery"},
+                    payee="Sam's Garage",
+                )
+            ],
+            OWNERS,
+            category_roles={"income": "income"},
+        )
+    message = str(exc.value)
+    assert "A reportable category has no KPI role for category ID 'mystery'" in message
+    assert "id=7" in message
+    assert "Sam's Garage" in message
+    assert "amount=-50.0" in message
+
+
+def test_category_catalog_missing_category_id_surfaces_transaction_and_hint():
+    """Regression: catalog-missing errors used to give no transaction hint."""
+    with pytest.raises(AccountingValidationError) as exc:
+        build_month_contract(
+            [
+                _transaction(
+                    99,
+                    -19.99,
+                    {"id": "uncategorized", "title": "Uncategorized"},
+                    payee="Sam's Bakery",
+                )
+            ],
+            OWNERS,
+            detailed_section_mapping={
+                "category_sections": {},
+                "account_roles": {},
+            },
+            category_parents={},
+        )
+    message = str(exc.value)
+    assert "Category catalog has no category ID 'uncategorized'" in message
+    assert (
+        "category ID 'uncategorized' = transaction has no category assigned "
+        "in PocketSmith" in message
+    )
+    assert "id=99" in message
+    assert "Sam's Bakery" in message
+    assert "amount=-19.99" in message
+
+
+def test_unmapped_category_error_bounds_to_ten_transactions_plus_more():
+    """Regression: many offending txns must not dump an unbounded list."""
+    transactions = [
+        _transaction(
+            index,
+            -1.0,
+            {"id": "uncategorized", "title": "Uncategorized"},
+            payee=f"Merchant {index}",
+        )
+        for index in range(12)
+    ]
+    with pytest.raises(AccountingValidationError) as exc:
+        build_month_contract(
+            transactions,
+            OWNERS,
+            detailed_section_mapping=DETAILED_SECTION_MAPPING,
+        )
+    message = str(exc.value)
+    assert message.count("payee=") == 10
+    assert "+2 more" in message
 
 
 def test_explicit_savings_account_ids_override_mapping_roles_after_map_validation():

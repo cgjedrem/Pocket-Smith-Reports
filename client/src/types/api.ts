@@ -75,6 +75,67 @@ export interface ApiKeyUpdate {
   api_key: string;
 }
 
+// Common-economy split — GET/PUT /api/settings/split
+// (src/budget_api/models/settings.py: SplitShares/SplitConfig/SplitConfigUpdate).
+// Slot-keyed (partner_a/partner_b), not real partner IDs — same convention
+// as report.detailed.split.shares.
+export interface SplitShares {
+  partner_a: number;
+  partner_b: number;
+}
+
+// Legacy candidate sections (Gate 1) — no longer an eligibility filter on
+// `categories` (any catalog category is selectable now, category-level
+// split selection Gate 2). Kept only for the migration vocabulary /
+// display-only `sections` field's known-good values
+// (src/budget_api/models/settings.py SPLIT_ELIGIBLE_SECTIONS docstring).
+export type SplitEligibleSection = "home" | "common" | "trips";
+
+export const SPLIT_ELIGIBLE_SECTIONS: SplitEligibleSection[] = [
+  "home",
+  "common",
+  "trips",
+];
+
+// categories: source of truth — any catalog category ID, any tree level
+// (parent selection implies its descendants server-side at report-build
+// time). sections: derived/back-compat display field — server-recomputed
+// from categories on every GET, never client-supplied on PUT.
+export interface SplitConfig {
+  enabled: boolean;
+  shares: SplitShares;
+  categories: string[];
+  sections: string[];
+}
+
+// PUT body — categories is the write contract; sections is NOT sent
+// (server computes + persists it from categories — SplitConfigUpdate has
+// no sections field, src/budget_api/models/settings.py::SplitConfigUpdate).
+export interface SplitConfigUpdate {
+  enabled: boolean;
+  shares: SplitShares;
+  categories: string[];
+}
+
+// GET /api/settings/split response — SplitConfig + display-only real
+// partner labels (src/budget_api/models/settings.py::SplitConfigResponse).
+// labels: {partner_a: <real label>, partner_b: <real label>} resolved
+// server-side via the same slot-map path report_builder uses — NEVER
+// "partner_a"/"partner_b" ids re-looked-up against listPartners() (custom
+// partner ids, e.g. "alex", don't match those slot keys). Display-only:
+// never persisted, so PUT keeps taking/returning plain SplitConfig.
+// Additive `warning` — null in the normal case. Set when an on-disk legacy
+// sections-only config can't be translated to categories because
+// detailed_section_mapping.json is missing — GET shows the saved sections
+// as-is instead of silently emptying the pick-list (data-loss look-alike).
+// Report-build time (accounting.normalize_split_config) raises for the
+// same condition instead, so this is display-only, never a build blocker
+// (src/budget_api/models/settings.py::SplitConfigResponse).
+export interface SplitConfigResponse extends SplitConfig {
+  labels: Record<string, string>;
+  warning: string | null;
+}
+
 export interface Category {
   id: string;
   title: string;

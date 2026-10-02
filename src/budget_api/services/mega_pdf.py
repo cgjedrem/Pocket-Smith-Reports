@@ -5,6 +5,7 @@ Reuses mega CLI assemble_html() + sections/css.py CSS. CLI stays standalone.
 
 from __future__ import annotations
 
+import logging
 import sys
 import tempfile
 from pathlib import Path
@@ -18,6 +19,8 @@ from mega.build_mega import assemble_html, build_context, inclusive_months  # no
 
 from budget_api.services import mega_builder, storage
 
+_logger = logging.getLogger(__name__)
+
 
 def generate_pdf(start: str, end: str) -> bytes:
     """Build mega report HTML → WeasyPrint → PDF bytes.
@@ -30,10 +33,22 @@ def generate_pdf(start: str, end: str) -> bytes:
         if not storage.monthly_ps_raw_path(month).exists():
             raise FileNotFoundError(f"no data for month {month}")
 
-    args = mega_builder._build_namespace(start, end)
+    # Load labels once (mirrors build_mega_report) — pass into
+    # _build_namespace so it skips its own self-load, and reuse for the
+    # split settlement label resolution below.
+    partner_labels, label_warnings = mega_builder._load_partner_labels()
+    for warning in label_warnings:
+        _logger.warning("partner-label validation: %s", warning)
+    args = mega_builder._build_namespace(start, end, partner_labels=partner_labels)
     try:
         context = build_context(args)
-        html = assemble_html(context, args)
+        # Reuses build_mega_report's exact split computation — no
+        # duplicated math (see mega_builder.compute_mega_split_summary
+        # docstring).
+        split_summary = mega_builder.compute_mega_split_summary(
+            start, end, context["monthly_results"], partner_labels
+        )
+        html = assemble_html(context, args, split_summary=split_summary)
     finally:
         mega_builder._cleanup_namespace(args)
 

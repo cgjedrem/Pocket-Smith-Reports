@@ -24,6 +24,9 @@ CATEGORY_ROLES_PATH = PRIVATE_DATA_DIR / "category_roles.json"
 DETAILED_SECTION_MAPPING_PATH = PRIVATE_DATA_DIR / "detailed_section_mapping.json"
 PARTNER_LABELS_PATH = PRIVATE_DATA_DIR / "partner_labels.json"
 
+# Common-economy split — global % config, additive (missing => feature off).
+SPLIT_CONFIG_PATH = PRIVATE_DATA_DIR / "split_config.json"
+
 # Shared SCSS — CLI + React both read. parents[4] = repo root (services→budget_api→src→repo).
 SHARED_SCSS_PATH = REPOSITORY_ROOT / "client" / "src" / "styles" / "report-shared.scss"
 

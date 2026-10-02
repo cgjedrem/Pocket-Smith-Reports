@@ -23,7 +23,9 @@ if str(_V4_DIR) not in sys.path:
 
 from accounting import (  # noqa: E402
     AccountingValidationError,
+    _resolve_allowed_category_ids,
     build_month_contract,
+    compute_split,
     detailed_cc_payments_section,
     detailed_excluded_section,
     detailed_household_totals,
@@ -36,16 +38,26 @@ from accounting import (  # noqa: E402
     load_category_roles,
     load_detailed_section_mapping,
     load_partner_labels,
+    load_split_config,
+    net_category_totals,
     validate_partner_labels,
 )
-from data_loader import load  # noqa: E402
+from data_loader import _transaction_account_id, load  # noqa: E402
 
 from budget_api.services import storage
 
 # PR1: 5 — detailed DTO contract (models/reports.py)
 # PR5: 6 — paired rows display-strings → signed numerics; restored
 # normalized_transactions; income can return None.
-CALCULATION_VERSION = 7
+# 7→8: paired reimbursement rows nested per category row on NetCategoryRow;
+# fully-paired categories now emit their zero-net row (no separate table).
+# 8→9: common-economy split — detailed.split (SplitSection | None), additive.
+# 9→10: two-sided split columns — SplitCategoryRow gains derived `section` +
+# b-side actual_b/fair_b/delta_b, additive (Optional defaults keep pre-v10
+# stored rows loadable). Version bump per PR53/57 precedent (design doc
+# L450-461): additive fields without a bump leave reports non-stale with no
+# user path to discovering the new columns.
+CALCULATION_VERSION = 10
 
 # Breaking-contract identity marker (contracts/monthly-report-contract-v2.md).
 # Readers must reject stored payloads where this is absent or != 2 BEFORE
@@ -95,6 +107,58 @@ def _load_excluded_account_ids() -> set[str]:
     }
 
 
+# Literal owner-slot tokens. An account partner_id equal to one of these is
+# already a slot, not a custom partner ID — passthrough, never a pool member.
+_LEGACY_SLOTS = frozenset({"partner_a", "partner_b"})
+
+
+def _partner_slot_map(raw: dict) -> dict[str, str]:
+    """Custom partner ID → "partner_a"/"partner_b" slot.
+
+    Depersonalized schema: partner IDs are user-defined (e.g. "alex").
+    Derive v4_pipeline owner slots deterministically from sorted partner IDs,
+    mirroring bills_builder._partner_slot_map's identity-neutral ordering.
+    IDs come from the partners block AND account partner_id values — except
+    literal slot tokens ("partner_a"/"partner_b") found in account
+    partner_id values: those tokens are already slots, never pool members
+    (unconditionally — an empty partners block still derives slots from
+    account values, and a literal token must not join the sorted pool),
+    and pass through to owners unchanged in _load_account_owners (mirrors
+    accounting.load_unified_account_mapping). Legacy files using literal
+    "partner_a"/"partner_b" partners keys map identically. Shared by
+    _load_account_owners and _load_partner_labels so both resolve identical
+    slots for the same file. Twin of accounting._partner_slots (keep in sync).
+    """
+    accounts = raw.get("accounts", {})
+    if not isinstance(accounts, dict):
+        accounts = {}
+    partners = raw.get("partners", {})
+    partner_ids = set(partners) if isinstance(partners, dict) else set()
+    for acc in accounts.values():
+        if isinstance(acc, dict):
+            pid = acc.get("partner_id")
+            if isinstance(pid, str) and pid:
+                if pid in _LEGACY_SLOTS:
+                    # Already a slot — never a pool member, passthrough
+                    # later. Unconditional: an empty partners block must not
+                    # let a literal token join the sorted pool.
+                    continue
+                partner_ids.add(pid)
+    if len(partner_ids) > 2:
+        # Pipeline is two-owner only — first two sorted IDs win, rest dropped.
+        _logger.warning(
+            "account_mappings.json defines %d partner IDs; only the first two "
+            "(sorted) get owner slots: %s",
+            len(partner_ids),
+            sorted(partner_ids)[:2],
+        )
+    return {
+        pid: f"partner_{chr(ord('a') + i)}"
+        for i, pid in enumerate(sorted(partner_ids))
+        if i < 2
+    }
+
+
 def _load_account_owners() -> dict[str, str]:
     """Load account_id → partner_a/partner_b from account_mappings.json.
 
@@ -108,12 +172,16 @@ def _load_account_owners() -> dict[str, str]:
     accounts = raw.get("accounts", {})
     if not isinstance(accounts, dict):
         return {}
+    slots = _partner_slot_map(raw)
     owners = {}
     for acc_id, acc in accounts.items():
         if not isinstance(acc, dict):
             continue
         partner_id = acc.get("partner_id")
-        if partner_id in ("partner_a", "partner_b"):
+        if partner_id in slots:
+            owners[acc_id] = slots[partner_id]
+        elif partner_id in _LEGACY_SLOTS:
+            # Literal slot under a custom-ID partners block — passthrough.
             owners[acc_id] = partner_id
     return owners
 
@@ -142,12 +210,20 @@ def _load_partner_labels() -> tuple[dict[str, str], list[str]]:
         if isinstance(mappings, dict):
             partners = mappings.get("partners", {})
             if isinstance(partners, dict):
+                # Partners block is keyed by custom IDs — resolve through the
+                # same sorted-slot map _load_account_owners uses, else real
+                # labels never match the partner_a/partner_b slots.
+                slots = _partner_slot_map(mappings)
                 candidate = {
-                    owner: partner.get("label")
-                    for owner in ("partner_a", "partner_b")
-                    if isinstance(partner := partners.get(owner), dict)
+                    slot: partner.get("label")
+                    for pid, slot in slots.items()
+                    if isinstance(partner := partners.get(pid), dict)
                 }
                 raw = candidate or None
+            else:
+                # Malformed partners block — pipe through validator so it
+                # degrades to placeholders with a warning.
+                raw = partners
     return validate_partner_labels(raw)
 
 
@@ -211,10 +287,30 @@ def _partner_panels(
 # --------------------------------------------------------------------------- #
 
 
+def _resolve_split_settlement(
+    settlement: dict[str, Any] | None, partner_labels: dict[str, str]
+) -> dict[str, Any] | None:
+    """Slot-keyed settlement (partner_a/partner_b) → real display labels."""
+    if settlement is None:
+        return None
+    return {
+        "from_partner": partner_labels.get(
+            settlement["from_partner"], settlement["from_partner"]
+        ),
+        "to_partner": partner_labels.get(
+            settlement["to_partner"], settlement["to_partner"]
+        ),
+        "amount": settlement["amount"],
+    }
+
+
 def _detailed(
     normalized_transactions: list[dict[str, Any]],
     detailed_section_mapping: dict[str, Any] | None,
     savings_summary: dict[str, Any] | None,
+    split_config: dict[str, Any] | None = None,
+    partner_labels: dict[str, str] | None = None,
+    category_parents: dict[str, str | None] | None = None,
 ) -> dict[str, Any] | None:
     """Compose the `detailed` DTO from accounting.py's section builders.
 
@@ -233,6 +329,16 @@ def _detailed(
         if has_income_records(records, mapping)
         else None
     )
+    split = None
+    if split_config is not None:
+        allowed_ids = _resolve_allowed_category_ids(
+            split_config["categories"], category_parents
+        )
+        category_nets = net_category_totals(records, allowed_ids, mapping)
+        split = compute_split(category_nets, split_config["shares"])
+        split["settlement"] = _resolve_split_settlement(
+            split["settlement"], partner_labels or {}
+        )
     return {
         "income": income,
         "savings": detailed_savings_section(records, savings_summary, mapping),
@@ -244,6 +350,7 @@ def _detailed(
         "cc_payments": detailed_cc_payments_section(records, mapping),
         "excluded": detailed_excluded_section(records, mapping),
         "household_totals": detailed_household_totals(records, mapping),
+        "split": split,
     }
 
 
@@ -347,6 +454,16 @@ def build_report(month: str) -> dict[str, Any]:
     if catalog_path.exists():
         category_parents = load_category_parents(catalog_path)
 
+    # Common-economy split config — optional, missing/disabled => split=None.
+    try:
+        split_config = load_split_config(
+            storage.SPLIT_CONFIG_PATH, category_parents, detailed_section_mapping
+        )
+    except AccountingValidationError as exc:
+        raise AccountingValidationError(
+            f"split config invalid for month {month}: {exc}"
+        ) from exc
+
     contract = build_month_contract(
         transactions,
         account_owners=account_owners,
@@ -381,7 +498,14 @@ def build_report(month: str) -> dict[str, Any]:
         "partner_panels": partner_panels,
         "partner_labels": partner_labels,
         "warnings": label_warnings,
-        "detailed": _detailed(records, detailed_mapping, contract["savings_summary"]),
+        "detailed": _detailed(
+            records,
+            detailed_mapping,
+            contract["savings_summary"],
+            split_config,
+            partner_labels,
+            category_parents,
+        ),
         "personal_share": _personal_share(kpis),
         "personal_share_partner_a": _partner_personal_share(kpis, "partner_a"),
         "personal_share_partner_b": _partner_personal_share(kpis, "partner_b"),
@@ -432,9 +556,28 @@ def check_stale(month: str, report_dict: dict[str, Any]) -> bool:
     except (json.JSONDecodeError, OSError):
         return True
     # ps_raw is a list of transactions (sync_runner writes list directly).
-    raw_count = len(raw) if isinstance(raw, list) else len(raw.get("transactions", []))
+    # Wrong-shape JSON → uncountable → stale (data_loader.load coerces such
+    # files to empty, so this is the conservative side).
+    if isinstance(raw, list):
+        txns = raw
+    elif isinstance(raw, dict) and isinstance(raw.get("transactions"), list):
+        txns = raw["transactions"]
+    else:
+        return True
+    # txn_count is normalized (filtered) — drop excluded-account txns before
+    # comparing, same filter as _load_transactions → data_loader.load.
+    try:
+        excluded = _load_excluded_account_ids()
+    except (json.JSONDecodeError, OSError):
+        return True  # corrupt mappings → can't filter → stale
+    if excluded and isinstance(txns, list):
+        txns = [
+            t
+            for t in txns
+            if not (isinstance(t, dict) and _transaction_account_id(t) in excluded)
+        ]
     report_count = report_dict.get("txn_count", 0)
-    return raw_count != report_count
+    return len(txns) != report_count
 
 
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")

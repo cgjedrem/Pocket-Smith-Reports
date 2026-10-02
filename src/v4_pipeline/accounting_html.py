@@ -3,7 +3,12 @@
 from html import escape
 from pathlib import Path
 
-from accounting import _paired_reimbursements
+from accounting import (
+    _resolve_allowed_category_ids,
+    _paired_reimbursements,
+    compute_split,
+    net_category_totals,
+)
 from charts import (
     COLOR_PARTNER_A,
     COLOR_PARTNER_B,
@@ -97,7 +102,7 @@ _REPORT_STYLES = """
     tr { break-inside: avoid-page; page-break-inside: avoid; }
     .empty { color: #5d6c75; font-style: italic; text-align: left; }
     /* Sign-color rules mirrored from report-shared.scss — the paired
-       reimbursement table cells (pos/neg/zero) depend on these. */
+       reimbursement row cells (pos/neg/zero) depend on these. */
     .legacy-table .pos { color: #2ca02c; }
     .legacy-table .neg { color: #d62728; }
     .legacy-table .zero { color: #888; }
@@ -114,6 +119,17 @@ _REPORT_STYLES = """
 
 def _amount(value: float) -> str:
     return f"{value:,.2f}"
+
+
+def _split_total_cell(value: float | None) -> str:
+    """Totals-row cell. None → em-dash (never fabricate 0.00, same
+    convention as zero-share cells). Snap |v| < half-cent so a balanced
+    split's float dust never prints "-0.00"."""
+    if value is None:
+        return "—"
+    if abs(value) < 0.005:
+        value = 0.0
+    return _amount(value)
 
 
 def _root_totals(categories: list[dict]) -> dict[str, float | int]:
@@ -643,7 +659,6 @@ def _legacy_net_section(
     partner_labels: dict[str, str],
     theme: dict[str, str],
     mapping: dict[str, dict[str, str]],
-    note: str = "",
     chart_title: str = "",
     chart_bar_height: int = 40,
 ) -> str:
@@ -654,13 +669,27 @@ def _legacy_net_section(
         return "".join(parts)
     totals = {"partner_a": 0.0, "partner_b": 0.0}
     rows = []
-    paired_rows = []
     for group in groups:
         net_a = group["paid"]["partner_a"] - group["received"]["partner_a"]
         net_b = group["paid"]["partner_b"] - group["received"]["partner_b"]
         total = net_a + net_b
         totals["partner_a"] += net_a
         totals["partner_b"] += net_b
+        share_a = net_a / total * 100 if total else None
+        share_b = net_b / total * 100 if total else None
+        # Shares None on zero row total (fully-paired) → em-dash, matching the
+        # DTO (_safe_pct "never fabricate 0%") and the React pct() rendering.
+        shares_cell = (
+            f"<b>{share_a:.1f}%</b> / <b>{share_b:.1f}%</b>"
+            if share_a is not None and share_b is not None
+            else "— / —"
+        )
+        # Category row always emitted — fully-paired (zero-net) categories
+        # now hang their reimb rows directly under it in the same table.
+        rows.append(
+            f'<tr><td>{escape(group["title"])}</td><td>{_amount(net_a)}</td><td>{_amount(net_b)}</td>'
+            f"<td><b>{_amount(total)}</b></td><td>{shares_cell}</td></tr>"
+        )
         paired = _paired_reimbursements(group)
         if paired:
             for first, second in paired:
@@ -691,31 +720,24 @@ def _legacy_net_section(
                         "pos" if received["owner"] == "partner_b" else "neg"
                     ),
                 }
-                paired_rows.append(
+                # Empty 5th cell — share column parity with the 5-col header
+                # and the React reimb-row.
+                rows.append(
                     f'<tr class="reimb-row"><td><i>{escape(group["title"])} (paired reimbursement)</i></td>'
                     f'<td class="{classes["partner_a"]}">{values["partner_a"]}</td>'
                     f'<td class="{classes["partner_b"]}">{values["partner_b"]}</td>'
-                    f'<td class="zero"><b>0.00</b></td></tr>'
+                    f'<td class="zero"><b>0.00</b></td><td></td></tr>'
                 )
-        share_a = net_a / total * 100 if total else 0.0
-        share_b = net_b / total * 100 if total else 0.0
-        if not paired or total:
-            rows.append(
-                f'<tr><td>{escape(group["title"])}</td><td>{_amount(net_a)}</td><td>{_amount(net_b)}</td>'
-                f"<td><b>{_amount(total)}</b></td><td><b>{share_a:.1f}%</b> / {share_b:.1f}%</td></tr>"
-            )
     total = totals["partner_a"] + totals["partner_b"]
-    total_share_a = totals["partner_a"] / total * 100 if total else 0.0
-    total_share_b = totals["partner_b"] / total * 100 if total else 0.0
-    paired_table = ""
-    if paired_rows:
-        paired_table = (
-            '<table class="legacy-table net-table">'
-            "<caption>Paired reimbursements (net 0, shown for transparency)</caption>"
-            f'<thead><tr><th>Category</th><th>{escape(partner_labels["partner_a"])}</th>'
-            f'<th>{escape(partner_labels["partner_b"])}</th><th>Total</th></tr></thead>'
-            f'<tbody>{"".join(paired_rows)}</tbody></table>'
-        )
+    total_share_a = totals["partner_a"] / total * 100 if total else None
+    total_share_b = totals["partner_b"] / total * 100 if total else None
+    # Same convention as category rows: zero grand total → em-dash, never
+    # fabricate 0% (DTO _safe_pct / React pct() parity).
+    total_shares_cell = (
+        f"{total_share_a:.1f}% / {total_share_b:.1f}%"
+        if total_share_a is not None and total_share_b is not None
+        else "— / —"
+    )
     parts.extend(
         [
             '<table class="legacy-table net-table"><thead><tr><th>Category</th>'
@@ -723,9 +745,7 @@ def _legacy_net_section(
             f'<th>{escape(partner_labels["partner_b"])} net</th><th>Total</th>'
             f"<th>% {escape(partner_labels['partner_a'])} / {escape(partner_labels['partner_b'])}</th></tr></thead><tbody>",
             "".join(rows),
-            f'<tr class="legacy-total"><td>Total</td><td>{_amount(totals["partner_a"])}</td><td>{_amount(totals["partner_b"])}</td><td>{_amount(total)}</td><td>{total_share_a:.1f}% / {total_share_b:.1f}%</td></tr></tbody></table>',
-            note,
-            paired_table,
+            f'<tr class="legacy-total"><td>Total</td><td>{_amount(totals["partner_a"])}</td><td>{_amount(totals["partner_b"])}</td><td>{_amount(total)}</td><td>{total_shares_cell}</td></tr></tbody></table>',
             (
                 _legacy_section_chart(groups, chart_title, theme, chart_bar_height)
                 if chart_title
@@ -913,15 +933,119 @@ def _legacy_excluded_section(
     return "".join(parts)
 
 
+def _legacy_split_section(
+    records: list[dict],
+    mapping: dict[str, dict[str, str]],
+    partner_labels: dict[str, str],
+    split_config: dict | None,
+    category_parents: dict[str, str | None] | None = None,
+) -> str:
+    """Common economy split — parity block. Reuses accounting.py's pure
+    net_category_totals/compute_split (twin of _category_groups/
+    _routed_section vs this file's _legacy_category_groups/
+    _routed_detailed_section) so numbers match the JSON DTO and this same
+    page's home/common/trips (and any other section) tables exactly. Empty
+    string only when the feature is entirely off (no split_config.json /
+    disabled) — an enabled config with zero categories selected still
+    renders the section (empty rows, no table), matching the
+    JSON DTO's non-None SplitSection in that state. Totals row is the
+    table's LAST row; settlement sentence restored (user request) BELOW
+    the table as a plain-language complement to the numbers.
+    """
+    if split_config is None:
+        return ""
+    allowed_ids = _resolve_allowed_category_ids(
+        split_config["categories"], category_parents
+    )
+    category_nets = net_category_totals(records, allowed_ids, mapping)
+    split = compute_split(category_nets, split_config["shares"])
+    label_a = partner_labels.get("partner_a", "Partner A")
+    label_b = partner_labels.get("partner_b", "Partner B")
+    parts = ['<section class="report-section legacy-section"><h2>Common economy split</h2>']
+    parts.append(
+        f'<p class="note">Global split: {escape(label_a)} '
+        f'{split["shares"]["partner_a"]:.1f}% / {escape(label_b)} '
+        f'{split["shares"]["partner_b"]:.1f}% — sections: '
+        f'{escape(", ".join(split["sections"]))}.</p>'
+    )
+    if not split["rows"]:
+        # Canonical copy — twin of the React empty state (DetailedSections.tsx),
+        # not the generic "No data this month." other legacy sections use
+        # (iteration 4, finding 4: HTML/React copy parity).
+        parts.append(
+            '<p class="empty">No categories in the selected split sections '
+            "this month.</p></section>"
+        )
+        return "".join(parts)
+    row_html = []
+    for row in split["rows"]:
+        row_html.append(
+            f'<tr><td>{escape(row["label"])}</td>'
+            f'<td>{_amount(row["actual"])}</td>'
+            f'<td>{_amount(row["fair"])}</td>'
+            f'<td>{_amount(row["delta"])}</td>'
+            f'<td>{_amount(row["actual_b"])}</td>'
+            f'<td>{_amount(row["fair_b"])}</td>'
+            f'<td>{_amount(row["delta_b"])}</td></tr>'
+        )
+    # Totals row — raw-float sums per column, formatted once. Last table
+    # row ("balanced" reads as delta totals ≈ 0.00); the settlement
+    # sentence below spells the same signal out in words.
+    total_keys = ("actual", "fair", "delta", "actual_b", "fair_b", "delta_b")
+    totals = {}
+    for key in total_keys:
+        values = [row.get(key) for row in split["rows"]]
+        # None only on stale payloads. Sum raw; None → None → em-dash (0
+        # would hide missing data).
+        totals[key] = None if any(v is None for v in values) else sum(values)
+    totals_row = (
+        '<tr class="legacy-total"><td>Total</td>'
+        + "".join(f"<td>{_split_total_cell(totals[key])}</td>" for key in total_keys)
+        + "</tr>"
+    )
+    parts.extend(
+        [
+            '<table class="legacy-table split-table"><thead><tr><th>Category</th>'
+            f"<th>{escape(label_a)} actual</th><th>{escape(label_a)} fair share</th>"
+            f"<th>{escape(label_a)} delta</th>"
+            f"<th>{escape(label_b)} actual</th><th>{escape(label_b)} fair share</th>"
+            f"<th>{escape(label_b)} delta</th></tr></thead><tbody>",
+            "".join(row_html),
+            totals_row,
+            "</tbody></table>",
+        ]
+    )
+    # Settlement sentence BELOW the table (below the totals row) —
+    # restored verbatim from the pre-removal rendering (user request:
+    # keep totals row AND the plain-language summary). None only when
+    # balanced (empty-rows case returned early above) or never fabricate
+    # a 0.00 transfer — em-dash note instead.
+    settlement = split["settlement"]
+    if settlement is None:
+        # Never fabricate a zero-amount transfer — em-dash convention.
+        parts.append('<p class="note">Settlement: — (already even).</p>')
+    else:
+        from_label = partner_labels.get(
+            settlement["from_partner"], settlement["from_partner"]
+        )
+        to_label = partner_labels.get(settlement["to_partner"], settlement["to_partner"])
+        parts.append(
+            f'<p class="note"><b>Settlement: {escape(from_label)} owes '
+            f'{escape(to_label)} {_amount(settlement["amount"])}.</b></p>'
+        )
+    parts.append("</section>")
+    return "".join(parts)
+
+
 def _legacy_sections(
     records: list[dict],
     savings_summary: dict[str, dict[str, float]],
     partner_labels: dict[str, str],
     theme: dict[str, str],
     mapping: dict[str, dict[str, str]],
+    split_config: dict | None = None,
+    category_parents: dict[str, str | None] | None = None,
 ) -> str:
-    home_note = '<p class="note">The Home reimbursement rows show both cash legs. They cancel in household total, while the partner net columns show who actually paid after reimbursement.</p>'
-    common_note = '<p class="note">The Common net columns subtract reimbursements from the recipient and add them to the sender. No 50/50 split is assumed.</p>'
     return (
         _income_section(records, partner_labels, mapping)
         + _savings_section(records, savings_summary, partner_labels, mapping)
@@ -932,7 +1056,6 @@ def _legacy_sections(
             partner_labels,
             theme,
             mapping,
-            home_note,
         )
         + _legacy_net_section(
             "4. Common (Groceries, Hello Fresh, Restaurants, etc.)",
@@ -941,8 +1064,7 @@ def _legacy_sections(
             partner_labels,
             theme,
             mapping,
-            common_note,
-            "Common spending by category",
+            chart_title="Common spending by category",
         )
         + _legacy_personal_sections(records, partner_labels, theme, mapping)
         + _legacy_net_section(
@@ -957,6 +1079,9 @@ def _legacy_sections(
         )
         + _cc_payments_section(records, partner_labels, mapping)
         + _legacy_excluded_section(records, partner_labels, mapping)
+        + _legacy_split_section(
+            records, mapping, partner_labels, split_config, category_parents
+        )
     )
 
 
@@ -965,6 +1090,8 @@ def render(
     month: str,
     partner_labels: dict[str, str] | None = None,
     theme_name: str = "minimal",
+    split_config: dict | None = None,
+    category_parents: dict[str, str | None] | None = None,
 ) -> str:
     """Render a report with categories, transfer appendix, and reconciliation."""
     reconciliation = contract["reconciliation"]
@@ -1101,7 +1228,7 @@ def render(
         f"{partner_markup}</section>"
         '<section class="overview-charts">'
         f"{_kpi_overview_charts(kpis, partner_labels, theme) if kpis else '<p class=\"empty\">KPI role map required for overview charts.</p>'}</section></section>"
-        f"{_legacy_sections(contract.get('normalized_transactions', []), contract['savings_summary'], partner_labels, theme, detailed_section_mapping)}</body></html>"
+        f"{_legacy_sections(contract.get('normalized_transactions', []), contract['savings_summary'], partner_labels, theme, detailed_section_mapping, split_config, category_parents)}</body></html>"
     )
 
 

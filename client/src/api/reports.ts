@@ -32,7 +32,7 @@ export function getStatus(month: string): Promise<GenerateStatus> {
 // Export PDF — binary stream. Triggers browser download.
 // Returns Blob on success. Throws ApiError on non-2xx.
 export async function exportPdf(month: string): Promise<Blob> {
-  const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8001";
+  const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8100";
   const url = `${BASE_URL}/api/reports/monthly/${encodeURIComponent(month)}/pdf`;
   let res: Response;
   try {

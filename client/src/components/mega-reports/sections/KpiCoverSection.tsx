@@ -9,7 +9,7 @@ import {
 import { TrendBarLineChart } from "@/components/mega-reports/charts/TrendBarLineChart";
 import { TrendLineChart } from "@/components/mega-reports/charts/TrendLineChart";
 import { compactNOK, formatNOK, partnerLabel, sumArr } from "@/components/mega-reports/sections/helpers";
-import type { MegaReportResponse } from "@/types/mega_report";
+import type { MegaReportResponse, SplitSection } from "@/types/mega_report";
 
 import styles from "./KpiCoverSection.module.css";
 
@@ -23,6 +23,166 @@ function KpiCard({ label, value }: { label: string; value: number }) {
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-lg font-semibold tabular-nums">{formatNOK(value)}</div>
     </div>
+  );
+}
+
+// Common-economy split summary — compact per-category breakdown + a totals
+// row as the table's last row + the settlement headline ("X pays Y …")
+// RESTORED (user request 2026-10-01) BELOW the totals row — totals row
+// keeps the numeric who-owes-who signal, the sentence spells it out in
+// words. Mirrors the backend twin restoration
+// (build_mega.py::_render_split_summary), but keeps the original React
+// wording ("{from} pays {to} {amount}") — NOT the backend's "owes"
+// phrasing. Same DTO shape as monthly detailed.split, aggregated across
+// the mega window (mega_builder.py, same compute_split() + label
+// resolution).
+interface SplitSummaryCardProps {
+  splitSummary: SplitSection;
+  aLabel: string;
+  bLabel: string;
+}
+
+// b-side (actual_b/fair_b/delta_b) cell helper — null/undefined on stored
+// CALCULATION_VERSION=9 rows persisted before the b-side columns existed
+// (backend Optional[float] = None). Em-dash, never a fabricated 0 —
+// same convention as the monthly DetailedSections.tsx split table.
+function fmtBNOK(value: number | null | undefined): string {
+  return value === null || value === undefined ? "—" : formatNOK(value);
+}
+
+// Totals-only float-dust snap: |v| < half-cent → 0, so a balanced split's
+// delta total never prints a negative-zero. Data rows untouched. Twin of
+// backend mega build_mega.py::_render_split_summary grand-totals table.
+function snapDust(value: number): number {
+  return Math.abs(value) < 0.005 ? 0 : value;
+}
+
+// Raw-sum one split column across every row. Any null/undefined
+// contributor (stale stored v9 rows, b-side fields) → null → the totals
+// cell renders em-dash, never a fabricated 0 (same convention as fmtBNOK).
+function sumSplitColumn(
+  rows: SplitSection["rows"],
+  key: "actual" | "fair" | "delta" | "actual_b" | "fair_b" | "delta_b",
+): number | null {
+  let sum = 0;
+  for (const row of rows) {
+    const value = row[key];
+    if (value === null || value === undefined) return null;
+    sum += value;
+  }
+  return sum;
+}
+
+function SplitSummaryCard({ splitSummary, aLabel, bLabel }: SplitSummaryCardProps) {
+  // Grand totals over the flat row list — summed raw, snapped, formatted
+  // once with the same formatNOK formatter as the data rows. This table is
+  // flat (no per-section grouping like the monthly table), so the totals
+  // row lives in-table as the last tbody row.
+  const totals = {
+    actual: sumSplitColumn(splitSummary.rows, "actual"),
+    fair: sumSplitColumn(splitSummary.rows, "fair"),
+    delta: sumSplitColumn(splitSummary.rows, "delta"),
+    actual_b: sumSplitColumn(splitSummary.rows, "actual_b"),
+    fair_b: sumSplitColumn(splitSummary.rows, "fair_b"),
+    delta_b: sumSplitColumn(splitSummary.rows, "delta_b"),
+  };
+  // Settlement sentence below the totals row — original React wording
+  // ("{from} pays {to} {formatNOK(amount)}") and original headline
+  // styling, restored verbatim from the pre-removal rendering. null =
+  // balanced (rows present → original em-dash wording "—") or nothing
+  // to settle (zero rows → render NOTHING; never fabricate a 0,00
+  // transfer). Backend twin says "owes" / "NOK." — not mirrored.
+  const settlement = splitSummary.settlement;
+  const settlementText = settlement
+    ? `${settlement.from_partner} pays ${settlement.to_partner} ${formatNOK(settlement.amount)}`
+    : splitSummary.rows.length > 0
+      ? "—"
+      : null;
+  return (
+    <Card>
+      <CardHeader className="pb-1">
+        <CardTitle className="text-sm font-medium">Common economy split</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        {/* Canonical empty state — enabled split with zero selected
+            categories. Same sentence as the monthly React renderer
+            (DetailedSections.tsx) and both HTML renderers; never a blank
+            card body. */}
+        {splitSummary.rows.length === 0 && (
+          <p className="text-sm text-muted-foreground" role="status">
+            No categories in the selected split sections this month.
+          </p>
+        )}
+        {splitSummary.rows.length > 0 && (
+          <>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left">
+                  <th className="py-1 text-left">Category</th>
+                  <th className="py-1 text-right">{aLabel} actual</th>
+                  <th className="py-1 text-right">{aLabel} fair share</th>
+                  <th className="py-1 text-right">{aLabel} delta</th>
+                  <th className="py-1 text-right">{bLabel} actual</th>
+                  <th className="py-1 text-right">{bLabel} fair share</th>
+                  <th className="py-1 text-right">{bLabel} delta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {splitSummary.rows.map((r) => (
+                  <tr key={r.category_id} className="border-b border-border">
+                    <td className="py-1">{r.label}</td>
+                    <td className="py-1 text-right tabular-nums">{formatNOK(r.actual)}</td>
+                    <td className="py-1 text-right tabular-nums">{formatNOK(r.fair)}</td>
+                    <td className="py-1 text-right tabular-nums">{formatNOK(r.delta)}</td>
+                    <td className="py-1 text-right tabular-nums">{fmtBNOK(r.actual_b)}</td>
+                    <td className="py-1 text-right tabular-nums">{fmtBNOK(r.fair_b)}</td>
+                    <td className="py-1 text-right tabular-nums">{fmtBNOK(r.delta_b)}</td>
+                  </tr>
+                ))}
+                {/* Totals row — last tbody row; bold + top border (this
+                    table has no prior totals-row idiom; plain tailwind
+                    classes consistent with the existing row styling). */}
+                <tr className="border-t-2 border-border font-semibold">
+                  <td className="py-1">Total</td>
+                  <td className="py-1 text-right tabular-nums">
+                    {totals.actual === null ? "—" : formatNOK(snapDust(totals.actual))}
+                  </td>
+                  <td className="py-1 text-right tabular-nums">
+                    {totals.fair === null ? "—" : formatNOK(snapDust(totals.fair))}
+                  </td>
+                  <td className="py-1 text-right tabular-nums">
+                    {totals.delta === null ? "—" : formatNOK(snapDust(totals.delta))}
+                  </td>
+                  <td className="py-1 text-right tabular-nums">
+                    {fmtBNOK(totals.actual_b === null ? null : snapDust(totals.actual_b))}
+                  </td>
+                  <td className="py-1 text-right tabular-nums">
+                    {fmtBNOK(totals.fair_b === null ? null : snapDust(totals.fair_b))}
+                  </td>
+                  <td className="py-1 text-right tabular-nums">
+                    {fmtBNOK(totals.delta_b === null ? null : snapDust(totals.delta_b))}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            {/* Rows are partner_a's perspective — shares sum to 100%, so
+                partner_b's numbers are the exact complement (see backend
+                compute_split() docstring). Spell that out so the {aLabel}
+                columns don't read as "the only partner who split anything". */}
+            <p className="text-xs text-muted-foreground">
+              Actual/fair/delta shown from {aLabel}&apos;s perspective — a positive delta
+              means {aLabel} paid more than their fair share (owed by {bLabel}); negative
+              means the reverse.
+            </p>
+          </>
+        )}
+        {/* Settlement sentence — AFTER the table (below the totals row),
+            same <p> headline styling as the removed pre-removal callout. */}
+        {settlementText !== null && (
+          <p className="text-sm font-semibold">{settlementText}</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -91,6 +251,16 @@ export function KpiCoverSection({ report }: KpiCoverSectionProps) {
           <KpiCard label={`${aLabel} income`} value={aIncome} />
           <KpiCard label={`${bLabel} income`} value={bIncome} />
         </div>
+
+        {/* Common-economy split summary — additive (mega calculation_version
+            2; b-side columns in 3), aggregated across the window.
+            Null/undefined -> feature off,
+            no config, or a pre-field stored report; omit the whole block,
+            never a fabricated em-dash placeholder (same convention as the
+            monthly detailed.split renderer). */}
+        {report.split_summary && (
+          <SplitSummaryCard splitSummary={report.split_summary} aLabel={aLabel} bLabel={bLabel} />
+        )}
 
         {/* Bar chart — full width */}
         <Card>

@@ -1,9 +1,10 @@
 import { AccountTable } from "@/components/AccountTable";
 import { ApiKeySection } from "@/components/ApiKeySection";
 import { CategoryMappingsEditor } from "@/components/settings/CategoryMappingsEditor";
+import { SplitConfigSection } from "@/components/settings/SplitConfigSection";
 import { PartnerList } from "@/components/PartnerList";
 
-// Settings — 4 independent sections.
+// Settings — 5 independent sections.
 export function SettingsPage() {
   return (
     <div className="rounded-lg border border-border bg-card p-6">
@@ -27,6 +28,11 @@ export function SettingsPage() {
       <section className="mt-4 border-t border-border pt-4">
         <h2 className="mb-3 text-lg">Category Mappings</h2>
         <CategoryMappingsEditor />
+      </section>
+
+      <section className="mt-4 border-t border-border pt-4">
+        <h2 className="mb-3 text-lg">Common economy split</h2>
+        <SplitConfigSection />
       </section>
     </div>
   );

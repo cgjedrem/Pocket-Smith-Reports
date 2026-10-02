@@ -255,6 +255,31 @@ class TestCheckMegaStale:
         report = _mock_mega_report()
         assert mega_builder.check_mega_stale("2026-01", "2026-07", report) is True
 
+    def test_fresh_after_build_with_excluded_account_txns(self, mega_seeded):
+        """Excluded-account txns in raw: mega txn_counts are raw counts on
+        both write and check sides — build then check is not stale."""
+        mappings_path = storage.PRIVATE_DATA_DIR / "account_mappings.json"
+        mappings = json.loads(mappings_path.read_text(encoding="utf-8"))
+        mappings["accounts"]["1100099"] = {
+            "name": "Fx Savings Nordic Bank",
+            "partner_id": "partner_a",
+            "type": "savings",
+            "excluded": True,
+        }
+        mappings_path.write_text(json.dumps(mappings), encoding="utf-8")
+        ps_raw_path = storage.PRIVATE_DATA_DIR / "2026-01_ps_raw.json"
+        raw = json.loads(ps_raw_path.read_text(encoding="utf-8"))
+        raw.append({"id": 3, "account": {"id": "1100099"}})
+        ps_raw_path.write_text(json.dumps(raw), encoding="utf-8")
+
+        with patch(
+            "budget_api.services.mega_builder.build_context",
+            return_value=_mock_context(),
+        ):
+            report = mega_builder.build_mega_report("2026-01", "2026-07")
+        assert report["txn_counts"]["2026-01"] == 3
+        assert mega_builder.check_mega_stale("2026-01", "2026-07", report) is False
+
 
 # --------------------------------------------------------------------------- #
 # Status transitions.

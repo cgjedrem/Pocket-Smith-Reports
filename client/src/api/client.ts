@@ -1,9 +1,9 @@
 import { ApiError } from "@/types/api";
 
-// Base URL — VITE_API_URL env var, default localhost:8001.
+// Base URL — VITE_API_URL env var, default localhost:8100.
 // Exported for raw fetch callers (e.g. binary PDF streams) that can't go
 // through the JSON-shaped `request()` helper.
-export const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8001";
+export const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8100";
 
 // Extract error message — handle string or array detail.
 function extractDetail(body: unknown): string {
