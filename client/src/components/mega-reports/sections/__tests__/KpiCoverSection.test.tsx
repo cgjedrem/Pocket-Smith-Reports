@@ -313,11 +313,13 @@ describe("KpiCoverSection — mega SplitSummaryCard", () => {
     ]);
   });
 
-  it("renders no table, no settlement sentence and no fabricated all-zero totals when split_summary has zero rows", () => {
+  it("renders the canonical empty-state copy (no table, no settlement, no totals) when split_summary has zero rows", () => {
     // Enabled config with zero categories selected is an allowed state —
-    // card shows its title only, never a synthetic totals row and never a
-    // "—" settlement sentence (settlement null + nothing to settle →
-    // render nothing; mirrors the backend twin's empty-rows early return).
+    // the card shows the same canonical empty-state sentence as the
+    // monthly React renderer (DetailedSections.tsx) and both HTML
+    // renderers, never a blank card body, never a synthetic totals row
+    // and never a "—" settlement sentence (settlement null + nothing to
+    // settle; mirrors the backend twin's empty-rows early return).
     const split_summary: SplitSection = {
       shares: { partner_a: 50, partner_b: 50 },
       sections: [],
@@ -327,6 +329,9 @@ describe("KpiCoverSection — mega SplitSummaryCard", () => {
     render(<KpiCoverSection report={mkReport({ split_summary })} />);
 
     expect(screen.getByText("Common economy split")).toBeInTheDocument();
+    expect(
+      screen.getByText("No categories in the selected split sections this month."),
+    ).toBeInTheDocument();
     // CardTitle (div) -> CardHeader (div) -> Card (div).
     const card = screen.getByText("Common economy split").closest("div")!.parentElement!
       .parentElement as HTMLElement;

@@ -6,7 +6,11 @@
 //
 // Selection semantics (controlled — parent owns `selected`):
 // - Checking a node adds it AND every descendant id to the selected list.
-// - Unchecking a node removes it AND every descendant id.
+// - Unchecking a node removes it AND every descendant id, AND every
+//   selected ancestor — a still-selected ancestor's descendant closure
+//   would re-include this node at report-build time (backend
+//   _resolve_allowed_category_ids parent expansion), silently undoing
+//   the uncheck. Still-selected siblings survive as explicit ids.
 // - A parent renders indeterminate when some but not all of
 //   {self + descendants} are selected.
 // `selected` is the full flat id list (parents + leaves alike) — matches
@@ -108,6 +112,12 @@ export function CategoryTreeSelect({ selected, onChange }: CategoryTreeSelectPro
 
   const tree = useMemo(() => buildTree(cats ?? []), [cats]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+  // child id -> parent id, for the uncheck ancestor walk (buildTree
+  // already resolves parent links the same way).
+  const parentOf = useMemo(
+    () => new Map((cats ?? []).map((c) => [c.id, c.parent_id] as const)),
+    [cats],
+  );
 
   const handleToggle = (node: TreeNode, checked: boolean) => {
     const ids = closureIds(node);
@@ -116,6 +126,14 @@ export function CategoryTreeSelect({ selected, onChange }: CategoryTreeSelectPro
       ids.forEach((id) => next.add(id));
     } else {
       ids.forEach((id) => next.delete(id));
+      // Walk up: drop every selected ancestor — its descendant closure
+      // would re-add this node server-side, undoing the uncheck.
+      // Depth-capped like closureIds (defense-in-depth for cyclic data).
+      let ancestor = parentOf.get(node.cat.id);
+      for (let depth = 0; ancestor != null && depth < MAX_CLOSURE_DEPTH; depth++) {
+        next.delete(ancestor);
+        ancestor = parentOf.get(ancestor);
+      }
     }
     onChange(Array.from(next));
   };

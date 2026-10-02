@@ -104,6 +104,15 @@ function SplitSummaryCard({ splitSummary, aLabel, bLabel }: SplitSummaryCardProp
         <CardTitle className="text-sm font-medium">Common economy split</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
+        {/* Canonical empty state — enabled split with zero selected
+            categories. Same sentence as the monthly React renderer
+            (DetailedSections.tsx) and both HTML renderers; never a blank
+            card body. */}
+        {splitSummary.rows.length === 0 && (
+          <p className="text-sm text-muted-foreground" role="status">
+            No categories in the selected split sections this month.
+          </p>
+        )}
         {splitSummary.rows.length > 0 && (
           <>
             <table className="w-full text-sm">

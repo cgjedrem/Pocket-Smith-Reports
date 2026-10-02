@@ -19,7 +19,7 @@ export function updateApiKey(key: string): Promise<ApiKeyStatus> {
 }
 
 // Common-economy split config — GET returns a synthesized default
-// (enabled=false, sections=["home","common","trips"]) when no
+// (enabled=false, shares 50/50, categories=[], sections=[]) when no
 // split_config.json exists yet (never written to disk just by reading).
 // Additive `labels` — real partner_a/partner_b display names resolved
 // server-side (never persisted, GET-only — see SplitConfigResponse).

@@ -341,8 +341,8 @@ class TestComputeSplit:
         fabricated a spurious ~0.00 settlement once a genuinely balanced
         split with non-round shares (33.33/66.67-style) accumulates float
         noise across 10+ categories. Here the raw delta sum is ~5e-13 —
-        nonzero bit-for-bit, but well inside the 1e-6 tolerance (same
-        convention as the shares-sum check) — must resolve to None, never a
+        nonzero bit-for-bit, but well inside the settlement gate's
+        half-cent (0.005) threshold — must resolve to None, never a
         fabricated transfer."""
         totals = [
             300.0, 600.0, 150.0, 900.0, 450.0, 1200.0,
@@ -395,6 +395,51 @@ class TestComputeSplit:
             assert row["fair"] + row["fair_b"] == pytest.approx(total, abs=1e-9)
             assert row["delta_b"] == pytest.approx(-row["delta"], abs=1e-9)
             assert row["actual_b"] == pytest.approx(total - row["actual"], abs=1e-9)
+
+    def test_b_side_derived_complement_under_share_sum_tolerance(self):
+        """Regression: normalize_split_config accepts shares summing to
+        100 ± 1e-6 (here 100.0000004). fair_b must be DERIVED
+        (total - fair_a), not independently multiplied — otherwise
+        fair_a + fair_b drifts off the category total by the share-sum
+        excess. Pins fair_a + fair_b == total and delta_b == -delta_a
+        exactly (share_a >= 50% keeps total - fair_a inside Sterbenz
+        range, so both identities are bit-exact here)."""
+        shares = {"partner_a": 50.0000002, "partner_b": 50.0000002}
+        # Guard: this fixture really is inside the validator's tolerance.
+        normalize_split_config(
+            {"enabled": True, "shares": shares, "categories": ["c1"]}
+        )
+        nets = [
+            _row("c1", "Home", "home", 700.0, 300.0),
+            _row("c2", "Groceries", "common", 120.0, 480.0),
+        ]
+        result = compute_split(nets, shares)
+        for row, net in zip(result["rows"], nets):
+            total = net["net_partner_a"] + net["net_partner_b"]
+            assert row["fair"] + row["fair_b"] == total
+            assert row["delta_b"] == -row["delta"]
+
+    def test_sub_cent_imbalance_never_emits_zero_looking_settlement(self):
+        """Regression: the settlement gate uses the same 0.005 half-cent
+        snap as the totals-row dust snap — a delta of ~0.002 would render
+        as 'X owes Y 0.00'. Below the snap -> settlement None."""
+        # total 2.002 @ 50/50 -> fair 1.001, delta_a = 0.001 (< 0.005).
+        nets = [_row("c1", "Home", "home", 1.002, 1.0)]
+        result = compute_split(nets, {"partner_a": 50.0, "partner_b": 50.0})
+        assert 0 < abs(result["rows"][0]["delta"]) < 0.005  # fixture guard
+        assert result["settlement"] is None
+
+    def test_imbalance_at_or_above_half_cent_still_settles(self):
+        """Boundary: a delta the display snap would NOT round to 0.00
+        (>= 0.005 -> renders 0,01) still produces a settlement."""
+        # total 2.012 @ 50/50 -> fair 1.006, delta_a = 0.006 (>= 0.005).
+        nets = [_row("c1", "Home", "home", 1.012, 1.0)]
+        result = compute_split(nets, {"partner_a": 50.0, "partner_b": 50.0})
+        assert result["rows"][0]["delta"] >= 0.005  # fixture guard
+        assert result["settlement"] is not None
+        assert result["settlement"]["from_partner"] == "partner_b"
+        assert result["settlement"]["to_partner"] == "partner_a"
+        assert result["settlement"]["amount"] == pytest.approx(0.006)
 
 
 # --------------------------------------------------------------------------- #

@@ -96,9 +96,21 @@ export function SplitConfigSection() {
     return null;
   }, [sharesAreNumeric, parsedA, parsedB]);
 
+  // Save is unsafe whenever the form doesn't reflect the server's real
+  // config: a failed GET leaves defaults (50/50, no categories) that a
+  // PUT would write over the real config, and the legacy-untranslatable
+  // warning state (categories=[] by necessity) would erase the preserved
+  // legacy sections. The banner stays visible either way.
+  const saveBlocked = loadError !== null || warning !== null;
+
   const handleSave = useCallback(async () => {
     setSaveError(null);
     setSaved(false);
+    // Guard twin of the disabled Save button — never PUT default/partial
+    // form state over a config that failed to load or couldn't translate.
+    if (loadError !== null || warning !== null) {
+      return;
+    }
     // Client-side pre-validation — inline error, no PUT round-trip.
     if (sumError) {
       setSaveError(sumError);
@@ -119,7 +131,7 @@ export function SplitConfigSection() {
     } finally {
       setSaving(false);
     }
-  }, [sumError, enabled, parsedA, parsedB, categories]);
+  }, [sumError, enabled, parsedA, parsedB, categories, loadError, warning]);
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Loading...</p>;
@@ -189,7 +201,7 @@ export function SplitConfigSection() {
       </div>
 
       <div className="flex items-center gap-2">
-        <Button type="button" onClick={handleSave} disabled={saving}>
+        <Button type="button" onClick={handleSave} disabled={saving || saveBlocked}>
           {saving ? "Saving..." : "Save"}
         </Button>
         {saved && <span className="text-sm text-primary">Saved.</span>}

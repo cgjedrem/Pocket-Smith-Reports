@@ -1566,7 +1566,10 @@ def compute_split(
     Rows carry partner_a's perspective (actual/fair/delta) AND partner_b's
     exact complement (actual_b/fair_b/delta_b) additively — two-partner
     system, shares sum to 100%, so actual_b = total - actual,
-    fair_b = total * share_b_fraction (== total - fair), delta_b = -delta.
+    fair_b = total - fair_a (derived, NOT total * share_b_fraction — the
+    shares-sum validation tolerates 100 ± 1e-6, so an independent
+    multiplication could drift fair_a + fair_b off the category total),
+    delta_b = actual_b - fair_b (== -delta_a).
     a-side fields unchanged for backward compat; b-side added on top.
 
     Rows are grouped by derived section in canonical display order (home,
@@ -1577,11 +1580,11 @@ def compute_split(
     Always returns a dict (never None) — an empty `category_nets` (e.g. an
     enabled config with zero categories selected) is a valid, allowed
     state: empty rows, settlement None, sections []. settlement is None
-    when the net imbalance is exactly 0 (within tolerance) — never
-    fabricate a zero-amount transfer.
+    when the net imbalance is below the half-cent display snap (0.005 —
+    same threshold the totals-row dust snap uses) — never fabricate a
+    zero-amount (or zero-looking, "owes 0.00") transfer.
     """
     share_a_fraction = shares["partner_a"] / 100.0
-    share_b_fraction = shares["partner_b"] / 100.0
     rows: list[dict[str, Any]] = []
     delta_total_a = 0.0
     for category in category_nets:
@@ -1591,9 +1594,13 @@ def compute_split(
         fair_a = total * share_a_fraction
         delta_a = net_a - fair_a
         delta_total_a += delta_a
-        # b-side additive — exact complement of a-side (shares sum to 100%).
+        # b-side additive — exact complement of a-side, derived
+        # (fair_b = total - fair_a), NOT total * share_b_fraction: shares
+        # only need to sum to 100 ± 1e-6 (normalize_split_config
+        # tolerance), so an independent multiplication could drift
+        # fair_a + fair_b off the category total.
         actual_b = total - net_a
-        fair_b = total * share_b_fraction
+        fair_b = total - fair_a
         delta_b = actual_b - fair_b
         rows.append(
             {
@@ -1613,12 +1620,15 @@ def compute_split(
     # within each section.
     rows.sort(key=lambda row: _split_section_sort_key(row["section"]))
     settlement = None
-    # Tolerance, not `!= 0` — float sums over many non-round-share
-    # categories land on ~1e-15 noise for a genuinely balanced split
-    # (33.33/66.67 etc). Same tolerance convention as the shares-sum check
-    # in normalize_split_config. Row-level actual/fair/delta stay unrounded
-    # (display-layer rounding only) — this only guards the settlement gate.
-    if abs(delta_total_a) > 1e-6:
+    # Half-cent (0.005) gate, not `!= 0` — float sums over many
+    # non-round-share categories land on ~1e-15 noise for a genuinely
+    # balanced split (33.33/66.67 etc), and any imbalance the renderers'
+    # half-cent display snap would print as 0.00 must never become a
+    # "X owes Y 0.00" sentence (same snap threshold as the totals-row dust
+    # snap in accounting_html._split_total_cell / the React snapDust).
+    # Row-level actual/fair/delta stay unrounded (display-layer rounding
+    # only) — this only guards the settlement gate.
+    if abs(delta_total_a) >= 0.005:
         if delta_total_a > 0:
             # partner_a paid more than their fair share overall — partner_b
             # owes them the difference.

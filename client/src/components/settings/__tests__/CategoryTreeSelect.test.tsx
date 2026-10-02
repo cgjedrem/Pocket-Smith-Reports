@@ -114,6 +114,93 @@ describe("CategoryTreeSelect", () => {
     expect(new Set(ids)).toEqual(new Set(["trips"]));
   });
 
+  it("unchecking a child also unchecks its selected parent (the parent's closure would re-add the child server-side)", async () => {
+    // Regression: backend _resolve_allowed_category_ids re-expands any
+    // selected parent to its full descendant closure, so unchecking "rent"
+    // while "home" stayed selected silently re-included rent at report
+    // build time. The uncheck must walk up and drop selected ancestors.
+    mockedList.mockResolvedValue(CATEGORIES);
+    const onChange = vi.fn();
+    render(
+      <CategoryTreeSelect selected={["home", "rent", "groceries"]} onChange={onChange} />,
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Rent")).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText("Rent"));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const ids = onChange.mock.calls[0][0] as string[];
+    // "home" dropped (its closure covers rent); sibling "groceries"
+    // survives as an explicit id.
+    expect(new Set(ids)).toEqual(new Set(["groceries"]));
+  });
+
+  it("check parent -> uncheck child: submitted set has no selected ancestor whose closure re-adds the child", async () => {
+    // Full interaction flow from the review finding: check parent Home,
+    // then uncheck child Rent — the submitted set must contain neither
+    // rent nor any ancestor (home) whose closure re-adds rent.
+    mockedList.mockResolvedValue(CATEGORIES);
+    const onChange = vi.fn();
+    const { rerender } = render(<CategoryTreeSelect selected={[]} onChange={onChange} />);
+
+    await waitFor(() => expect(screen.getByLabelText("Home")).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText("Home")); // checks home + rent + groceries
+    rerender(
+      <CategoryTreeSelect
+        selected={onChange.mock.calls[0][0] as string[]}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Rent")); // unchecks rent
+
+    expect(onChange).toHaveBeenCalledTimes(2);
+    const ids = onChange.mock.calls[1][0] as string[];
+    expect(ids).not.toContain("rent");
+    expect(ids).not.toContain("home");
+    expect(ids).toContain("groceries");
+  });
+
+  it("unchecking a node in a deeper chain removes every selected ancestor, keeping siblings", async () => {
+    mockedList.mockResolvedValue({
+      categories: [
+        { id: "top", title: "Top", parent_id: null },
+        { id: "mid", title: "Mid", parent_id: "top" },
+        { id: "leaf", title: "Leaf", parent_id: "mid" },
+        { id: "mid-sibling", title: "Mid sibling", parent_id: "top" },
+      ],
+    });
+    const onChange = vi.fn();
+    render(
+      <CategoryTreeSelect
+        selected={["top", "mid", "leaf", "mid-sibling"]}
+        onChange={onChange}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Leaf")).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText("Leaf"));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const ids = onChange.mock.calls[0][0] as string[];
+    // mid AND top dropped (each closure re-adds leaf); the still-selected
+    // sibling branch survives as an explicit id.
+    expect(new Set(ids)).toEqual(new Set(["mid-sibling"]));
+  });
+
+  it("checking a child under an already-selected parent keeps the parent (check direction unchanged)", async () => {
+    mockedList.mockResolvedValue(CATEGORIES);
+    const onChange = vi.fn();
+    render(<CategoryTreeSelect selected={["home", "groceries"]} onChange={onChange} />);
+
+    await waitFor(() => expect(screen.getByLabelText("Rent")).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText("Rent"));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const ids = onChange.mock.calls[0][0] as string[];
+    expect(new Set(ids)).toEqual(new Set(["home", "groceries", "rent"]));
+  });
+
   it("a leaf with no children toggles independently of its siblings", async () => {
     mockedList.mockResolvedValue(CATEGORIES);
     const onChange = vi.fn();

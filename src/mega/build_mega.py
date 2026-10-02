@@ -33,10 +33,16 @@ except ImportError:
 from accounting_html import render_mom
 from accounting import (
     AccountingValidationError,
+    PRIVATE_SPLIT_CONFIG,
+    _resolve_allowed_category_ids,
+    compute_split,
     load_category_parents,
     load_category_roles,
     load_category_titles,
+    load_detailed_section_mapping,
     load_excluded_account_ids,
+    load_split_config,
+    net_category_totals,
 )
 from build import build_month_html
 from compare import aggregate_normalized_months
@@ -1186,10 +1192,10 @@ def assemble_html(
     args: argparse.Namespace,
     split_summary: dict[str, object] | None = None,
 ) -> str:
-    """split_summary: pre-computed common-economy split (mega_builder.
-    compute_mega_split_summary) — additive param, default None keeps
-    existing callers (CLI main()) unchanged/block omitted. Never
-    recomputed here — see _render_split_summary docstring."""
+    """split_summary: pre-computed common-economy split (API/PDF paths:
+    mega_builder.compute_mega_split_summary; CLI main(): _cli_split_summary)
+    — additive param, default None omits the block. Never recomputed here —
+    see _render_split_summary docstring."""
     monthly_results = context["monthly_results"]
     first_result = monthly_results[0][1]
     recommendations = context["recommendations"]
@@ -1353,6 +1359,64 @@ def _output_name(args: argparse.Namespace) -> str:
     return args.name
 
 
+def _cli_split_summary(
+    context: dict[str, object], args: argparse.Namespace
+) -> dict[str, object] | None:
+    """Common-economy split summary for the standalone CLI path.
+
+    Mirrors budget_api.services.mega_builder.compute_mega_split_summary
+    (same load_split_config -> _resolve_allowed_category_ids ->
+    net_category_totals-per-month -> compute_split chain) so the CLI emits
+    the same split block the API/PDF paths render when split_config.json
+    is enabled. budget_api itself is NOT imported — the CLI stays
+    standalone (see mega_pdf's header); this re-derives the summary from
+    the same v4_pipeline primitives with the CLI's own file paths.
+
+    None when the feature is off/absent (load_split_config None), when no
+    --split-config path applies (synthetic runs never default to the
+    private config), or when no detailed-section mapping is available
+    (net_category_totals needs it to derive each record's natural section
+    — same gate as the API path). Settlement stays slot-keyed here —
+    _render_split_summary resolves partner labels at render time (its
+    .get() is a passthrough for the API path's already-resolved labels).
+    """
+    if not args.split_config:
+        return None
+    detailed_section_mapping = None
+    if args.detailed_section_map and Path(args.detailed_section_map).exists():
+        detailed_section_mapping = load_detailed_section_mapping(
+            Path(args.detailed_section_map)
+        )
+    category_parents = None
+    if args.category_catalog and Path(args.category_catalog).exists():
+        category_parents = load_category_parents(Path(args.category_catalog))
+    split_config = load_split_config(
+        args.split_config, category_parents, detailed_section_mapping
+    )
+    if split_config is None or detailed_section_mapping is None:
+        return None
+    allowed_ids = _resolve_allowed_category_ids(
+        split_config["categories"], category_parents
+    )
+    totals: dict[str, dict[str, object]] = {}
+    for _month, result in context["monthly_results"]:
+        records = result["contract"].get("normalized_transactions", [])
+        for row in net_category_totals(records, allowed_ids, detailed_section_mapping):
+            entry = totals.setdefault(
+                row["category_id"],
+                {
+                    "category_id": row["category_id"],
+                    "category_title": row["category_title"],
+                    "section": row["section"],
+                    "net_partner_a": 0.0,
+                    "net_partner_b": 0.0,
+                },
+            )
+            entry["net_partner_a"] += row["net_partner_a"]
+            entry["net_partner_b"] += row["net_partner_b"]
+    return compute_split(list(totals.values()), split_config["shares"])
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", required=True)
@@ -1368,6 +1432,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--account-owner-map")
     parser.add_argument("--detailed-section-map", default=None)
     parser.add_argument("--category-catalog", default=None)
+    parser.add_argument("--split-config", default=None)
     parser.add_argument("--partner-a-label")
     parser.add_argument("--partner-b-label")
     parser.add_argument("--partner-label-map")
@@ -1394,6 +1459,12 @@ def main(argv: list[str] | None = None) -> int:
         from accounting import PRIVATE_CATEGORY_CATALOG
 
         args.category_catalog = PRIVATE_CATEGORY_CATALOG
+    if args.split_config is None and args.input_kind == "live":
+        # Same default source as the API path (storage.SPLIT_CONFIG_PATH ==
+        # accounting.PRIVATE_SPLIT_CONFIG). Synthetic runs stay split-free
+        # unless --split-config is passed explicitly — a synthetic fixture
+        # must never pick up the real private household config.
+        args.split_config = str(PRIVATE_SPLIT_CONFIG)
     if args.only and args.only not in valid_ids(include_recommendations=True):
         parser.exit(
             1,
@@ -1402,7 +1473,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     try:
         context = build_context(args)
-        html = assemble_html(context, args)
+        split_summary = _cli_split_summary(context, args)
+        html = assemble_html(context, args, split_summary=split_summary)
     except (MegaValidationError, OSError, ValueError, KeyError, TypeError) as error:
         parser.exit(1, f"{parser.prog}: error: {error}\n")
     try:

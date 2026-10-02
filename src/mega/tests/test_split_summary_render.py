@@ -18,8 +18,11 @@ LG-002: neutral fixture partner labels only (Alex/Sam), no real identifiers.
 """
 
 import argparse
+import json
 
+import mega.build_mega as build_mega_module
 from mega.build_mega import (
+    _cli_split_summary,
     _render_kpi_cover,
     _render_split_summary,
     _split_section_label,
@@ -417,7 +420,176 @@ class TestAssembleHtmlSplitSummaryParam:
         assert "Rent" in html
 
     def test_existing_caller_shape_unaffected_positional_args_only(self):
-        """CLI main() calls assemble_html(context, args) with exactly 2
-        positional args — must keep working unchanged (additive param)."""
+        """The 2-positional-arg form (no split_summary) must keep working
+        for any caller without a computed summary (additive param, default
+        None omits the block). CLI main() itself now computes and passes a
+        summary — see TestCliSplitSummary below."""
         html = assemble_html(_mock_context(), _mock_args())
         assert "<!doctype html>" in html
+
+
+# --------------------------------------------------------------------------- #
+# CLI split wiring — main()/_cli_split_summary (the CLI previously called
+# assemble_html(context, args) with no split summary, so the split block was
+# silently omitted even with an enabled split_config.json). The CLI stays
+# standalone (no budget_api import), so _cli_split_summary re-derives the
+# summary from the same v4_pipeline primitives with the CLI's own paths.
+# --------------------------------------------------------------------------- #
+
+
+def _cli_record(record_id, amount, owner, category_id, category_title="Cat"):
+    """normalized_transactions record shape (twin of v4_pipeline
+    test_split.py's _record)."""
+    return {
+        "id": record_id,
+        "date": "2026-01-05",
+        "amount": amount,
+        "payee": None,
+        "note": None,
+        "account_id": "acc",
+        "account_name": None,
+        "owner": owner,
+        "category_path": [{"id": category_id, "title": category_title}],
+        "is_transfer": False,
+    }
+
+
+def _cli_context(records):
+    monthly_result = {
+        "partner_labels": PARTNER_LABELS,
+        "body_class": "mega-monthly",
+        "contract": {"kpis": None, "normalized_transactions": records},
+    }
+    return {"monthly_results": [("2026-01", monthly_result)]}
+
+
+def _cli_args(split_config=None, detailed_section_map=None):
+    return argparse.Namespace(
+        split_config=split_config,
+        detailed_section_map=detailed_section_map,
+        category_catalog=None,
+    )
+
+
+def _write_json(path, payload):
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return str(path)
+
+
+class TestCliSplitSummary:
+    def test_none_without_split_config_arg(self):
+        """No --split-config path (e.g. a synthetic run) — never silently
+        picks up a config; block omitted."""
+        assert _cli_split_summary(_cli_context([]), _cli_args()) is None
+
+    def test_none_when_config_file_missing(self, tmp_path):
+        args = _cli_args(split_config=str(tmp_path / "absent.json"))
+        assert _cli_split_summary(_cli_context([]), args) is None
+
+    def test_none_when_config_disabled(self, tmp_path):
+        config = _write_json(
+            tmp_path / "split_config.json",
+            {
+                "enabled": False,
+                "shares": {"partner_a": 50.0, "partner_b": 50.0},
+                "categories": ["c1"],
+            },
+        )
+        assert _cli_split_summary(_cli_context([]), _cli_args(split_config=config)) is None
+
+    def test_none_when_detailed_section_mapping_missing(self, tmp_path):
+        """Same gate as the API path (mega_builder.compute_mega_split_
+        summary) — net_category_totals needs the mapping to derive each
+        record's natural section, so no mapping => no split block."""
+        config = _write_json(
+            tmp_path / "split_config.json",
+            {
+                "enabled": True,
+                "shares": {"partner_a": 50.0, "partner_b": 50.0},
+                "categories": ["c1"],
+            },
+        )
+        args = _cli_args(split_config=config, detailed_section_map=None)
+        assert _cli_split_summary(_cli_context([]), args) is None
+
+    def test_computes_split_from_monthly_normalized_records(self, tmp_path):
+        mapping = _write_json(
+            tmp_path / "mapping.json",
+            {"category_sections": {"c1": "home"}, "account_roles": {}},
+        )
+        config = _write_json(
+            tmp_path / "split_config.json",
+            {
+                "enabled": True,
+                "shares": {"partner_a": 50.0, "partner_b": 50.0},
+                "categories": ["c1"],
+            },
+        )
+        records = [_cli_record("t1", -1000.0, "partner_a", "c1", "Rent")]
+        args = _cli_args(split_config=config, detailed_section_map=mapping)
+        summary = _cli_split_summary(_cli_context(records), args)
+        assert summary is not None
+        assert summary["shares"] == {"partner_a": 50.0, "partner_b": 50.0}
+        assert [row["category_id"] for row in summary["rows"]] == ["c1"]
+        # partner_a paid the whole 1000 at 50/50 — partner_b owes 500.
+        # Slot-keyed here; _render_split_summary resolves labels at render.
+        assert summary["settlement"] == {
+            "from_partner": "partner_b",
+            "to_partner": "partner_a",
+            "amount": 500.0,
+        }
+
+    def test_main_threads_split_summary_into_assemble_html(
+        self, tmp_path, monkeypatch
+    ):
+        """CLI regression: main() must compute and pass the split summary
+        (was: assemble_html(context, args) with none -> block omitted even
+        with an enabled split_config.json)."""
+        mapping = _write_json(
+            tmp_path / "mapping.json",
+            {"category_sections": {"c1": "home"}, "account_roles": {}},
+        )
+        config = _write_json(
+            tmp_path / "split_config.json",
+            {
+                "enabled": True,
+                "shares": {"partner_a": 50.0, "partner_b": 50.0},
+                "categories": ["c1"],
+            },
+        )
+        records = [_cli_record("t1", -1000.0, "partner_a", "c1", "Rent")]
+        monkeypatch.setattr(
+            build_mega_module, "build_context", lambda args: _cli_context(records)
+        )
+        captured = {}
+
+        def _fake_assemble_html(context, args, split_summary=None):
+            captured["split_summary"] = split_summary
+            return "<html></html>"
+
+        monkeypatch.setattr(build_mega_module, "assemble_html", _fake_assemble_html)
+        monkeypatch.setattr(
+            build_mega_module,
+            "_publish",
+            lambda html, output_dir, name: (
+                tmp_path / "out.html",
+                tmp_path / "out.pdf",
+            ),
+        )
+        rc = build_mega_module.main(
+            [
+                "--start", "2026-01",
+                "--end", "2026-01",
+                "--data-dir", str(tmp_path),
+                "--input-kind", "synthetic",
+                "--detailed-section-map", mapping,
+                "--split-config", config,
+            ]
+        )
+        assert rc == 0
+        assert captured["split_summary"] is not None
+        assert captured["split_summary"]["settlement"] == {
+            "from_partner": "partner_b",
+            "to_partner": "partner_a",
+            "amount": 500.0,
+        }

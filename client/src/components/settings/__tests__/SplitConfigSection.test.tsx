@@ -269,4 +269,43 @@ describe("SplitConfigSection", () => {
     await waitFor(() => expect(screen.getByLabelText("Alex %")).toHaveValue(50));
     expect(screen.queryByText("Split configuration warning")).not.toBeInTheDocument();
   });
+
+  it("disables Save and never PUTs when the initial GET fails (defaults would overwrite the real config)", async () => {
+    // Regression: on GET failure the form keeps its defaults (50/50, no
+    // categories) — an enabled Save would PUT that over the server's real
+    // config. Save must be disabled and the handler guarded.
+    mockedGet.mockRejectedValue({ detail: "Cannot reach server" });
+    render(<SplitConfigSection />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Cannot reach server");
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    fireEvent.click(save);
+    expect(mockedUpdate).not.toHaveBeenCalled();
+  });
+
+  it("disables Save while the legacy-untranslated warning is active (PUT would erase the preserved legacy sections)", async () => {
+    // Regression: the legacy sections-only path returns categories=[] +
+    // warning — a Save would write categories:[] over the preserved
+    // legacy sections. Banner stays, Save is disabled, handler guarded.
+    setup({
+      enabled: true,
+      shares: { partner_a: 50, partner_b: 50 },
+      categories: [],
+      sections: ["home", "common"],
+      labels: { partner_a: "Alex", partner_b: "Sam" },
+      warning:
+        "detailed_section_mapping.json is missing — this legacy sections-only split config could not be translated to categories; showing the saved sections as-is. Report builds using this config will fail until the mapping file is restored.",
+    });
+    render(<SplitConfigSection />);
+
+    expect(
+      await screen.findByText(/detailed_section_mapping\.json is missing/),
+    ).toBeInTheDocument();
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    fireEvent.click(save);
+    expect(mockedUpdate).not.toHaveBeenCalled();
+  });
+
 });
