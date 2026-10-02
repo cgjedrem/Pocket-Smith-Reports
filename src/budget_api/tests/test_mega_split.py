@@ -33,6 +33,8 @@ that).
 from __future__ import annotations
 
 import json
+import sys
+import types
 from pathlib import Path
 from unittest.mock import patch
 
@@ -746,9 +748,12 @@ class TestMegaPdfSplitSummaryWiring:
 
         monkeypatch.setattr(mega_pdf, "build_context", lambda args: context)
         monkeypatch.setattr(mega_pdf, "assemble_html", _fake_assemble_html)
-        monkeypatch.setattr(
-            "weasyprint.HTML", lambda filename: _FakePdf()
-        )
+        # Stub sys.modules — mega_pdf imports weasyprint lazily inside
+        # generate_pdf. monkeypatch.setattr("weasyprint.HTML", ...) would
+        # import the real module and load native glib libs (absent on
+        # Windows CI). Same pattern as test_label_escaping.py.
+        fake_weasyprint = types.SimpleNamespace(HTML=lambda filename: _FakePdf())
+        monkeypatch.setitem(sys.modules, "weasyprint", fake_weasyprint)
 
         result = mega_pdf.generate_pdf(START, END)
         assert result == b"%PDF-1.4 fake"
@@ -774,9 +779,9 @@ class TestMegaPdfSplitSummaryWiring:
 
         monkeypatch.setattr(mega_pdf, "build_context", lambda args: context)
         monkeypatch.setattr(mega_pdf, "assemble_html", _fake_assemble_html)
-        monkeypatch.setattr(
-            "weasyprint.HTML", lambda filename: _FakePdf()
-        )
+        # Stub sys.modules — see note in the sibling test above.
+        fake_weasyprint = types.SimpleNamespace(HTML=lambda filename: _FakePdf())
+        monkeypatch.setitem(sys.modules, "weasyprint", fake_weasyprint)
 
         mega_pdf.generate_pdf(START, END)
         assert captured["split_summary"] is None
