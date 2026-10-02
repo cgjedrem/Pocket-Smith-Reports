@@ -93,13 +93,14 @@ export function AppLayout() {
             Docs
           </NavLink>
           {/* Privacy toggle — masks every monetary amount app-wide.
-              Right-aligned in the header nav; visible on every route. */}
+              Sits directly after the nav links (NOT ml-auto): the mega
+              report's fixed top-right section TOC would overlap it there. */}
           <button
             type="button"
             onClick={toggleAmountsHidden}
             aria-label={amountsHidden ? "Show amounts" : "Hide amounts"}
             aria-pressed={amountsHidden}
-            className="ml-auto rounded-md p-2 text-muted-foreground hover:text-foreground"
+            className="rounded-md p-2 text-muted-foreground hover:text-foreground"
           >
             {amountsHidden ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
