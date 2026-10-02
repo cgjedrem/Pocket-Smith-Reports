@@ -2,6 +2,7 @@ import * as React from "react"
 import * as RechartsPrimitive from "recharts"
 import type { TooltipValueType } from "recharts"
 
+import { maskAmount } from "@/lib/privacy-store"
 import { cn } from "@/lib/utils"
 
 // Format: { THEME_NAME: CSS_SELECTOR }
@@ -252,8 +253,12 @@ function ChartTooltipContent({
                       </div>
                       {item.value != null && (
                         <span className="font-mono font-medium text-foreground tabular-nums">
+                          {/* Privacy mask for monetary tooltip values.
+                              Percentage entries (unit "%") stay visible — FR-005. */}
                           {typeof item.value === "number"
-                            ? item.value.toLocaleString()
+                            ? item.unit === "%"
+                              ? item.value.toLocaleString()
+                              : maskAmount(item.value.toLocaleString())
                             : String(item.value)}
                         </span>
                       )}

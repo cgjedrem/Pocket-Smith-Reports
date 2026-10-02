@@ -11,12 +11,16 @@
 import type { Kpis, ReportResponse, SignClass } from "@/types/report";
 import { PartnerKpiMatrix } from "@/components/reports/charts/PartnerKpiMatrix";
 import { SIGN_CLASS, signOf } from "@/components/reports/signClasses";
+import { maskAmount } from "@/lib/privacy-store";
 
+// Masked last-mile — privacy toggle swaps amounts for "****".
 function fmt(value: number): string {
-  return value.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return maskAmount(
+    value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+  );
 }
 
 // Percent cell — null denominator (income = 0) -> em-dash, never a

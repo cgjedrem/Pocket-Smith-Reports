@@ -1,6 +1,8 @@
 // Partner KPI matrix — raw SVG in JSX. Port of charts.py render_partner_kpi_matrix.
 // Three fixed-position KPI comparisons in one chart. Rail style (minimal theme).
 
+import { maskAmount } from "@/lib/privacy-store";
+
 interface MatrixRow {
   label: string;
   value: number;
@@ -107,7 +109,9 @@ export function PartnerKpiMatrix({ series, width = 720 }: PartnerKpiMatrixProps)
                     fontWeight={400}
                     fill={THEME.ink}
                   >
-                    {row.value.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                    {maskAmount(
+                      row.value.toLocaleString("en-US", { maximumFractionDigits: 0 }),
+                    )}
                   </text>
                   <text
                     x={(left + barWidth).toFixed(1)}

@@ -1,6 +1,8 @@
 // Donut chart — raw SVG in JSX. Port of charts.py render_donut_single.
 // Single-tier donut with on-chart % labels + center text.
 
+import { maskAmount } from "@/lib/privacy-store";
+
 interface DonutSlice {
   label: string;
   value: number;
@@ -170,7 +172,8 @@ export function DonutChart({
         fontWeight={700}
         fill="#222"
       >
-        {centerValue ?? total.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+        {centerValue ??
+          maskAmount(total.toLocaleString("en-US", { maximumFractionDigits: 0 }))}
       </text>
     </svg>
   );

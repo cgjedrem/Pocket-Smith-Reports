@@ -8,10 +8,13 @@ import { EmptyState } from "@/components/EmptyState";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { MonthSidebar } from "@/components/reports/MonthSidebar";
 import { ReportView } from "@/components/reports/ReportView";
+import { useAmountsHidden } from "@/lib/privacy-store";
 
 type LoadState = "loading" | "empty" | "ready";
 
 export function MonthlyReportsPage() {
+  // Re-render on privacy toggle, no remount — formatters read the flag.
+  useAmountsHidden();
   const [months, setMonths] = useState<string[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);

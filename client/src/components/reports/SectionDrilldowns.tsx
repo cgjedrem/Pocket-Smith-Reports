@@ -13,12 +13,26 @@ import { useState } from "react";
 
 import type { DetailedSection } from "@/types/category_mappings";
 import type { ReportResponse } from "@/types/report";
+import { maskAmount } from "@/lib/privacy-store";
 
+// Masked last-mile — privacy toggle swaps amounts for "****".
 export function fmt(value: number): string {
-  return value.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return maskAmount(
+    value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+  );
+}
+
+// Signed variant — sign INSIDE the masked string so it never leaks.
+function fmtSigned(value: number): string {
+  return maskAmount(
+    `${value >= 0 ? "+" : ""}${value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
+  );
 }
 
 // Normalized transaction shape — from contract.
@@ -170,10 +184,7 @@ export function LegacyDrilldown({ groups }: LegacyDrilldownProps) {
                     <td>{r.payee ?? ""}</td>
                     <td>{r.account_name ?? ""}</td>
                     <td>{r.note ?? ""}</td>
-                    <td>
-                      {r.amount >= 0 ? "+" : ""}
-                      {fmt(r.amount)}
-                    </td>
+                    <td>{fmtSigned(r.amount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -221,10 +232,7 @@ export function DrilldownCard({ txns, paLabel }: DrilldownCardProps) {
                   <td>{r.payee ?? "Unspecified"}</td>
                   <td>{r.account_name ?? paLabel}</td>
                   <td>{r.note ?? "-"}</td>
-                  <td>
-                    {r.amount >= 0 ? "+" : ""}
-                    {fmt(r.amount)}
-                  </td>
+                  <td>{fmtSigned(r.amount)}</td>
                 </tr>
               ))}
             </tbody>
@@ -276,10 +284,7 @@ export function SavingsDrilldown({ txns, paLabel }: SavingsDrilldownProps) {
                     <td>{r.payee ?? "Unspecified"}</td>
                     <td>{r.account_name ?? paLabel}</td>
                     <td>{r.note ?? "-"}</td>
-                    <td>
-                      {r.amount >= 0 ? "+" : ""}
-                      {fmt(r.amount)}
-                    </td>
+                    <td>{fmtSigned(r.amount)}</td>
                   </tr>
                 ))}
               </tbody>

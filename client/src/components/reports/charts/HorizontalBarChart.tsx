@@ -2,6 +2,8 @@
 // Sorted by value descending. Auto-shrinks label font to fit the reserve.
 // No truncation — full label is always rendered.
 
+import { maskAmount } from "@/lib/privacy-store";
+
 interface BarItem {
   label: string;
   value: number;
@@ -167,7 +169,9 @@ export function HorizontalBarChart({
               fontWeight={800}
               fill={ink}
             >
-              {item.value.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              {maskAmount(
+                item.value.toLocaleString("en-US", { maximumFractionDigits: 0 }),
+              )}
               {"  "}
               ({pct.toFixed(1)}%)
             </text>

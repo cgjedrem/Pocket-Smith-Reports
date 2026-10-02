@@ -9,11 +9,14 @@ import { ErrorAlert } from "@/components/ErrorAlert";
 import { GeneratedReportsList } from "@/components/mega-reports/GeneratedReportsList";
 import { MegaReportView } from "@/components/mega-reports/MegaReportView";
 import { RangePicker } from "@/components/mega-reports/RangePicker";
+import { useAmountsHidden } from "@/lib/privacy-store";
 import type { MegaReportRange } from "@/types/mega_report";
 
 import styles from "./MegaReportsPage.module.css";
 
 export function MegaReportsPage() {
+  // Re-render on privacy toggle, no remount — formatters read the flag.
+  useAmountsHidden();
   const [reports, setReports] = useState<MegaReportRange[]>([]);
   const [months, setMonths] = useState<string[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);

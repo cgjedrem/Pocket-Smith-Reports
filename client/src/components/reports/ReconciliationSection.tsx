@@ -2,12 +2,16 @@
 // Uses shared SCSS classes (.reconciliation-ok, .reconciliation-review).
 
 import type { ReportResponse } from "@/types/report";
+import { maskAmount } from "@/lib/privacy-store";
 
+// Masked last-mile — privacy toggle swaps amounts for "****".
 function fmt(value: number): string {
-  return value.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return maskAmount(
+    value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+  );
 }
 
 interface ReconciliationSectionProps {

@@ -28,6 +28,7 @@ import {
 
 import { useBillsSourceSubscription } from "@/hooks/useBillsSourceSubscription";
 import { getMonths } from "@/lib/bills-source";
+import { maskAmount } from "@/lib/privacy-store";
 import type { F2PartnerIdentity, PartnerEconomy } from "@/types/api";
 import {
   byDisplayOrder,
@@ -50,12 +51,17 @@ const C = {
   neutral: "hsl(0 0% 45%)",
 };
 
+// Masked last-mile — privacy toggle swaps axis ticks/tooltip values for
+// "****". Null stays "—" (absence, not an amount).
 const fmt = (n: number | null | undefined): string => {
   if (n == null || Number.isNaN(n)) return "—";
-  return new Intl.NumberFormat("no-NO", { maximumFractionDigits: 0 }).format(n);
+  return maskAmount(
+    new Intl.NumberFormat("no-NO", { maximumFractionDigits: 0 }).format(n),
+  );
 };
 
-const kr = (n: number): string => `${fmt(n)} kr`;
+// Whole-label mask: hidden → "****", not "**** kr".
+const kr = (n: number): string => maskAmount(`${fmt(n)} kr`);
 
 interface ChartRow {
   label: string;
