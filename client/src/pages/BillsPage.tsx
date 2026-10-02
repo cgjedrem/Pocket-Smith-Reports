@@ -18,6 +18,7 @@ import { BillsWarningBanner } from "@/components/bills/BillsWarningBanner";
 import { EventDetailDialog } from "@/components/bills/EventDetailDialog";
 
 import { useBillsSnapshot } from "@/hooks/useBills";
+import { useAmountsHidden } from "@/lib/privacy-store";
 
 function currentMonth(): string {
   const d = new Date();
@@ -36,6 +37,8 @@ function parseWindowParam(raw: string | null, fallback: number): number {
 }
 
 export function BillsPage() {
+  // Re-render on privacy toggle, no remount — formatters read the flag.
+  useAmountsHidden();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 

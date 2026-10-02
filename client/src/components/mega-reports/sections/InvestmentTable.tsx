@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { maskAmount } from "@/lib/privacy-store";
 
 // Partner A (teal), B (orange), T = household total (green).
 // CSS hsl() alpha MUST live INSIDE the function — template literals like
@@ -29,11 +30,14 @@ const B_BORDER_50 = "hsl(14 64% 56% / 0.5)";
 const A_BORDER_60 = "hsl(189 78% 26% / 0.6)";
 const T_BORDER_60 = "hsl(142 52% 36% / 0.6)";
 
+// Masked last-mile — privacy toggle swaps amounts for "****".
 function fmt(n: number): string {
-  return n.toLocaleString("nb-NO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return maskAmount(
+    n.toLocaleString("nb-NO", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+  );
 }
 
 export interface InvestmentRow {

@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { maskAmount } from "@/lib/privacy-store";
 
 export interface PartnerSplitRow {
   month: string; // already "YY/MM"
@@ -64,11 +65,14 @@ const S_BORDER_60 = "hsl(262 52% 50% / 0.6)";
 const B_BORDER_50 = "hsl(14 64% 56% / 0.5)";
 const T_BORDER_50 = "hsl(142 52% 36% / 0.5)";
 
+// Masked last-mile — privacy toggle swaps amounts for "****".
 function fmt(n: number): string {
-  return n.toLocaleString("nb-NO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return maskAmount(
+    n.toLocaleString("nb-NO", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+  );
 }
 
 function fmtPctSigned(n: number): string {

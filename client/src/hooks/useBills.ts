@@ -16,6 +16,7 @@ import {
   mapSnapshotToMonthData,
 } from "@/lib/bills-mapper";
 import { hydrate } from "@/lib/bills-source";
+import { useAmountsHidden } from "@/lib/privacy-store";
 
 // Generate a list of YYYY-MM strings centered on `month`.
 // `pastMonths` backward + `futureMonths` forward. Current month included.
@@ -65,6 +66,19 @@ export function useBillsSnapshot(
   const [notFound, setNotFound] = useState(false);
   const [tick, setTick] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Research Decision 3b: privacy toggle re-maps the CACHED raw snapshots
+  // through the pure mappers and re-hydrates bills-source. Pure recompute —
+  // no API call. Separate effect from the fetch on purpose.
+  const amountsHidden = useAmountsHidden();
+  useEffect(() => {
+    if (snapshots.length === 0) return; // nothing cached to re-derive
+    const sorted = [...snapshots].sort((a, b) => a.month.localeCompare(b.month));
+    hydrate(
+      sorted.map(mapSnapshotToMonthData),
+      snapshots.flatMap(mapSnapshotToEvents),
+    );
+  }, [amountsHidden, snapshots]);
 
   useEffect(() => {
     abortRef.current?.abort();
@@ -126,14 +140,9 @@ export function useBillsSnapshot(
         const snapList = okResults.map((r) => r.snapshot);
         setSnapshots(snapList);
         setNotFound(false);
-        // Sort by month for chronological rendering. No next-month
-        // plumbing — BE everyday_budget already encodes m+1 inputs.
-        const sorted = [...snapList].sort((a, b) =>
-          a.month.localeCompare(b.month),
-        );
-        const mappedMonths = sorted.map(mapSnapshotToMonthData);
-        const allEvents = snapList.flatMap(mapSnapshotToEvents);
-        hydrate(mappedMonths, allEvents);
+        // Mapping + hydrate lives in the flag/snapshots effect above so a
+        // fetch and a privacy toggle share ONE hydrate path (no double
+        // hydrate, and toggle re-derives without a network call).
       })
       .catch((err: ApiError) => {
         if (cancelled) return;

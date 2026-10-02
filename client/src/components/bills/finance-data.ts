@@ -4,6 +4,7 @@
 //
 // Deterministic PRNG → stable data across renders. No backend calls.
 
+import { maskAmount } from "@/lib/privacy-store";
 import type {
   EconomyBarView,
   F2PartnerIdentity,
@@ -199,10 +200,12 @@ function daysInMonth(year: number, monthIndex: number) {
   return new Date(year, monthIndex + 1, 0).getDate();
 }
 
+// Masked last-mile: privacy toggle swaps the whole label for "****"
+// (sign never leaks — the sign is inside the masked string).
 export function formatKr(n: number): string {
   const sign = n < 0 ? "-" : "";
   const abs = Math.abs(Math.round(n));
-  return `${sign}${abs.toLocaleString("en-US")} kr`;
+  return maskAmount(`${sign}${abs.toLocaleString("en-US")} kr`);
 }
 
 // F2-C: format with explicit + or − sign. Used for the savings delta value
@@ -210,7 +213,7 @@ export function formatKr(n: number): string {
 // Zero returns "0 kr" without a sign — neutral tone, intentionally unsigned.
 export function formatSignedKr(n: number): string {
   if (n === 0) return formatKr(0);
-  return n > 0 ? `+${formatKr(n)}` : formatKr(n);
+  return maskAmount(n > 0 ? `+${formatKr(n)}` : formatKr(n));
 }
 
 export function formatDate(iso: string): string {

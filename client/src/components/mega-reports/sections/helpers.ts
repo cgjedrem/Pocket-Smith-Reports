@@ -1,10 +1,11 @@
 // Shared helpers for mega report sections.
 
+import { maskAmount } from "@/lib/privacy-store";
 import type { MegaReportResponse, CategoryAgg } from "@/types/mega_report";
 
-// Format NOK — 2 decimals, thousands separator.
+// Format NOK — 2 decimals, thousands separator. Masked last-mile.
 export function formatNOK(v: number): string {
-  return v.toLocaleString("nb-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return maskAmount(v.toLocaleString("nb-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 }
 
 // Partner display name from partner_labels.
@@ -24,13 +25,14 @@ export function sumArr(arr: number[]): number {
   return arr.reduce((a, b) => a + (b || 0), 0);
 }
 
-// Compact NOK — M / k / int, for chart axes.
+// Compact NOK — M / k / int, for chart axes. Masked last-mile.
 export function compactNOK(v: number): string {
   const a = Math.abs(v);
   const sign = v < 0 ? "-" : "";
-  if (a >= 1_000_000) return `${sign}${(a / 1_000_000).toFixed(1)}M`;
-  if (a >= 1_000) return `${sign}${(a / 1_000).toFixed(0)}k`;
-  return `${sign}${a.toFixed(0)}`;
+  if (a >= 1_000_000)
+    return maskAmount(`${sign}${(a / 1_000_000).toFixed(1)}M`);
+  if (a >= 1_000) return maskAmount(`${sign}${(a / 1_000).toFixed(0)}k`);
+  return maskAmount(`${sign}${a.toFixed(0)}`);
 }
 
 // Stable DOM id slug for a sub-category title (used by nav anchors).

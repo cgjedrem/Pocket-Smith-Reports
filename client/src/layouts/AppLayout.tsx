@@ -1,10 +1,15 @@
+import { Eye, EyeOff } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { toggleAmountsHidden, useAmountsHidden } from "@/lib/privacy-store";
 import { cn } from "@/lib/utils";
 
 // App shell — top nav + content outlet.
+// No remount key on the outlet: page roots subscribe to the privacy flag
+// themselves and re-render in place (FR-008, research.md Decision 3).
 export function AppLayout() {
+  const amountsHidden = useAmountsHidden();
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b-2 border-accent bg-card px-6">
@@ -87,6 +92,17 @@ export function AppLayout() {
           >
             Docs
           </NavLink>
+          {/* Privacy toggle — masks every monetary amount app-wide.
+              Right-aligned in the header nav; visible on every route. */}
+          <button
+            type="button"
+            onClick={toggleAmountsHidden}
+            aria-label={amountsHidden ? "Show amounts" : "Hide amounts"}
+            aria-pressed={amountsHidden}
+            className="ml-auto rounded-md p-2 text-muted-foreground hover:text-foreground"
+          >
+            {amountsHidden ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
         </nav>
       </header>
       <main className="mx-auto w-full max-w-[1200px] flex-1 p-6">
