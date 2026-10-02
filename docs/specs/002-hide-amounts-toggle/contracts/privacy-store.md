@@ -54,7 +54,7 @@ export function maskAmount(formatted: string): string;
 | `aria-label` | `"Hide amounts"` when visible, `"Show amounts"` when hidden |
 | `aria-pressed` | `true` iff amounts are hidden |
 | Keyboard | Focusable, activates on Enter/Space (native `<button>`) |
-| Effect | Remounts page content; masked/visible within one render cycle |
+| Effect | Subscribed page roots re-render **in place** (no remount, no refetch, selection state preserved); the bills hook re-maps cached raw snapshots through the pure mappers and re-hydrates `bills-source` (no network) — see research.md Decisions 3/3b |
 
 ## 3. Coverage contract — surfaces that MUST mask
 

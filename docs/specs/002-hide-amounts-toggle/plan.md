@@ -2,7 +2,7 @@
 
 **Branch**: `002-hide-amounts-toggle` | **Date**: 2026-10-02 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/002-hide-amounts-toggle/spec.md`
+**Input**: Feature specification from `/docs/specs/002-hide-amounts-toggle/spec.md`
 
 ## Summary
 
@@ -11,8 +11,11 @@ the maintainer can screenshot any page (reports, mega reports, bills) with
 real data loaded and share it publicly. A module-level privacy store
 (`client/src/lib/privacy-store.ts`, same pattern as `bills-source.ts`) holds
 one boolean; every existing currency-format helper routes its result through
-`maskAmount()` (`"****"`), and `AppLayout` remounts the page content on
-toggle so all labels re-derive immediately. No backend, API, or data changes.
+`maskAmount()` (`"****"`). Page roots subscribe via `useAmountsHidden()` and
+re-render **in place** (no remount, no refetch — FR-008); the bills hook
+re-maps its cached raw snapshots through the pure mappers and re-hydrates
+`bills-source` on toggle (pure recompute, no network). No backend, API, or
+data changes.
 
 ## Technical Context
 
@@ -42,6 +45,7 @@ toggle so all labels re-derive immediately. No backend, API, or data changes.
 | VIII. Tests colocated, gate merges | PASS | New tests in `client/src/lib/__tests__/` next to the store |
 | IX. Windows PowerShell platform | PASS | All commands PowerShell-safe |
 | Charter: react-client (logic in `lib/`, thin components, a11y gate) | PASS | Store lives in `src/lib/`; components get a one-line mask call or none; toggle has `aria-label` + `aria-pressed` + native button keyboard support |
+| Quality & Workflow: artifacts under `docs/specs/` | PASS | Feature directory lives at `docs/specs/002-hide-amounts-toggle/` per the PR #27 consolidation (moved here after review feedback; the initial `specs/` placement predated this repo's layout rule) |
 
 Post-Phase-1 re-check: design artifacts introduce no new principle friction
 (store-in-lib, no refetch, no new deps). **No violations — Complexity
@@ -52,9 +56,9 @@ Tracking empty.**
 ### Documentation (this feature)
 
 ```text
-specs/002-hide-amounts-toggle/
+docs/specs/002-hide-amounts-toggle/
 ├── plan.md              # This file
-├── research.md          # Phase 0 output — 6 decisions, all resolved from repo evidence
+├── research.md          # Phase 0 output — decisions, incl. post-review reactive redesign
 ├── data-model.md        # Phase 1 output — single MaskPreference boolean
 ├── quickstart.md        # Phase 1 output — 4 validation scenarios
 ├── contracts/
@@ -72,7 +76,15 @@ client/src/
 │   └── __tests__/
 │       └── privacy-store.test.ts     # NEW — store, mask, formatter, persistence tests
 ├── layouts/
-│   └── AppLayout.tsx                 # MOD — eye toggle in header + remount key on <main>
+│   └── AppLayout.tsx                 # MOD — eye toggle button in header (no remount)
+├── hooks/
+│   └── useBills.ts                   # MOD — useBillsSnapshot re-maps cached raw
+│                                     #     snapshots + re-hydrates bills-source on toggle
+├── pages/
+│   ├── MonthlyReportsPage.tsx        # MOD — useAmountsHidden() subscription (re-render in place)
+│   ├── MegaReportsPage.tsx           # MOD — useAmountsHidden() subscription
+│   ├── BillsPage.tsx                 # MOD — useAmountsHidden() subscription
+│   └── BillsPreviewPage.tsx          # MOD — useAmountsHidden() subscription + mock re-derive
 ├── components/
 │   ├── bills/
 │   │   ├── finance-data.ts           # MOD — formatKr, formatSignedKr mask

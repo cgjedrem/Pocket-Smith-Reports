@@ -41,25 +41,54 @@ CLARIFICATION items remained. This file records the design decisions.
   - *`<Amount>` wrapper component at every render site*: rejected — ~50+
     JSX call sites, high miss risk, violates thin-components minimalism.
   - *Masking in `bills-mapper.ts` / API layer*: rejected — mapper labels are
-    computed once at hydration, so toggling would not update them without a
-    refetch (violates FR-008).
+    computed at hydration, not render; masking there would bake the mask
+    into stored strings. (Hydration-time computation is handled by
+    re-deriving from cached raw snapshots on toggle — see Decision 3b.)
 
-## Decision 3: Remount-on-toggle for invalidation
+## Decision 3: Reactive in-place re-render — NO remount (revised after review)
 
-- **Decision**: `AppLayout` reads `useAmountsHidden()` and renders
-  `<main>` (or `<Outlet/>`) with `key={hidden ? "hidden" : "visible"}` so the
-  page subtree remounts and re-derives every label from the store.
-- **Rationale**: Labels are plain strings produced during render; a remount
-  is the simplest correct invalidation and guarantees FR-009 (immediate,
-  exact restore). Module-level data sources (`bills-source.ts`) survive
-  remount, and page components hold no fetch-state that a remount would lose
-  beyond what they already re-derive — satisfying FR-008 (no refetch of
-  financial data; report pages re-read from their existing caches/hooks the
-  same way any remount/navigation does).
+- **Decision**: Each page root that can render amounts
+  (`MonthlyReportsPage`, `MegaReportsPage`, `BillsPage`, `BillsPreviewPage`)
+  calls `useAmountsHidden()`. When the flag flips, React re-renders the page
+  subtree **in place** — format functions re-run during render, while
+  component state (selected month, filters), mounted fetch effects, and the
+  DOM subtree are all preserved. `AppLayout` only hosts the toggle button;
+  it does NOT wrap the outlet in a remount key.
+- **Rationale**: The original remount-on-toggle design contradicted FR-008:
+  pages fetch on mount (`MonthlyReportsPage` `useEffect`→`refresh`,
+  `useBills.ts` `useBillsSnapshot` `useEffect`→`/api/bills/dashboard`) and
+  hold selections in component state, so a remount would issue backend
+  requests and reset user selections. In-place re-render re-invokes render-
+  time formatters with zero network activity and zero state loss, satisfying
+  FR-008 and FR-009 exactly.
 - **Alternatives considered**:
-  - *Make every format function reactive via hook*: impossible — they are
-    plain functions called inside render of components that would each need
-    the hook; a remount achieves the same with one line.
+  - *Remount via `key` on the outlet*: REJECTED (initial design) — triggers
+    mount effects → refetch + state reset (FR-008 violation).
+  - *Subscribe in every leaf component*: rejected — dozens of edits; a page-
+    root subscription re-renders the whole (unmemoized) subtree for free.
+
+## Decision 3b: Bills labels re-derive from cached raw snapshots on toggle
+
+- **Decision**: The bills live path precomputes display labels at hydration
+  time (`useBillsSnapshot` → `mapSnapshotToMonthData`/`mapSnapshotToEvents`
+  → `hydrate()` into the `bills-source` module store), so a re-render alone
+  cannot re-mask them. `useBillsSnapshot` therefore subscribes to
+  `useAmountsHidden()` and, on change, re-runs the pure mappers over its
+  **already-cached raw `snapshots` state** and calls `hydrate()` again —
+  a pure in-memory recompute with no network request. The mock path
+  (`BillsPreviewPage` / `bills-source` seeding) re-derives the same way.
+  Existing `useBillsSourceSubscription` consumers re-render from the store
+  notification as they already do.
+- **Rationale**: Keeps formatting last-mile (mappers stay the single label
+  producer) while making the precomputed-label path reactive without a
+  refetch. Raw snapshots are already held in hook state, so no new caching
+  layer is introduced.
+- **Alternatives considered**:
+  - *Store raw numbers in bills-source and format at render*: rejected —
+    large refactor of the MonthData/FinanceEvent contracts and every bills
+    component; re-mapping cached snapshots achieves the same invalidation
+    with a two-line hook change.
+  - *Refetch on toggle*: rejected — violates FR-008.
 
 ## Decision 4: Toggle in the global header
 
