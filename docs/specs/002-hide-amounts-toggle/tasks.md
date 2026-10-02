@@ -126,7 +126,7 @@
 
 - [X] T026 Run `pnpm test` in `client/` and confirm zero NEW failures vs. the T001 baseline (all new tests pass)
 - [X] T027 Run `pnpm build` in `client/` (`tsc -b && vite build`) and confirm no NEW failure vs. the T001 baseline
-- [ ] T028 Execute quickstart.md Scenario 3 (manual end-to-end with the API + dev server running, including keyboard/Space activation and devtools Network check proving the toggle causes ZERO requests) and Scenario 4 (screenshot spot-check); record results in the PR description
+- [X] T028 Execute quickstart.md Scenario 3 (manual end-to-end with the API + dev server running, including keyboard/Space activation and devtools Network check proving the toggle causes ZERO requests) and Scenario 4 (screenshot spot-check); record results in the PR description
 - [ ] T029 [P] Update the speckit agent context files if the optional `/speckit-agent-context-update` hook is requested
 
 ---
