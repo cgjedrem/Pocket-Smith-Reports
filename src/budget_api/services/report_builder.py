@@ -110,9 +110,10 @@ def _partner_slot_map(raw: dict) -> dict[str, str]:
     mirroring bills_builder._partner_slot_map's identity-neutral ordering.
     IDs come from the partners block AND account partner_id values — except
     literal slot tokens ("partner_a"/"partner_b") found in account
-    partner_id values: when the partners block uses custom IDs those tokens
-    are already slots, not pool members, and pass through to owners
-    unchanged in _load_account_owners (mirrors
+    partner_id values: those tokens are already slots, never pool members
+    (unconditionally — an empty partners block still derives slots from
+    account values, and a literal token must not join the sorted pool),
+    and pass through to owners unchanged in _load_account_owners (mirrors
     accounting.load_unified_account_mapping). Legacy files using literal
     "partner_a"/"partner_b" partners keys map identically. Shared by
     _load_account_owners and _load_partner_labels so both resolve identical
@@ -123,13 +124,14 @@ def _partner_slot_map(raw: dict) -> dict[str, str]:
         accounts = {}
     partners = raw.get("partners", {})
     partner_ids = set(partners) if isinstance(partners, dict) else set()
-    custom_partners = bool(partner_ids - _LEGACY_SLOTS)
     for acc in accounts.values():
         if isinstance(acc, dict):
             pid = acc.get("partner_id")
             if isinstance(pid, str) and pid:
-                if custom_partners and pid in _LEGACY_SLOTS:
-                    # Already a slot — exclude from pool, passthrough later.
+                if pid in _LEGACY_SLOTS:
+                    # Already a slot — never a pool member, passthrough
+                    # later. Unconditional: an empty partners block must not
+                    # let a literal token join the sorted pool.
                     continue
                 partner_ids.add(pid)
     if len(partner_ids) > 2:

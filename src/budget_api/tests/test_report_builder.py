@@ -560,6 +560,39 @@ class TestLoadAccountOwners:
         assert labels == {"partner_a": "Alex", "partner_b": "Sam"}
         assert warnings == []
 
+    def test_literal_slot_token_bypasses_pool_with_empty_partners_block(
+        self, tmp_private_dir: Path
+    ):
+        """Literal slot token in account partner_id values bypasses pool
+        assignment even when the partners block is empty (slot derivation
+        falls back to account partner_id values). Regression: the
+        custom-ID check ran before account IDs were folded in, so with an
+        empty partners block the literal 'partner_a' joined the sorted
+        pool — sorted({alpha, partner_a, zeta}) mapped the literal token
+        itself to partner_b and pushed zeta out entirely."""
+        mappings = {
+            "schema_version": 1,
+            "partners": {},
+            "accounts": {
+                "100": {"partner_id": "zeta"},
+                "200": {"partner_id": "alpha"},
+                "300": {"partner_id": "partner_a"},
+            },
+        }
+        self._write_mappings(tmp_private_dir, mappings)
+        # Only custom IDs pool; the literal token is never a pool member.
+        assert report_builder._partner_slot_map(mappings) == {
+            "alpha": "partner_a",
+            "zeta": "partner_b",
+        }
+        owners = report_builder._load_account_owners()
+        # Literal stays partner_a (passthrough); zeta keeps its slot.
+        assert owners == {
+            "200": "partner_a",
+            "300": "partner_a",
+            "100": "partner_b",
+        }
+
     def test_missing_file_returns_empty(self, tmp_private_dir: Path):
         assert not (tmp_private_dir / "account_mappings.json").exists()
         assert report_builder._load_account_owners() == {}
