@@ -35,14 +35,17 @@ inputs:
     type: string
     default: "auto"
     prompt: "Integration to use (e.g. claude, copilot, gemini; 'auto' uses the project's initialized integration)"
-  scope:
-    type: string
-    default: "full"
-    enum: ["full", "backend-only", "frontend-only"]
+  # scope input removed: it was never consumed by any step (advertised a nonfunctional control).
 
 steps:
   - id: specify
     command: speckit.specify
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "{{ inputs.spec }}"
+
+  - id: clarify
+    command: speckit.clarify
     integration: "{{ inputs.integration }}"
     input:
       args: "{{ inputs.spec }}"

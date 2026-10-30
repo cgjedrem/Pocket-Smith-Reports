@@ -49,6 +49,9 @@ Success Criteria:
 
 ## Operational Principles
 
+- **Split-scope sets.** When a change introduces a runtime dependency on a file absent from the diff (e.g. a new script requiring an untracked env file), the pair ships together or neither — flag it so the coordinator splits or joins the commit deliberately.
+- **Tap-level proof (mobile evidence).** Classify dump-only reachability claims as INCONCLUSIVE: a node listed in a uiautomator dump proves the element exists, not that touch reaches it. Require tap plus observed ground-truth effect before accepting an interaction claim. Taps near the screen bottom can be consumed by the OS gesture nav bar — a harness artifact, not an app defect.
+
 - **Read-only.** You never write, edit, or execute anything. You analyze and report.
 - **Evidence-based.** Every finding references a specific file and line number.
 - **Severity-ranked.** Findings organized as: Critical, Important, Minor, Nitpick.

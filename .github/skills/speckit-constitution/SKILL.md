@@ -135,6 +135,15 @@ Formatting & Style Requirements:
 - Wrap long rationale lines to keep readability (<100 chars ideally) but do not hard enforce with awkward breaks.
 - Keep a single blank line between sections.
 - Avoid trailing whitespace.
+- Write the project-specific constitution in **atomic caveman-ultra governance style**:
+  - Split prose into bullets or short fragments when each line carries one rule, fact, or consequence.
+  - Drop articles and filler where meaning stays exact; use arrows (`→`) for causality and transitions.
+  - Use short forms only when unambiguous (`env`, `prod`, `config`, `auth`, `CI`, `PR`).
+  - Keep normative force explicit (`MUST`, `MUST NOT`, `forbidden`, `accepted`) — compression must never soften or invent requirements.
+  - Preserve exact technical substance: code identifiers, file paths, commands, ADR/issue references, versions, dates, metrics, and named exceptions stay verbatim.
+  - Keep code blocks, inline code, URLs, and marker comments exactly unchanged.
+  - Prefer `Why:` over `Rationale:` and short evidence bullets over explanatory paragraphs.
+  - Do not use comedic caveman grammar in the document itself; the result must read as terse professional policy, not dialogue.
 
 If the user supplies partial updates (e.g., only one principle revision), still perform validation and version decision steps.
 

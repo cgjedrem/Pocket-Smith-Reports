@@ -17,6 +17,14 @@ metadata:
 $ARGUMENTS
 ```
 
+## Delegation
+
+Canonical pattern: `.specify/docs/subsession-delegation.md`. Adaptation for this skill:
+
+1. **Recursion guard**: if the current input contains the exact token `DELEGATED_WORKER`, skip this section and run inline.
+2. **Default `inline`** — this gate is a deterministic sub-second keyword/glob/grep scan; delegating costs more than it saves. Only delegate when `.specify/extensions/delegation.yml` explicitly overrides this skill to `subagent` and a subagent capability exists; invalid/missing config falls back silently to `inline`.
+3. **When delegated**: steps 2–5 (resolve spec, scan triggers, check findings, validate report) run in a read-only subagent whose kickoff contains ONLY the `DELEGATED_WORKER` token, this skill's name, the repo root, the spec path (or the means to resolve it), and an instruction to read `.github/skills/speckit-red-team-gate/SKILL.md` and execute steps 2–5. The orchestrator emits the gate decision (step 6) and handles the opt-out (step 7) itself.
+
 ## Purpose
 
 This command is a **gate**, not a workflow. It runs automatically as the

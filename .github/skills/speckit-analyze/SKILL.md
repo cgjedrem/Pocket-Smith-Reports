@@ -52,6 +52,16 @@ You **MUST** consider the user input before proceeding (if not empty).
     After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
+## Delegation
+
+Canonical pattern: `.specify/docs/subsession-delegation.md`. Adaptation for this skill:
+
+1. **Recursion guard**: if the current input contains the exact token `DELEGATED_WORKER`, skip this section and run inline.
+2. **Resolve mode** (default `subagent`; degrade to `inline` when no subagent capability exists; invalid/missing config falls back silently). `inline` → skip the rest of this section.
+3. **Stays inline**: Pre-Execution Checks above and Execution Steps 1 (prerequisites / FEATURE_DIR resolution).
+4. **Delegate** Execution Steps 2–8 (load artifacts → detection passes → report → remediation offer) to a read-only subagent. Kickoff contains ONLY: the `DELEGATED_WORKER` token, this skill's name, the repo root, absolute SPEC/PLAN/TASKS paths, the constitution path, and an instruction to read `.github/skills/speckit-analyze/SKILL.md` and execute Execution Steps 2–8. No conversation history.
+5. **Orchestrator** validates the report shape (findings table, coverage summary, metrics), presents it to the user, then runs Execution Step 9 (hooks) itself.
+
 ## Goal
 
 Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This command MUST run only after `/speckit-tasks` has successfully produced a complete `tasks.md`.
@@ -62,11 +72,13 @@ Identify inconsistencies, duplications, ambiguities, and underspecified items ac
 
 **Constitution Authority**: The project constitution (`.specify/memory/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `/speckit-analyze`.
 
+**Draft exception**: if the constitution's version line marks it DRAFT or pre-1.0.0 (e.g. `**Version**: 0.x ... (DRAFT)`, `Ratified: pending`), treat constitution findings as **advisory (IMPORTANT, never CRITICAL)** and do not gate on them until ratified. Detect this from the file's own version/ratification markers before assigning severity.
+
 ## Execution Steps
 
 ### 1. Initialize Analysis Context
 
-Run `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireSpec -RequireTasks -IncludeTasks` once from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS. Derive absolute paths:
+Run `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` once from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS. Derive absolute paths:
 
 - SPEC = FEATURE_DIR/spec.md
 - PLAN = FEATURE_DIR/plan.md
