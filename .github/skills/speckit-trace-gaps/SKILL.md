@@ -31,6 +31,15 @@ You **MUST** consider the user input before proceeding (if not empty). The user 
    - Scan the test directory for `REQ-XXX` annotations.
 2. If `.specify/trace.md` exists and is fresher than `spec.md`, you MAY use it as a cache; otherwise rescan.
 
+## Delegation
+
+Canonical pattern: `.specify/docs/subsession-delegation.md`. Adaptation for this skill:
+
+1. **Recursion guard**: if the current input contains the exact token `DELEGATED_WORKER`, skip this section and run inline.
+2. **Resolve mode** (default `subagent`; degrade to `inline` when no subagent capability exists; invalid/missing config falls back silently). `inline` → skip the rest of this section.
+3. **Delegate** the entire Outline (read-only scan + report) to a subagent. Kickoff contains ONLY: the `DELEGATED_WORKER` token, this skill's name, the repo root, the spec path and test directory, the user's `$ARGUMENTS` (threshold / scope / excludes), and an instruction to read `.github/skills/speckit-trace-gaps/SKILL.md` and execute the Outline. No conversation history.
+4. **Orchestrator** relays the report and the final `TRACE-GAPS:` line unchanged (CI greps for it).
+
 ## Outline
 
 1. **Identify Gaps**: For every requirement with no covering test, list it.

@@ -57,6 +57,34 @@ Success Criteria:
   - Gate 2: After Review. Coordinator submits PR for user's final approval.
 - **Rework limit.** Max 3 QA rework cycles. After 3, alert user.
 
+## Child Kickoff and Continuation Contract
+
+Every child kickoff must contain the approved objective and scope, workspace/spec
+reference (including the parent's verified reservation receipt for a new numbered
+spec, per `spec-to-implementation` task0), acceptance criteria, permitted actions,
+required evidence/file manifest and the phase's final-report destination.
+Include this explicit continuation instruction:
+
+> Work autonomously within this assigned phase and approved scope through
+> implementation/investigation, applicable verification and the final report.
+> Do not stop after an acknowledgement, plan, first tool call or progress update,
+> and do not ask whether to continue already-authorized work. Resolve ordinary
+> implementation details using repository conventions and record assumptions.
+> Ask only for a genuine blocker, missing authority, a scope/architecture change
+> requiring approval, or an existing workflow approval gate. At a gate, report
+> the decision needed and stop before crossing it. If blocked, report the failed
+> step, evidence, attempted remedies and smallest required decision; never claim
+> completion. Otherwise send the required final report with changed files,
+> verification results, remaining limitations and status.
+
+Autonomy applies to the assigned phase, not permission to bypass Gate 1, Gate 2,
+seam confirmation, read-only roles or the final evidence gate. Preserve existing
+completion/report formats and rework limits. A progress-only or acknowledgement
+response is not completion: if the child is idle, resume the same child with its
+remaining authorized work; if it is running, wait for its completion notification
+without polling or duplicate delegation. Route genuine blockers/approval decisions
+to the user rather than repeatedly waking the child.
+
 ## Coordinator Scope Boundary (CRITICAL)
 
 **Rule:** The coordinator MUST NOT write, edit, or review code. These are specialist responsibilities.

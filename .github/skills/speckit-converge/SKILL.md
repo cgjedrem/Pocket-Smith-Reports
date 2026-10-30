@@ -90,11 +90,16 @@ When the codebase already satisfies everything, the command MUST leave `tasks.md
 produces a corresponding remediation task. If the constitution is an unfilled template,
 skip constitution checks gracefully rather than failing.
 
+**Draft exception**: if the constitution's version line marks it DRAFT or pre-1.0.0
+(e.g. `**Version**: 0.x ... (DRAFT)`, `Ratified: pending`), constitution findings are
+advisory only — report them, but do not append blocking remediation tasks from them
+until the constitution is ratified.
+
 ## Execution Steps
 
 ### 1. Initialize Convergence Context
 
-Run `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireSpec -RequireTasks -IncludeTasks` once from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS. Derive absolute paths:
+Run `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` once from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS. Derive absolute paths:
 
 - SPEC = FEATURE_DIR/spec.md
 - PLAN = FEATURE_DIR/plan.md

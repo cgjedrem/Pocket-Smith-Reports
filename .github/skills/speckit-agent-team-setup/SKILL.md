@@ -13,7 +13,7 @@ metadata:
 
 # Agent Team Setup
 
-This command installs the agent-team personas and supporting material that
+This command installs the cgjedrem agent-team personas and supporting material that
 shipped with the `agent-team` preset into the current project.
 
 The preset pack is on disk at `.specify/presets/agent-team/` relative to the
@@ -89,8 +89,39 @@ directory (unless noted otherwise).
    ```
 
    then re-run `specify workflow overlay list speckit` and confirm
-   `qa-review-gate` appears with `priority=10`, enabled. If it is already
-   registered, skip and report it as already present.
+   `qa-review-gate` appears with `priority=10`, enabled.
+
+   If already registered, inspect the effective overlay and compare its content
+   with the shipped copy; an ID match alone is not proof of an upgrade. Preserve
+   local customizations and ask before changing it. After approval, merge the
+   changes into the project-local overlay, or re-add the shipped copy with the
+   command above if wholesale replacement was approved (CLI 1.0.4 supports
+   updating the same overlay ID). Never silently enable a deliberately disabled
+   overlay.
+
+   Preserve `qa-review` after `tasks`, and add `final-evidence-review` after
+   `implement`, both `type: gate`. The final gate reviews criterion-level
+   evidence; it does not execute runtime checks or grant commit/release consent.
+   Behavior-affecting review fixes reopen affected rows and approval pending
+   rerun, including changes after a workflow run completes.
+
+5. **Evidence-aware bug overrides (v1.2.0)** — the preset installer, not file
+   copying into `.specify/extensions/bug`, registers the three owned command
+   templates. Verify resolution:
+
+   ```powershell
+   specify preset resolve speckit.bug.assess
+   specify preset resolve speckit.bug.fix
+   specify preset resolve speckit.bug.test
+   specify workflow resolve speckit
+   ```
+
+   Each bug command should resolve to the agent-team preset unless an intentional
+   higher-precedence project override exists. Inspect generated command/skill
+   content and provenance, not just registered names. Report a higher-priority
+   override or stale generated content as a conflict; do not overwrite it.
+   Preserve command placeholders in source templates; use the CLI installer to
+   generate skills. The CLI-bundled bug extension remains upstream-owned.
 
 ## Rules
 
@@ -98,12 +129,18 @@ directory (unless noted otherwise).
   or config file already exists at the destination, report it as a conflict,
   show the diff on request, and only replace it after explicit user
   confirmation. The red-team scaffold never touches an existing
-  `red-team-lenses.yml`; the overlay step never re-adds a registered overlay.
+  `red-team-lenses.yml`; an existing overlay is updated only after approval.
 - Create destination directories as needed (`.github/agents/`, `.charter/`).
 - Copy files byte-for-byte; do not reformat, re-wrap, or "improve" persona or
   fragment content.
 - After copying, list exactly which files were created, skipped (already
   present), and — only with approval — overwritten.
+- Existing personas/fragments need a content comparison on upgrade, not just
+  presence checks. Offer a reviewed merge to preserve local adaptations.
+- Inspect the effective agent loading path and prompt content where accessible.
+  Disk parity or a registered persona name does not prove a running session
+  loaded the new prompt. Report inaccessible/stale runtime prompts as
+  `BLOCKED`/`INCONCLUSIVE`; do not reload sessions or user-level personas.
 
 ## Verify
 
@@ -118,3 +155,13 @@ When done, verify and report:
   six trigger categories.
 - `specify workflow overlay list speckit` shows `qa-review-gate` with
   `priority=10`, enabled.
+- `specify workflow resolve speckit` shows both `qa-review` after `tasks` and
+  `final-evidence-review` after `implement`; both reject with abort.
+- Source/installed preset/generated bug commands carry revision plus local
+  changes or build ID/digest, environment, scenario, timestamp, provenance,
+  separate static/build/runtime/user report evidence, measured thresholds and
+  durations, stale-row invalidation, and `BLOCKED`/`INCONCLUSIVE` outcomes.
+- QA stays read-only; execution-capable owners supply runtime evidence. Model
+  routing is capability/risk based, with a complete evidence handoff before a
+  switch and no unrequested model/effort changes. New evidence is required before
+  a second patch; two failed attempts trigger root-cause reassessment.

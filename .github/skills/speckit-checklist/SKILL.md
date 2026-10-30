@@ -82,6 +82,16 @@ You **MUST** consider the user input before proceeding (if not empty).
     After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
+## Delegation
+
+Canonical pattern: `.specify/docs/subsession-delegation.md`. Adaptation for this skill:
+
+1. **Recursion guard**: if the current input contains the exact token `DELEGATED_WORKER`, skip this section and run inline.
+2. **Resolve mode** (default `subagent`; degrade to `inline` when no subagent capability exists; invalid/missing config falls back silently). `inline` → skip the rest of this section.
+3. **Stays inline**: Pre-Execution Checks above, Execution Step 1 (setup / FEATURE_DIR), and Step 3 (clarifying questions — interactive; a subagent cannot ask the user).
+4. **Delegate** Execution Steps 4–6 (understand request → load context → generate checklist) to a subagent on the SAME tree (the checklist file must land in this FEATURE_DIR). Kickoff contains ONLY: the `DELEGATED_WORKER` token, this skill's name, the repo root and absolute FEATURE_DIR, the user's `$ARGUMENTS` plus the clarification answers, TEMPLATE_CONTENT's path, and an instruction to read `.github/skills/speckit-checklist/SKILL.md` and execute Execution Steps 4–6. No conversation history.
+5. **Orchestrator** verifies the checklist file was created/appended with items left unchecked (`[ ]`), then runs the Post-Execution Checks itself.
+
 ## Execution Steps
 
 1. **Setup**: Run `.specify/scripts/powershell/check-prerequisites.ps1 -Json -Template checklist-template` from repo root and parse JSON for FEATURE_DIR, AVAILABLE_DOCS list, and TEMPLATE_CONTENT.

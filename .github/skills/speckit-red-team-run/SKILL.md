@@ -54,6 +54,15 @@ You **MUST** consider the user input before proceeding (if not empty).
     ```
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
+## Delegation
+
+Canonical pattern: `.specify/docs/subsession-delegation.md`. Adaptation for this skill:
+
+1. **Recursion guard**: if the current input contains the exact token `DELEGATED_WORKER`, skip this section and run inline. Note: the adversary agents dispatched in §5 MUST receive the `DELEGATED_WORKER` token in their prompts so a nested runtime never re-delegates.
+2. **Resolve mode** (default `subagent`; degrade to `inline`; invalid/missing config falls back silently). `subsession` is deliberately NOT the default here — the findings report (§6.5) must land in the current tree.
+3. **Delegation boundary already exists**: §5's parallel adversary dispatch IS this skill's delegation — each lens agent gets a fresh context with only the lens brief and file paths. §§1–4 (parsing, preconditions, trigger matching, lens selection) and §§6–7 (aggregation, resolution walk — interactive with the maintainer) always stay inline in the orchestrator.
+4. **Mode effects**: `inline` → run the selected lenses in-process, sequentially, instead of dispatching agents in §5. `subagent`/`subsession` → dispatch per §5 as written.
+
 ## Outline
 
 Goal: Run an adversarial review of a functional spec using project-configured lenses. Produce a structured findings report at `specs/<feature-id>/red-team-findings-<YYYY-MM-DD>[-NN].md`; walk the maintainer through per-finding resolution. Do NOT auto-apply spec changes. Complementary to `/speckit.clarify` (correctness) and `/speckit.analyze` (consistency) — the red team is the adversarial layer.

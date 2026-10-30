@@ -52,6 +52,18 @@ You **MUST** consider the user input before proceeding (if not empty).
     After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
+## Delegation
+
+Canonical pattern: `.specify/docs/subsession-delegation.md`. Adaptation for this skill:
+
+1. **Recursion guard**: if the current input contains the exact token `DELEGATED_WORKER`, skip this section entirely and run the full Outline inline.
+2. **Resolve mode** from `.specify/extensions/delegation.yml` (default `subsession`; degrade subsession → subagent → inline when the capability is missing; invalid/missing config falls back silently). If the mode resolves to `inline`, skip the rest of this section and run the full Outline as written.
+3. **Stays inline in this session**: Outline steps 1–5 (prerequisites, checklist gate, context load, ignore files, task parsing) and the Pre-Execution Checks above.
+4. **Commit + PR first (subsession mode)**: spec.md, plan.md, tasks.md and any supporting docs under FEATURE_DIR must be committed and pushed before spawn — a child worktree cannot see uncommitted files. Use `git add -f` for local-only artifacts such as tasks.md (see `.specify/README.md` artifact convention). Then ensure an open spec-artifacts PR exists for the current branch; create a draft PR (`gh pr create --draft`) if missing.
+5. **Phase A — spec-artifacts review gauntlet** (subsession mode, before spawn): request a Copilot review on the PR (`gh pr edit <n> --add-reviewer @copilot` or the runtime's review-request capability; if unavailable, ask the user to request it) → judge each comment, fix or record a rebuttal, push fixes → run caveman review (delegated subagent per the canonical pattern) → judge and fix findings → run `/speckit-red-team-run` on the spec → judge and resolve findings per its resolution flow.
+6. **Spawn the worker** (child session based on the current feature branch) with a self-contained kickoff containing ONLY: the `DELEGATED_WORKER` token, this skill's name, the repo root and absolute FEATURE_DIR, an instruction to read `.github/skills/speckit-implement/SKILL.md` and execute Outline steps 6–9, the doc list (spec.md, plan.md, tasks.md, plus existing data-model.md / contracts/ / research.md / quickstart.md), the exact task scope (from `$ARGUMENTS`, or "all remaining tasks"), and these worker instructions: mark completed tasks `[X]` in tasks.md; run the implementation dev loop (implement → QA review → fix findings → final review); commit, push, and open a draft code PR stacked on the current branch. Never include conversation history.
+7. **Phase B — after the worker reports**: validate (tasks marked `[X]` in tasks.md, tests passing), request a Copilot review on the code PR and judge/fix its findings via the dev loop, then continue to Mandatory Post-Execution Hooks and the Completion Report below. Close by telling the user the PR stack is ready for human review in dependency order (spec/plan PR first, then code PRs).
+
 ## Outline
 
 1. Run `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
@@ -98,6 +110,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **IF EXISTS**: Read research.md for technical decisions and constraints
    - **IF EXISTS**: Read .specify/memory/constitution.md for governance constraints
    - **IF EXISTS**: Read quickstart.md for integration scenarios
+   - **Machinery sanity check**: for each symbol (function/class/method) that plan.md's design section says to modify or call, grep-verify it exists at the current HEAD. Report any misses and re-run the freshness check from `/speckit-plan` before writing code — a plan written against a stale or different tree must not be implemented blindly.
 
 4. **Project Setup Verification**:
    - **REQUIRED**: Create/verify ignore files based on actual project setup:
@@ -149,7 +162,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Task details**: ID, description, file paths, parallel markers [P]
    - **Execution flow**: Order and dependency requirements
 
-6. Execute implementation following the task plan:
+6. Execute implementation following the task plan (**when the Delegation section above is active, the spawned worker executes steps 6–9; the orchestrator skips them and resumes at Delegation step 7 / Phase B**):
    - **Phase-by-phase execution**: Complete each phase before moving to the next
    - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together
    - **Follow TDD approach**: Execute test tasks before their corresponding implementation tasks
@@ -157,6 +170,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Validation checkpoints**: Verify each phase completion before proceeding
 
 7. Implementation execution rules:
+   - **Baseline first**: Before any change, establish the green baseline — restore → generate → build → test in gate order. Record the result; classify pre-existing failures as environmental (e.g. missing secrets) vs regression and report the split. Every failure after this point is yours until proven environmental.
    - **Setup first**: Initialize project structure, dependencies, configuration
    - **Tests before code**: If you need to write tests for contracts, entities, and integration scenarios
    - **Core development**: Implement models, services, CLI commands, endpoints
@@ -222,5 +236,6 @@ Report final status with summary of completed work.
 
 - [ ] All tasks in tasks.md completed and marked `[X]`
 - [ ] Implementation validated against specification, plan, and test coverage
+- [ ] Delegation rules followed (worker spawned with a self-contained `DELEGATED_WORKER` kickoff, or inline fallback per resolved mode and runtime capability)
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with summary of completed work

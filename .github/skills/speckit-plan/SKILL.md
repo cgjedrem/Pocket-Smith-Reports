@@ -56,12 +56,16 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 1. **Setup**: Run `.specify/scripts/powershell/setup-plan.ps1 -Json` from repo root and parse JSON for FEATURE_SPEC, IMPL_PLAN, SPECS_DIR, BRANCH. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
+   **Freshness precheck** (long-lived integration branches): if `.specify/extensions/plan-review-gate/plan-review-gate-config.yml` configures a `target_branch` (e.g. `dev`), fetch it and run `git merge-base --is-ancestor origin/<target> HEAD`. If false, STOP and tell the user the worktree is N commits behind the integration branch; rebase before planning. Planning against a stale tree produces wrong file/line references and code written against machinery that doesn't exist locally.
+
+2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. Load IMPL_PLAN template (already copied).
+
 2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. Load IMPL_PLAN template (already copied).
 
 3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
    - Fill Constitution Check section from constitution
-   - Evaluate gates (ERROR if violations unjustified)
+   - Evaluate gates (ERROR if violations unjustified). **Draft exception**: if the constitution's version line marks it DRAFT or pre-1.0.0 (`**Version**: 0.x`, `Ratified: pending`), gate violations are advisory warnings, not ERRORs, until ratified.
    - Phase 0: Generate research.md (resolve all NEEDS CLARIFICATION)
    - Phase 1: Generate data-model.md, contracts/, quickstart.md
    - Re-evaluate Constitution Check post-design

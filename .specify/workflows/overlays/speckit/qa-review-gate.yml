@@ -7,12 +7,32 @@ edits:
   step:
     id: qa-review
     type: gate
-    message: "QA review gate \u2014 hand spec.md, plan.md, and tasks.md to the qa-reviewer\
-      \ persona before implementation. Reviewer must confirm: (a) every spec.md acceptance\
-      \ criterion maps to at least one task, (b) every task has a verifiable done-condition,\
-      \ (c) risky/destructive steps include rollback or verification notes. On FAIL\
-      \ or PASS-WITH-CAVEATS, revise the plan/tasks and re-review. Approve only on\
-      \ explicit QA sign-off."
+    message: 'QA review gate — hand spec.md, plan.md, and tasks.md to the qa-reviewer
+      persona before implementation. Reviewer must confirm: (a) every spec.md acceptance
+      criterion maps to at least one task, (b) every task has a verifiable done-condition,
+      (c) risky/destructive steps include rollback or verification notes. On FAIL
+      or PASS-WITH-CAVEATS, revise the plan/tasks and re-review. Approve only on explicit
+      QA sign-off.'
+    options:
+    - approve
+    - reject
+    on_reject: abort
+- insert_after: implement
+  step:
+    id: final-evidence-review
+    type: gate
+    message: 'Final evidence review: QA is read-only and reviews evidence supplied
+      by an execution-capable runtime owner. Each acceptance criterion must identify
+      revision plus local changes or build ID/digest, environment, scenario, timestamp,
+      provenance, evidence type (static/build/runtime/user report), expected threshold/duration
+      and observed values. Check adjacent-state and negative-path integration regressions;
+      mocks do not prove OS events. Behavior-affecting review fixes invalidate affected
+      rows pending rerun and renewed approval. Missing access is BLOCKED; ambiguous
+      or stale evidence is INCONCLUSIVE. Approve only when every required criterion
+      has current adequate evidence and explicit QA sign-off. This is an approval
+      gate, not automatic runtime execution or proof, and not commit, publish, or
+      release consent. Later behavior changes reopen the affected evidence and approval
+      even if this workflow run already completed.'
     options:
     - approve
     - reject
