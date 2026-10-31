@@ -56,6 +56,34 @@ Then open **Settings**, paste your PocketSmith API key (stored in the
 git-ignored `.env`), run your first **Sync**, and build a report from
 **Monthly Reports** — the in-app **Docs** page walks through each step.
 
+## Run with Docker Compose
+
+Docker Compose runs the API and static frontend in separate containers. The
+frontend proxies `/api/` requests, including PDF responses, to the API. Only
+the frontend is published, bound to loopback by default; no login is provided,
+so keep that binding local.
+
+```bash
+docker compose up --build -d
+```
+
+Open http://127.0.0.1:8080. To change the local port, set `APP_PORT=8081` in
+your shell or the ignored root `.env`. The Compose services do not pass
+`API_KEY` from that file. Add the PocketSmith API key in **Settings**; the API
+writes it into the persistent private-data volume. Docker's volume is separate
+from the working tree's `data/private`; existing local files are not imported.
+Sync data and configuration remain across container rebuilds.
+
+```bash
+docker compose ps
+docker compose logs -f
+docker compose down
+```
+
+`docker compose down -v` also deletes the private-data volume and all locally
+persisted financial data and API-key configuration. Do not use it unless
+deletion is intended.
+
 ## Data safety
 
 Tracked files contain only deterministic synthetic data — neutral

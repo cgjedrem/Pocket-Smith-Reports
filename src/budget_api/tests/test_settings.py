@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from budget_api.services import env_writer
 from budget_api.services.ps_client import PSClientError
 
 # --------------------------------------------------------------------------- #
@@ -16,6 +17,18 @@ from budget_api.services.ps_client import PSClientError
 
 
 class TestGetApiKey:
+    def test_configured_file_path_is_used_for_api_key_persistence(
+        self, tmp_path, monkeypatch
+    ):
+        key_file = tmp_path / "private" / ".env"
+        monkeypatch.setenv(env_writer.API_KEY_FILE_ENV, str(key_file))
+
+        env_writer.write_api_key("stored-key")
+
+        assert key_file.read_text(encoding="utf-8") == "API_KEY=stored-key\n"
+        assert env_writer.read_api_key_configured() is True
+        assert env_writer.read_api_key_value() == "stored-key"
+
     def test_ac7_key_set_configured_true(self, client, tmp_env_file):
         tmp_env_file.write_text("API_KEY=secret123\n", encoding="utf-8")
         resp = client.get("/api/settings/api-key")
