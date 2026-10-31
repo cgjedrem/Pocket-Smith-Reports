@@ -59,7 +59,9 @@ git-ignored `.env`), run your first **Sync**, and build a report from
 ## Run with Docker Compose
 
 Docker Compose runs the API and static frontend in separate containers. The
-frontend proxies `/api/` requests, including PDF responses, to the API. Only
+frontend proxies `/api/` requests, including PDF responses, to the API. The
+Docker frontend build sets `VITE_API_URL` to an empty string so browser
+requests use this same-origin proxy instead of the development API port. Only
 the frontend is published, bound to loopback by default; no login is provided,
 so keep that binding local.
 

@@ -9,7 +9,7 @@ COPY client/package.json client/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY client/ ./
-RUN pnpm build
+RUN VITE_API_URL="" pnpm build
 
 FROM nginx:1.28-alpine
 
