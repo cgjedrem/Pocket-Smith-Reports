@@ -3,7 +3,8 @@
 **Input**: `docs/specs/003-runway-burn-rate/{spec,plan,research,data-model,quickstart}.md`
 and `contracts/runway-api.md`; requirements checklist reviewed, 16/16 checked.
 **Scope of execution**: backend/frontend implementation, technical runtime
-acceptance and independent local QA complete. **34/34 original tasks checked**.
+acceptance and independent local QA complete. **34/34 original tasks checked**,
+plus post-review real-data fix T035 (RD-001), which is outside review3.
 **Review loop**: Final bounded independent review3 **PASS WITH CAVEATS**:
 no remaining in-scope defect. Reviews 1 and 2 found issues that were fixed and
 regression-tested before review3 closed the residual QA-001 collision.
@@ -101,6 +102,7 @@ ratio/context remains readable; toggle changes neither fetches nor selection.
 - [x] T032 FE: Run focused hook/component/page suites, full safely mocked client tests and `pnpm build`; self-review and align README/feature docs/memory. Evidence and file manifest in `docs/specs/003-runway-burn-rate/quickstart.md`.
 - [x] T033 runtime executor: Complete technical SC-004–008 browser checks with synthetic fixtures: keyboard/configuration, **real HTTP** backend-to-built-browser SC-005 at 10,000 transactions/20 mappings, masking, failure/race behavior, and five-fact source-copy visibility. HTTP H1–H7 pass, 13 API responses/four screenshots; IPC evidence remains separately labeled, not HTTP E2E. Environment/raw timings/screenshots in `docs/specs/003-runway-burn-rate/quickstart.md`. Human comprehension/ease-of-use observation explicitly deferred, not claimed passed.
 - [x] T034 QA/coordinator: Final bounded independent review3 approved the typed fingerprint fix, its 36 regressions and evidence consistency with no remaining in-scope defect (99% confidence for QA-001 closure). Retain accepted QA-002/003/RT-001, HTTP acceptance/cleanup and verified RT-002 baseline attribution. Latest local Windows 215 focused / 869 API / 1207 canonical passes, 2 existing renderer exclusions. Historical Linux 1172 passed/1 baseline readiness failure remains non-green. Human/screen-reader/Ubuntu/remote checks unverified/nonblocking for local handoff. Coordinator verified fresh Git inventory, whitespace and unchanged branch; no publication approval.
+- [x] T035 BE: Real-data null `is_transfer` fix (RD-001). Real PocketSmith transactions carry `"is_transfer": null`; strict `_flag` excluded all three real candidate months with `invalid_source`. Failing tests first in `src/budget_api/tests/runway/{synthetic,test_calculation,test_api}.py` (9 failed/40 passed before; 49 passed after), then add `_transfer_flag` in `src/budget_api/services/runway.py` at the four PocketSmith-sourced `is_transfer` read sites: null/absent is not a transfer, a non-null value must be a literal boolean, binding `excluded` stays strict (matches `v4_pipeline/accounting.py`). Align `docs/specs/003-runway-burn-rate/{spec,data-model,research,review-report}.md`. Latest local Windows 264 runway / 918 API / 1256 canonical passes, 2 existing renderer exclusions. Outside review3: bounded independent review done (pass-with-caveats); see the RD-001 section of `review-report.md` for the evidence ledger.
 
 ## Dependencies and execution strategy
 

@@ -84,7 +84,7 @@ Exact known inputs; no glob or filename fallback:
 | `runway_config.json` | Version and explicit selection. |
 | `account_mappings.json` | Configured owners/labels, bindings, exclusions, owner savings-category IDs. Required for attribution. |
 | `account_catalog.json` | `accounts` identity, current selected balances, optional account currency/date. Required for reserves and picker; missing currency metadata may qualify spending rather than block it. |
-| `category_catalog.json` | Category IDs, titles, transfer flags, tree/descendants for identified exclusions. |
+| `category_catalog.json` | Category IDs, titles, transfer flags (null/absent is not a transfer; a non-null value must be boolean), tree/descendants for identified exclusions. |
 | `category_roles.json` | Category ID to relevant role; missing file means no configured role override, not invented mappings. |
 | `detailed_section_mapping.json` | Only relevant `category_sections`: `cc_payments`, `excluded`, `savings`; investment exclusion comes from category roles. Do not validate/read unrelated section/account-role logic. |
 | Three exact `{YYYY-MM}_ps_raw.json` files | Raw recorded monthly transactions and optional explicit provenance. |
@@ -156,7 +156,14 @@ Required consumed fields: positive integer or canonical-string `id`;
 candidate month; `status` exactly `posted` or `pending`; finite decimal `amount`.
 Bool/null/absent IDs or money are invalid. Unknown posting states are invalid,
 not silently posted. Category may be null/absent for an uncategorized purchase.
-Validate optional transfer flags as booleans when present.
+Validate optional transfer flags as booleans when present. JSON `null` counts as
+absent: not a transfer, matching `v4_pipeline/accounting.py`. Real PocketSmith
+transactions carry `"is_transfer": null` on many rows (RD-001). Any other
+non-null, non-boolean value (for example `"true"`, `1` or `0`) still invalidates
+the month. This applies to the transaction, embedded category and category
+catalog `is_transfer`; in the catalog it makes classification unusable, so no
+candidate month is included. The account-binding `excluded` flag is user
+authored, not PocketSmith-sourced, and stays strict.
 
 Normalize valid numeric source IDs to canonical strings. Deduplicate identical
 records by stable transaction ID after ignoring JSON object-key order. Conflicting
@@ -174,7 +181,7 @@ never stringify a list/object into repayment evidence.
 Classify valid records in this order:
 
 1. Exclude known excluded account, pending state, nonnegative amount, and either
-   transaction/category transfer flag.
+   transaction/category transfer flag that is `true` (null or absent is `false`).
 2. Exclude savings/investment account types, configured savings overrides, excluded/
    savings/investment category roles, and configured excluded/repayment sections.
    Expand relevant catalog category parents to descendants; any applicable

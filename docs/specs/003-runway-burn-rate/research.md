@@ -75,6 +75,9 @@ convention, including their descendants. Do not use the first-match helper or
 guess payees/transfer pairs. Positive refunds and income do not offset purchases.
 An `income` role alone does not erase a negative posted purchase; the explicit
 movement exclusions remain authoritative.
+Transfer flags follow `v4_pipeline/accounting.py`: `null` or absent is not a
+transfer, and a non-null non-boolean value invalidates the observation. Real
+PocketSmith transactions carry `"is_transfer": null` on many rows (RD-001).
 
 **Rationale**: The existing expense loops omit date validation and deduplication;
 embedded category transfer flags are not the only transfer evidence. The

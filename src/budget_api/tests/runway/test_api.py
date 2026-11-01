@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from budget_api.tests.runway.synthetic import A, CARD, MONTHS
+from budget_api.tests.runway.synthetic import A, CARD, MONTHS, pocketsmith_month
 
 
 RESULT = "/api/bills/runway"
@@ -59,6 +59,23 @@ def test_fingerprint_amount_array_conflict_on_result_route(runway_client, world,
         assert "invalid_source" in {issue["code"] for issue in row["issues"]}
     assert result["household"]["runway_months"] == (None if cross_month else 1.2)
     assert before == {p.name: p.read_bytes() for p in world.root.iterdir()}
+
+
+def test_pocketsmith_shaped_months_with_null_transfer_flags_on_result_route(runway_client, world):
+    for index, month in enumerate(MONTHS):
+        world.data[f"{month}_ps_raw.json"] = pocketsmith_month(month, index)  # bare list. null/true/false flags
+    world.write()
+    response = runway_client.get(RESULT)
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    result = response.json()
+    assert result["included_months"] == MONTHS
+    assert [row["coverage"] for row in result["observations"]] == ["unverified"] * 3
+    assert "invalid_source" not in {issue["code"] for row in result["observations"] for issue in row["issues"]}
+    assert "invalid_source" not in {issue["code"] for issue in result["issues"]}
+    assert [owner["runway_display"] for owner in result["owners"]] == ["172.6", "164.8"]
+    assert result["household"]["runway_display"] == "170.6"
+    assert result["household"]["status"] == "qualified"
 
 
 def assert_error(response, status):

@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from datetime import datetime, timezone
+from decimal import Decimal
 import json
 from pathlib import Path
 
@@ -33,6 +34,76 @@ def complete(month, transactions):
             "complete": True,
         },
     }
+
+
+def pocketsmith_transaction(number, account, amount, month, is_transfer=None, category_is_transfer=False):
+    """Transaction with the full PocketSmith field set. Every value is synthetic.
+
+    Real rows often carry is_transfer null, so null is the default.
+    """
+    return {
+        "amount": amount,
+        "amount_in_base_currency": amount,
+        "category": {
+            "children": [], "colour": "#000000", "created_at": "2025-01-01T00:00:00Z",
+            "id": 2100050, "is_bill": False, "is_transfer": category_is_transfer,
+            "parent_id": None, "refund_behaviour": None, "roll_up": False,
+            "rollover_type": None, "title": "Synthetic category", "updated_at": "2025-01-01T00:00:00Z",
+        },
+        "cheque_number": None,
+        "closing_balance": 1000.0,
+        "created_at": f"{month}-15T08:00:00Z",
+        "date": f"{month}-15",
+        "id": 100200 + number,
+        "is_transfer": is_transfer,
+        "labels": [],
+        "memo": None,
+        "needs_review": False,
+        "note": None,
+        "original_payee": "SYNTHETIC PAYEE",
+        "payee": "Synthetic payee",
+        "status": "posted",
+        "transaction_account": {
+            "account_id": 9100001, "created_at": "2025-01-01T00:00:00Z", "currency_code": "NOK",
+            "current_balance": 1000.0, "current_balance_date": "2026-10-14",
+            "current_balance_exchange_rate": None, "current_balance_in_base_currency": 1000.0,
+            "current_balance_source": "data_feed", "data_feeds_account_id": "synthetic-feed-account",
+            "data_feeds_balance_type": "balance", "data_feeds_connection_id": "synthetic-feed-connection",
+            "has_safe_balance_adjustment": False, "id": int(account), "include_in_net_worth": True,
+            "institution": {"id": 9200001, "title": "Synthetic Bank"}, "is_net_worth": True,
+            "latest_feed_name": "Synthetic feed", "name": "Synthetic account", "number": "0000",
+            "offline": False, "safe_balance": None, "safe_balance_in_base_currency": None,
+            "starting_balance": 0.0, "starting_balance_date": "2025-01-01", "type": "bank",
+            "updated_at": "2026-10-14T00:00:00Z",
+        },
+        "type": "debit",
+        "updated_at": f"{month}-16T08:00:00Z",
+        "upload_source": "data_feed",
+    }
+
+
+def pocketsmith_month(month, index):
+    """Raw month as the sync writes it: bare top-level list, no provenance block.
+
+    Amounts scale with index + 1. Counted per scale unit: partner A 260.75, partner B 91.00.
+    """
+    scale = index + 1
+    purchases = [  # account, amount, transaction is_transfer, category is_transfer
+        (A, "-120.50", None, False),  # counts. null flag
+        (A, "-80.25", False, False),  # counts
+        (A, "-300.00", True, False),  # transfer at transaction level
+        (B, "-45.10", None, False),  # counts
+        (B, "-15.90", None, False),  # counts
+        (A, "500.00", None, False),  # credit. never spend
+        (CARD, "-60.00", None, False),  # counts for card owner A
+        (B, "-200.00", None, True),  # transfer at category level
+        (SAVINGS, "-77.00", None, False),  # savings account. not consumption
+        (B, "-30.00", False, False),  # counts
+    ]
+    return [
+        pocketsmith_transaction(index * 100 + number, account, float(Decimal(amount) * scale), month, flag, category_flag)
+        for number, (account, amount, flag, category_flag) in enumerate(purchases, 1)
+    ]
 
 
 class World:

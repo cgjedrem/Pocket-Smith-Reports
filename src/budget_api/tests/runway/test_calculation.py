@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from budget_api.tests.runway.synthetic import A, B, CARD, MONTHS, NOW, SAVINGS, complete, transaction
+from budget_api.tests.runway.synthetic import A, B, CARD, MONTHS, NOW, SAVINGS, complete, pocketsmith_month, transaction
 
 
 def codes(value):
@@ -512,6 +512,182 @@ def test_fresh_verified_evidence_available_with_equivalent_timestamp_offsets(wor
     result = world.result()
     assert "source_times_differ" not in codes(result)
     assert result["household"]["status"] == "available"
+
+
+# RD-001. PocketSmith sends is_transfer null. Null or absent = not a transfer.
+# Non-null must be a literal bool. Binding "excluded" flag stays strict.
+ABSENT = object()  # flag key omitted from the record
+SITES = ["transaction", "embedded_category", "catalog_row", "catalog_ancestor"]
+NON_BOOLEAN = ["true", "false", 1, 0, "", []]
+NON_BOOLEAN_IDS = ["str-true", "str-false", "int-1", "int-0", "empty-str", "empty-list"]
+REAL_TRANSACTION_KEYS = {
+    "amount", "amount_in_base_currency", "category", "cheque_number", "closing_balance", "created_at",
+    "date", "id", "is_transfer", "labels", "memo", "needs_review", "note", "original_payee", "payee",
+    "status", "transaction_account", "type", "updated_at", "upload_source",
+}
+REAL_CATEGORY_KEYS = {
+    "children", "colour", "created_at", "id", "is_bill", "is_transfer", "parent_id",
+    "refund_behaviour", "roll_up", "rollover_type", "title", "updated_at",
+}
+REAL_ACCOUNT_KEYS = {
+    "account_id", "created_at", "currency_code", "current_balance", "current_balance_date",
+    "current_balance_exchange_rate", "current_balance_in_base_currency", "current_balance_source",
+    "data_feeds_account_id", "data_feeds_balance_type", "data_feeds_connection_id",
+    "has_safe_balance_adjustment", "id", "include_in_net_worth", "institution", "is_net_worth",
+    "latest_feed_name", "name", "number", "offline", "safe_balance", "safe_balance_in_base_currency",
+    "starting_balance", "starting_balance_date", "type", "updated_at",
+}
+
+
+def place_transfer_flag(world, site, flag):
+    """July = one 100 purchase by A. Flag sits at one PocketSmith-sourced is_transfer read site."""
+    row = transaction(1, A, -100)
+    if site == "transaction":
+        holder = row
+    elif site == "embedded_category":
+        holder = row["category"] = {"id": 2100050, "title": "Synthetic dining"}
+    else:
+        row["category"] = {"id": 2100050}
+        holder = {"id": 2100050, "title": "Synthetic dining"}
+        if site == "catalog_ancestor":  # flag on parent. purchase sits in child
+            holder = {"id": 2100051, "title": "Synthetic parent", "children": [holder]}
+        world.data["category_catalog.json"] = {"categories": [holder]}
+    if flag is not ABSENT:
+        holder["is_transfer"] = flag
+    world.data["2026-07_ps_raw.json"] = complete("2026-07", [row])
+
+
+@pytest.mark.parametrize("site", SITES)
+@pytest.mark.parametrize("flag,counted", [(None, True), (False, True), (ABSENT, True), (True, False)],
+                         ids=["null", "false", "absent", "true"])
+def test_transfer_flag_semantics_at_each_pocketsmith_site(world, site, flag, counted):
+    place_transfer_flag(world, site, flag)
+    result = world.result()
+    july = result["observations"][0]
+    assert (july["status"], july["coverage"]) == ("included", "complete")
+    assert "invalid_source" not in codes(july) | codes(result)
+    assert result["included_months"] == MONTHS
+    assert [owner["spending"] for owner in july["owners"]] == [100 if counted else 0, 0]
+    assert july["household_spending"] == (100 if counted else 0)
+
+
+def test_null_transaction_transfer_flag_counts_as_gross_spend_like_false(world):
+    world.data["2026-07_ps_raw.json"] = complete("2026-07", [
+        transaction(1, A, -100, is_transfer=None),
+        transaction(2, A, -250, is_transfer=False),
+        transaction(3, A, -7),  # key absent
+        transaction(4, A, -1000, is_transfer=True),  # transfer. never counted
+        transaction(5, B, -40, is_transfer=None),
+    ])
+    result = world.result()
+    july = result["observations"][0]
+    assert (july["status"], july["coverage"]) == ("included", "complete")
+    # By hand. A = 100 + 250 + 7. B = 40. Household = 397.
+    assert [owner["spending"] for owner in july["owners"]] == [357, 40]
+    assert july["household_spending"] == 397
+    assert result["included_months"] == MONTHS
+
+
+def test_null_category_transfer_flag_does_not_mask_other_exclusions(world):
+    world.data["category_catalog.json"] = {"categories": [
+        {"id": 2100050, "title": "Synthetic CC Payment", "is_transfer": None},
+        {"id": 2100051, "title": "Synthetic parent", "is_transfer": None,
+         "children": [{"id": 2100052, "title": "Synthetic child", "is_transfer": None}]},
+    ]}
+    world.data["category_roles.json"] = {"2100051": "exclude"}
+    world.data["2026-07_ps_raw.json"] = complete("2026-07", [
+        transaction(1, A, -100, category={"id": 2100050, "is_transfer": None}),  # catalog title rule
+        transaction(2, A, -200, category={"id": 2100052, "is_transfer": None}),  # parent role exclude
+        transaction(3, A, -300, category={"id": 2100099, "title": "Synthetic CC Payment", "is_transfer": None}),
+        transaction(4, A, -400, category={"id": 2100098, "title": "Synthetic dining", "is_transfer": None}),
+    ])
+    result = world.result()
+    july = result["observations"][0]
+    assert july["status"] == "included"
+    assert [owner["spending"] for owner in july["owners"]] == [400, 0]  # only the plain row counts
+    assert july["household_spending"] == 400
+
+
+@pytest.mark.parametrize("value", NON_BOOLEAN, ids=NON_BOOLEAN_IDS)
+@pytest.mark.parametrize("site", ["transaction", "embedded_category"])
+def test_non_boolean_transfer_flag_invalidates_transaction_and_embedded_category_month(world, site, value):
+    place_transfer_flag(world, site, value)
+    result = world.result()
+    july = result["observations"][0]
+    assert (july["status"], july["coverage"]) == ("excluded", "invalid")
+    assert "invalid_source" in codes(july)
+    assert july["household_spending"] is None
+    assert result["included_months"] == MONTHS[1:]
+
+
+@pytest.mark.parametrize("value", NON_BOOLEAN, ids=NON_BOOLEAN_IDS)
+@pytest.mark.parametrize("site", ["catalog_row", "catalog_ancestor"])
+def test_non_boolean_catalog_transfer_flag_fails_closed(world, site, value):
+    place_transfer_flag(world, site, value)
+    result = world.result()
+    assert result["included_months"] == []
+    assert "invalid_source" in codes(result)
+    assert {(row["status"], row["coverage"]) for row in result["observations"]} == {("excluded", "invalid")}
+
+
+@pytest.mark.parametrize("value", [None, "false", 0])
+def test_pocketsmith_transfer_reader_leaves_binding_excluded_flag_strict(world, value):
+    world.data["account_mappings.json"]["accounts"][A]["excluded"] = value
+    result = world.result()
+    assert result["included_months"] == []
+    assert {(row["status"], row["coverage"]) for row in result["observations"]} == {("excluded", "invalid")}
+    assert result["household"]["reserves"] is None
+    assert result["household"]["runway_months"] is None
+    selected = next(account for account in result["selected_accounts"] if account["id"] == A)
+    assert {"invalid_source", "account_excluded"} <= codes(selected)
+
+
+def test_pocketsmith_fixture_carries_the_full_real_field_set():
+    rows = pocketsmith_month("2026-07", 0)
+    for row in rows:
+        assert set(row) == REAL_TRANSACTION_KEYS
+        assert set(row["category"]) == REAL_CATEGORY_KEYS
+        assert set(row["transaction_account"]) == REAL_ACCOUNT_KEYS
+        assert row["status"] == "posted"
+    assert {row["is_transfer"] for row in rows} == {None, True, False}
+    assert len({row["id"] for row in rows}) == len(rows)
+
+
+def test_null_transfer_flag_result_equals_false_flag_result(world):
+    for index, month in enumerate(MONTHS):
+        world.data[f"{month}_ps_raw.json"] = pocketsmith_month(month, index)
+    with_null = world.result()
+    assert with_null["included_months"] == MONTHS
+    for month in MONTHS:
+        for row in world.data[f"{month}_ps_raw.json"]:
+            if row["is_transfer"] is None:
+                row["is_transfer"] = False
+    assert world.result() == with_null
+
+
+def test_pocketsmith_shaped_months_with_mixed_transfer_flags_are_included_unverified(world):
+    for index, month in enumerate(MONTHS):
+        world.data[f"{month}_ps_raw.json"] = pocketsmith_month(month, index)  # bare list. no provenance
+    result = world.result()
+    assert result["included_months"] == MONTHS
+    # By hand per scale unit (months scale x1, x2, x3).
+    # A = 120.50 + 80.25 + 60.00 (card). B = 45.10 + 15.90 + 30.00. Transfers, credit, savings never count.
+    for scale, observation in enumerate(result["observations"], 1):
+        assert (observation["status"], observation["coverage"]) == ("included", "unverified")
+        assert ("coverage_unverified", "qualification") in {(i["code"], i["severity"]) for i in observation["issues"]}
+        assert all(i["severity"] == "qualification" for i in observation["issues"])
+        assert [owner["spending"] for owner in observation["owners"]] == [260.75 * scale, 91 * scale]
+        assert observation["household_spending"] == 351.75 * scale
+    a, b = result["owners"]
+    household = result["household"]
+    assert (a["average_monthly_spending"], b["average_monthly_spending"]) == (521.5, 182)
+    assert household["average_monthly_spending"] == 703.5
+    # Reserves 90000 / 30000 / 120000 over the monthly means.
+    assert (a["runway_display"], b["runway_display"], household["runway_display"]) == ("172.6", "164.8", "170.6")
+    assert household["status"] == "qualified"
+    assert "coverage_unverified" in codes(household)
+    assert "insufficient_history" not in codes(household)
+    assert "invalid_source" not in codes(result)
 
 
 def test_system_calendar_uses_period_offset_not_calculation_offset(world, monkeypatch):

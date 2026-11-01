@@ -122,6 +122,11 @@ def _flag(obj, key):
     return value
 
 
+def _transfer_flag(obj):
+    # PocketSmith sends is_transfer null. Null/absent = not transfer. Non-null must be bool.
+    return False if obj.get("is_transfer") is None else _flag(obj, "is_transfer")
+
+
 def _mapping(value):
     if not isinstance(value, dict):
         raise InvalidSource()
@@ -395,14 +400,14 @@ def _classification(bundle, partners):
             title = row.get("title", "")
             if not isinstance(title, str):
                 raise InvalidSource()
-            if _flag(row, "is_transfer") or "cc payment" in title.lower():
+            if _transfer_flag(row) or "cc payment" in title.lower():
                 excluded.add(key)
     # Referenced config values validated at classification; unrelated values ignored.
     def is_excluded(key, embedded):
         title = embedded.get("title", "")
         if not isinstance(title, str):
             raise InvalidSource()
-        if _flag(embedded, "is_transfer"):
+        if _transfer_flag(embedded):
             return True
         if "cc payment" in title.lower():
             return True
@@ -569,11 +574,11 @@ def _observe(raw, month, now, owners, bindings, accounts, classify, classificati
             amount = _money(item.get("amount"))
             if item.get("status") not in ("posted", "pending"):
                 raise InvalidSource()
-            transfer = _flag(item, "is_transfer")
+            transfer = _transfer_flag(item)
             category = item.get("category")
             category = {} if category is None else _mapping(category)
             category_id = _id(category.get("id")) if category else None
-            category_transfer = _flag(category, "is_transfer")
+            category_transfer = _transfer_flag(category)
             if not isinstance(category.get("title", ""), str):
                 raise InvalidSource()
             binding = bindings.get(account_id, {})

@@ -27,6 +27,125 @@ This grants local technical QA approval only, not human acceptance or
 publication permission. Historical pending statements below are superseded by
 the final review record.
 
+**Update 2026-11-01:** a post-review real-data defect, RD-001 (PocketSmith
+`is_transfer: null` excluded every real month), is fixed by task T035. See the
+RD-001 section below. It is outside the review3 verdict and has its own bounded
+review (pass-with-caveats) in that section.
+
+## RD-001 real-data finding — 2026-11-01
+
+**Status:** fixed, reviewed and committed as a follow-up to `897a49e`. Outside the
+review3 verdict. **Severity:** blocking for real users: runway stayed
+"insufficient history" on real data.
+
+### Observed
+
+The committed feature was run against real PocketSmith data from the Docker
+deployment. Only schema, type and count information was inspected; no amounts,
+payees or other transaction contents were printed or recorded. All three
+candidate months reported `status=excluded`, `coverage=invalid` and issue
+`invalid_source`.
+
+### Root cause
+
+`_flag()` in `services/runway.py` accepts only literal booleans, so JSON `null`
+raised `InvalidSource`. `_observe()` read the transaction `is_transfer` through
+it and rejected the whole month. Real PocketSmith transactions carry
+`"is_transfer": null` on a large share of rows. In each of the three months the
+null share ranged from roughly one row in eight to about three in four; the other
+rows were `true` or `false`. Every other field in those months passed validation.
+
+### Fix
+
+`_transfer_flag()` reads PocketSmith-sourced `is_transfer` flags: null or absent
+means not a transfer, and a non-null value must be a literal boolean, otherwise
+`InvalidSource` as before. It is used at exactly four read sites: category
+catalog rows and the embedded-category check in `_classification`, and the
+transaction and category flags in `_observe`. This matches
+`v4_pipeline/accounting.py` (`normalize_transactions`: `None` is `False`; any
+non-null value goes through `_literal_transfer_flag`). `_flag()` stays strict
+everywhere else, notably the account-binding `excluded` flag: it is
+user-authored, the app only writes booleans there and the pipeline also
+requires a literal boolean.
+
+### Regression tests, red first
+
+49 new cases in `tests/runway/test_calculation.py` and `test_api.py`, with
+`pocketsmith_transaction`/`pocketsmith_month` fixtures in
+`tests/runway/synthetic.py`: full real field set, synthetic values, mixed
+null/true/false flags, bare top-level list with no provenance block. Before the
+fix **9 failed, 40 passed**; after the fix **49 passed**.
+
+- Red before the fix: null flag at each of the four read sites (4 cases), mixed
+  null/false/absent/true transaction totals, null category flag not masking other
+  exclusion rules, whole-result equality of null versus false, and the
+  PocketSmith-shaped three-month result (service and HTTP route).
+- Guards that pass before and after: `true` still excludes at every site; `false`
+  and absent still count; non-boolean `"true"`, `"false"`, `1`, `0`, `""` and
+  `[]` still invalidate the month (transaction, embedded category) or fail the
+  catalog closed; binding `excluded` stays strict for `null`, `"false"` and `0`;
+  fixture shape pin.
+- Totals are asserted against hand-computed numbers, not derived from the service.
+- Local Windows runs after the fix: 264 runway, 918 API and 1256 canonical
+  passes, with the two existing `pdf_renderer` exclusions.
+
+### Before and after on real data
+
+Before: all three candidate months excluded with `invalid_source`. After: a
+diagnostic that treated null as `false` made all three months `included` with
+coverage `unverified` (top-level list, no provenance block), qualification
+`coverage_unverified` only, and no further raise site on that data. Not verified
+here: calculated amounts on real data; the later validity rerun on the rebuilt
+stack (statuses only) is in the evidence ledger below.
+
+### Independent RD-001 review — 2026-11-01
+
+Bounded read-only review of the delta: **pass-with-caveats**. Code correct at all
+four sites, no weakening of the transfer exclusions, parity with
+`v4_pipeline/accounting.py` and Bills confirmed, tests pin hand-computed numbers.
+The reviewer had no shell, so test counts above are developer-run, not
+reviewer-run. Caveats and dispositions:
+
+- Evidence ledger (I-1): see the ledger below.
+- Real-data reconciliation (I-2): the validity gate was rerun on real data (see
+  ledger); the exclusion of card repayments and transfers on real data was not
+  reconciled against the production non-transfer total. Rows with null on both
+  flags now count unless a category, title, role, section or account rule excludes
+  them; production has the same blind spot (A-004). Left as an open risk.
+- Minor, not changed: no test with null at transaction level and `true` on the
+  category, no float non-boolean case; `status` outside posted/pending remains the
+  one strict check without production precedent (recorded as a risk). A bad
+  catalog `is_transfer` flag yields a global `invalid_source` (no month included),
+  as `data-model.md` states.
+
+### RD-001 evidence ledger
+
+Base: feature commit `897a49e`; the fix is a follow-up commit on the same branch.
+
+| Row | State |
+|-----|-------|
+| Windows runway / API / canonical suites (264 / 918 / 1256) | run on the fix tree |
+| Frontend unit and build | carried forward: no client change, client never reads runway `is_transfer` |
+| Real-HTTP browser scenarios (synthetic, boolean flags only) | carried forward: behaviour identical for boolean-only data; does not cover the null path |
+| Linux/Debian run | stale for the 49 new tests: not run |
+| Null input through real HTTP on synthetic data | not run |
+| Real-data validity rerun in the user's Docker stack | done on the rebuilt stack: 3 of 3 candidate months included, selection `unconfigured` (no liquid accounts chosen yet), household `unavailable`; only statuses were read |
+| Reconciliation of runway spend against production non-transfer total | not run |
+| Human usability, screen reader, native renderer, remote review | unverified |
+
+Rationale for carry-forward: the change only turns a previously invalid JSON null
+into "not a transfer" at four backend read sites; the response shape and UI are
+unchanged.
+
+### Why the tests missed it
+
+Fixtures and fakes always supplied booleans. CONTRIBUTING's integration
+regression matrix lists absent-field and `null` states for boundaries that read
+PocketSmith-shaped snapshots, and notes that fakes prove only our response to
+supplied events, not what PocketSmith produces. The runway fixtures never
+exercised `null`. Synthetic fixtures now include null `is_transfer`, not only
+booleans.
+
 ## Final independent review3 — 2026-10-31
 
 **Reviewer:** independent `qa-reviewer`, final bounded iteration 3 of 3.
