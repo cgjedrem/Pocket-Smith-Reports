@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { BillsDashboard } from "@/components/bills/BillsDashboard";
 import { BillsMonthSelect } from "@/components/bills/BillsMonthSelect";
 import { HouseholdSummary } from "@/components/bills/HouseholdSummary";
+import { RunwayPanel } from "@/components/bills/RunwayPanel";
 import { BillsNotFoundAlert } from "@/components/bills/BillsNotFoundAlert";
 import { BillsStaleBadge } from "@/components/bills/BillsStaleBadge";
 import { BillsWarningBanner } from "@/components/bills/BillsWarningBanner";
@@ -118,45 +119,9 @@ export function BillsPage() {
     [navigate],
   );
 
-  // Render branches (L3).
-  if (notFound) {
-    return (
-      <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold">Bills</h1>
-        <BillsNotFoundAlert month={month} onSyncClick={handleSyncClick} />
-      </div>
-    );
-  }
-
-  if (loading && snapshots.length === 0) {
-    return (
-      <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold">Bills</h1>
-        <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
-          Loading {month}…
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold">Bills</h1>
-        <ErrorAlert message={error.detail} />
-        <div>
-          <Button variant="outline" onClick={refetch}>
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (snapshots.length === 0) return null;
-
   // Primary snapshot = current month (first in list).
   const primary = snapshots[0];
+  const showDashboard = !notFound && !error && snapshots.length > 0;
   // Aggregate warnings across all snapshots.
   const allWarnings = Array.from(
     new Set(snapshots.flatMap((s) => s.warnings)),
@@ -164,66 +129,84 @@ export function BillsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">Bills</h1>
-            <Badge variant="secondary" aria-label="Current month">
-              {month}
-            </Badge>
-            <BillsStaleBadge syncedAt={primary.synced_at} />
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Last synced {new Date(primary.synced_at).toLocaleString("en-GB")}
-            {" · "}
-            {snapshots.length} month{snapshots.length === 1 ? "" : "s"} loaded
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <BillsMonthSelect
-            disabled={loading}
-            initialPastMonths={pendingPast}
-            initialFutureMonths={pendingFuture}
-            onPastMonthsChange={setPendingPast}
-            onFutureMonthsChange={setPendingFuture}
-            onApply={applyWindow}
+      {showDashboard ? (
+        <>
+          <header className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold">Bills</h1>
+                <Badge variant="secondary" aria-label="Current month">
+                  {month}
+                </Badge>
+                <BillsStaleBadge syncedAt={primary.synced_at} />
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Last synced {new Date(primary.synced_at).toLocaleString("en-GB")}
+                {" · "}
+                {snapshots.length} month{snapshots.length === 1 ? "" : "s"} loaded
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <BillsMonthSelect
+                disabled={loading}
+                initialPastMonths={pendingPast}
+                initialFutureMonths={pendingFuture}
+                onPastMonthsChange={setPendingPast}
+                onFutureMonthsChange={setPendingFuture}
+                onApply={applyWindow}
+              />
+              <Button
+                type="button"
+                size="sm"
+                disabled={!windowDirty || loading}
+                onClick={applyWindow}
+                aria-label="Apply window"
+              >
+                Apply
+              </Button>
+              {windowDirty ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={loading}
+                  onClick={resetWindow}
+                  aria-label="Reset window"
+                >
+                  Reset
+                </Button>
+              ) : null}
+            </div>
+          </header>
+          <BillsWarningBanner warnings={allWarnings} />
+          <HouseholdSummary />
+        </>
+      ) : (
+        <>
+          <h1 className="text-2xl font-semibold">Bills</h1>
+          {notFound ? <BillsNotFoundAlert month={month} onSyncClick={handleSyncClick} /> : loading ? (
+            <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Loading {month}…</div>
+          ) : error ? (
+            <>
+              <ErrorAlert message={error.detail} />
+              <div><Button variant="outline" onClick={refetch}>Retry</Button></div>
+            </>
+          ) : <p className="text-sm text-muted-foreground">No Bills snapshots available.</p>}
+        </>
+      )}
+      {/* Stable mount — Bills branches and display window never reset Runway. */}
+      <RunwayPanel />
+      {showDashboard && (
+        <>
+          <BillsDashboard onEventClick={openDialog} />
+          <EventDetailDialog
+            open={dialogState.open}
+            id={dialogState.eventId}
+            month={month}
+            onClose={closeDialog}
           />
-          <Button
-            type="button"
-            size="sm"
-            disabled={!windowDirty || loading}
-            onClick={applyWindow}
-            aria-label="Apply window"
-          >
-            Apply
-          </Button>
-          {windowDirty ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={loading}
-              onClick={resetWindow}
-              aria-label="Reset window"
-            >
-              Reset
-            </Button>
-          ) : null}
-        </div>
-      </header>
-
-      <BillsWarningBanner warnings={allWarnings} />
-
-      <HouseholdSummary />
-
-      <BillsDashboard onEventClick={openDialog} />
-
-      <EventDetailDialog
-        open={dialogState.open}
-        id={dialogState.eventId}
-        month={month}
-        onClose={closeDialog}
-      />
+        </>
+      )}
     </div>
   );
 }

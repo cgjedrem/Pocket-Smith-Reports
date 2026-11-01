@@ -7,7 +7,7 @@ dashboard. Everything runs — and stays — on your machine.
 
 **Using the app:** once it's running, open **Docs** in the top navigation
 (`/docs`) for a guide to connecting, syncing, and building reports.
-This README covers installation only.
+This README covers installation and local backend configuration.
 
 ## Requirements
 
@@ -55,6 +55,66 @@ pnpm dev
 Then open **Settings**, paste your PocketSmith API key (stored in the
 git-ignored `.env`), run your first **Sync**, and build a report from
 **Monthly Reports** — the in-app **Docs** page walks through each step.
+
+## Runway & Burn Rate
+
+Open **Bills → Runway & Burn Rate** to compare explicitly selected liquid
+balances with **average monthly spending (net, as in Reports)**, per account
+owner and for the household. Runway loads independently, even when the current
+Bills snapshot is missing. Changing the Bills past/future window does not change
+Runway's previous-three-completed-month window.
+
+1. Expand **Liquid account settings**. No accounts are selected automatically.
+2. Choose eligible owned checking/savings accounts and click **Save selection**.
+   This saves locally and refreshes Runway only; no sync is started.
+3. Read the selected accounts, exact included/excluded months, source dates, and
+   qualifications alongside the ratios. **Refresh runway** rereads local sources;
+   it does not fetch fresh bank data.
+
+**Clear selection** prepares an empty draft; click **Save selection** to apply it.
+**Reset changes** restores the last loaded selection. **Reload saved selection**
+reads it again and discards the draft. Failed settings loads disable Save, and
+failed saves keep the draft for correction or retry. Retained figures are labelled
+as using the last loaded saved selection, not unsaved choices.
+
+The global **Hide amounts** control masks reserves, averages, monthly spending,
+and selected account balances, including zero and negative values. Ratios, dates,
+labels, and counts remain visible; toggling does not refetch or reset the draft.
+
+Local API:
+
+- `GET /api/settings/runway` returns the saved selection and account eligibility
+  without balance amounts. No accounts are selected automatically.
+- `PUT /api/settings/runway` accepts only `{"liquid_account_ids":["1100001"]}`
+  (synthetic ID shown; use eligible IDs from GET). IDs must be unique strings.
+  An empty array explicitly clears the selection.
+- `GET /api/bills/runway` returns owner and household observations, dates,
+  qualifications, and nullable ratios. These endpoints accept no query parameters.
+
+Only an explicit successful PUT writes `runway_config.json` under the existing
+private-data directory, using atomic replacement. No schema migration, snapshot
+regeneration, credential access, or synchronization is required by these routes.
+All three operations return `Cache-Control: no-store`.
+
+Spending uses at least two of the previous three completed local calendar months,
+with no older backfill. It is the same household net spending as the Reports page
+(home, common, personal and trips): refunds and reimbursements reduce it, so a
+month or the average can be zero or negative (runway then unavailable). Transfers,
+card repayments, savings and excluded categories do not count. Reserves use the
+signed recorded balances of selected owned checking/savings accounts, not credit
+limits or projected savings.
+
+Owner burn follows the common economy split when it is enabled: each partner
+carries their split share (for example 60 / 40) of split-category spending plus
+their own net spending elsewhere, and owners sum to the household. Without the
+split, owner burn is what that partner's accounts paid (net).
+
+Missing balances, invalid history, nonpositive inputs, and currency conflicts have
+explicit unavailable reasons. Unknown coverage, currency, and source/balance dates
+remain qualified; recalculation does not make old data fresh. The ratio is
+descriptive, not a forecast or financial advice.
+See the [API contract](docs/specs/003-runway-burn-rate/contracts/runway-api.md) and
+[synthetic validation guide](docs/specs/003-runway-burn-rate/quickstart.md).
 
 ## Run with Docker Compose
 

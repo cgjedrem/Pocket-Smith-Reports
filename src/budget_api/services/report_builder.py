@@ -12,6 +12,7 @@ import json
 import logging
 import re
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -22,7 +23,9 @@ if str(_V4_DIR) not in sys.path:
     sys.path.insert(0, str(_V4_DIR))
 
 from accounting import (  # noqa: E402
+    HOUSEHOLD_COMPOSITION,
     AccountingValidationError,
+    _routed_section,
     _resolve_allowed_category_ids,
     build_month_contract,
     compute_split,
@@ -85,16 +88,18 @@ class IncompatibleContractError(Exception):
         )
 
 
-def _load_excluded_account_ids() -> set[str]:
+def _load_excluded_account_ids(path: Path | None = None) -> set[str]:
     """Load excluded account IDs from account_mappings.json.
 
     Bridges budget_api partner_id schema → v4_pipeline owner schema.
     v4_pipeline load_excluded_account_ids() expects {name,owner,excluded},
     but production data has {name,partner_id,type,excluded}.
+    `path` defaults to storage.ACCOUNT_MAPPING_PATH (resolved at call time).
     """
-    if not storage.ACCOUNT_MAPPING_PATH.exists():
+    path = storage.ACCOUNT_MAPPING_PATH if path is None else path
+    if not path.exists():
         return set()
-    raw = storage.read_json(storage.ACCOUNT_MAPPING_PATH)
+    raw = storage.read_json(path)
     if not isinstance(raw, dict):
         return set()
     accounts = raw.get("accounts", {})
@@ -159,14 +164,34 @@ def _partner_slot_map(raw: dict) -> dict[str, str]:
     }
 
 
-def _load_account_owners() -> dict[str, str]:
+def partner_slot_map(raw: dict) -> dict[str, str]:
+    """Public: partner ID → "partner_a"/"partner_b" slot, the Reports rule.
+
+    Single slot source for Reports owners and runway owner slots.
+    """
+    return _partner_slot_map(raw)
+
+
+def load_excluded_account_ids(path: Path) -> set[str]:
+    """Public: excluded account IDs from an account_mappings.json path."""
+    return _load_excluded_account_ids(path)
+
+
+def routed_section(record: dict[str, Any], mapping: dict[str, dict[str, str]]) -> str:
+    """Public: detailed section one normalized record routes to (Reports rule)."""
+    return _routed_section(record, mapping)
+
+
+def _load_account_owners(path: Path | None = None) -> dict[str, str]:
     """Load account_id → partner_a/partner_b from account_mappings.json.
 
     Bridges budget_api partner_id schema → v4_pipeline owner schema.
+    `path` defaults to storage.ACCOUNT_MAPPING_PATH (resolved at call time).
     """
-    if not storage.ACCOUNT_MAPPING_PATH.exists():
+    path = storage.ACCOUNT_MAPPING_PATH if path is None else path
+    if not path.exists():
         return {}
-    raw = storage.read_json(storage.ACCOUNT_MAPPING_PATH)
+    raw = storage.read_json(path)
     if not isinstance(raw, dict):
         return {}
     accounts = raw.get("accounts", {})
@@ -329,13 +354,9 @@ def _detailed(
         if has_income_records(records, mapping)
         else None
     )
-    split = None
-    if split_config is not None:
-        allowed_ids = _resolve_allowed_category_ids(
-            split_config["categories"], category_parents
-        )
-        category_nets = net_category_totals(records, allowed_ids, mapping)
-        split = compute_split(category_nets, split_config["shares"])
+    spending = household_spending(records, mapping, split_config, category_parents)
+    split = spending.split
+    if split is not None:
         split["settlement"] = _resolve_split_settlement(
             split["settlement"], partner_labels or {}
         )
@@ -349,9 +370,45 @@ def _detailed(
         "trips": detailed_net_section(records, "trips", mapping),
         "cc_payments": detailed_cc_payments_section(records, mapping),
         "excluded": detailed_excluded_section(records, mapping),
-        "household_totals": detailed_household_totals(records, mapping),
+        "household_totals": spending.totals,
         "split": split,
     }
+
+
+@dataclass(frozen=True)
+class HouseholdSpending:
+    """Household net spending + optional common-economy split, one month.
+
+    totals: detailed_household_totals() shape (slot-keyed, net, by payer).
+    split: compute_split() shape, or None when split disabled/absent.
+    allowed_category_ids: expanded split selection (empty when no split).
+    """
+
+    totals: dict[str, Any]
+    split: dict[str, Any] | None
+    allowed_category_ids: frozenset[str]
+
+
+def household_spending(
+    records: list[dict[str, Any]],
+    mapping: dict[str, dict[str, str]],
+    split_config: dict[str, Any] | None,
+    category_parents: dict[str, str | None] | None,
+) -> HouseholdSpending:
+    """Reports household totals + split. Shared by build_report and runway.
+
+    `mapping` must be the contract's resolved detailed_section_mapping.
+    Settlement stays slot-keyed; label resolution is the caller's job.
+    """
+    totals = detailed_household_totals(records, mapping)
+    if split_config is None:
+        return HouseholdSpending(totals, None, frozenset())
+    allowed_ids = _resolve_allowed_category_ids(
+        split_config["categories"], category_parents
+    )
+    category_nets = net_category_totals(records, allowed_ids, mapping)
+    split = compute_split(category_nets, split_config["shares"])
+    return HouseholdSpending(totals, split, frozenset(allowed_ids))
 
 
 def _personal_share(kpis: dict[str, Any] | None) -> float | None:
@@ -412,6 +469,92 @@ def _load_transactions(month: str, ps_raw_path: Path, excluded: set[str]) -> lis
     return load(month, str(ps_raw_path), excluded)
 
 
+def load_wrapped_transactions(month: str, wrapped_path: Path, excluded: set[str]) -> list[dict]:
+    """Load transactions from a file already in {"transactions": [...]} form.
+
+    No list bridging, no temp copy. Caller owns wrapping. Same loader as
+    _load_transactions uses for dict-format files.
+    """
+    return load(month, str(wrapped_path), excluded)
+
+
+@dataclass(frozen=True)
+class AccountingInputs:
+    """Month-independent accounting config, loaded exactly like build_report."""
+
+    account_owners: dict[str, str]
+    detailed_section_mapping: dict[str, dict[str, str]]
+    category_roles: dict[str, str] | None
+    category_parents: dict[str, str | None] | None
+    split_config: dict[str, Any] | None
+
+
+def load_accounting_inputs(
+    month: str,
+    *,
+    private_dir: Path,
+    account_mapping_path: Path,
+    split_config_path: Path,
+) -> AccountingInputs:
+    """Load owners, section mapping, roles, catalog parents, split config.
+
+    Section mapping/roles/catalog are read from `private_dir` under their
+    canonical file names. Raises AccountingValidationError (month-tagged for
+    the section mapping and split config) exactly like build_report did.
+    """
+    account_owners = _load_account_owners(account_mapping_path)
+    try:
+        detailed_section_mapping = load_detailed_section_mapping(
+            private_dir / "detailed_section_mapping.json"
+        )
+    except AccountingValidationError as exc:
+        raise AccountingValidationError(
+            f"detailed section mapping invalid for month {month}: {exc}"
+        ) from exc
+
+    # category_roles — optional, only if file exists.
+    category_roles = None
+    roles_path = private_dir / "category_roles.json"
+    if roles_path.exists():
+        category_roles = load_category_roles(roles_path)
+
+    # category_parents — from catalog, for role resolution.
+    category_parents = None
+    catalog_path = private_dir / "category_catalog.json"
+    if catalog_path.exists():
+        category_parents = load_category_parents(catalog_path)
+
+    # Common-economy split config — optional, missing/disabled => split=None.
+    try:
+        split_config = load_split_config(
+            split_config_path, category_parents, detailed_section_mapping
+        )
+    except AccountingValidationError as exc:
+        raise AccountingValidationError(
+            f"split config invalid for month {month}: {exc}"
+        ) from exc
+    return AccountingInputs(
+        account_owners=account_owners,
+        detailed_section_mapping=detailed_section_mapping,
+        category_roles=category_roles,
+        category_parents=category_parents,
+        split_config=split_config,
+    )
+
+
+def build_contract(
+    transactions: list[dict[str, Any]], inputs: AccountingInputs
+) -> dict[str, Any]:
+    """build_month_contract with loaded accounting inputs."""
+    return build_month_contract(
+        transactions,
+        account_owners=inputs.account_owners,
+        category_roles=inputs.category_roles,
+        detailed_section_mapping=inputs.detailed_section_mapping,
+        category_parents=inputs.category_parents,
+    )
+
+
 def build_report(month: str) -> dict[str, Any]:
     """Load data, call build_month_contract, port derived views to JSON.
 
@@ -429,48 +572,19 @@ def build_report(month: str) -> dict[str, Any]:
     private = storage.PRIVATE_DATA_DIR
     excluded = _load_excluded_account_ids()
     transactions = _load_transactions(month, ps_raw_path, excluded)
-    account_owners = _load_account_owners()
-    try:
-        detailed_section_mapping = load_detailed_section_mapping(
-            private / "detailed_section_mapping.json"
-        )
-    except AccountingValidationError as exc:
-        raise AccountingValidationError(
-            f"detailed section mapping invalid for month {month}: {exc}"
-        ) from exc
+    inputs = load_accounting_inputs(
+        month,
+        private_dir=private,
+        account_mapping_path=storage.ACCOUNT_MAPPING_PATH,
+        split_config_path=storage.SPLIT_CONFIG_PATH,
+    )
     partner_labels, label_warnings = _load_partner_labels()
     for warning in label_warnings:
         _logger.warning("partner-label validation: %s", warning)
+    split_config = inputs.split_config
+    category_parents = inputs.category_parents
 
-    # category_roles — optional, only if file exists.
-    category_roles = None
-    roles_path = private / "category_roles.json"
-    if roles_path.exists():
-        category_roles = load_category_roles(roles_path)
-
-    # category_parents — from catalog, for role resolution.
-    category_parents = None
-    catalog_path = private / "category_catalog.json"
-    if catalog_path.exists():
-        category_parents = load_category_parents(catalog_path)
-
-    # Common-economy split config — optional, missing/disabled => split=None.
-    try:
-        split_config = load_split_config(
-            storage.SPLIT_CONFIG_PATH, category_parents, detailed_section_mapping
-        )
-    except AccountingValidationError as exc:
-        raise AccountingValidationError(
-            f"split config invalid for month {month}: {exc}"
-        ) from exc
-
-    contract = build_month_contract(
-        transactions,
-        account_owners=account_owners,
-        category_roles=category_roles,
-        detailed_section_mapping=detailed_section_mapping,
-        category_parents=category_parents,
-    )
+    contract = build_contract(transactions, inputs)
 
     # Port derived views to JSON.
     categories = contract["categories"]

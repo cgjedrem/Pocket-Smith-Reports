@@ -1,7 +1,7 @@
 // SettingsPage tests — F11 / AC33, AC35-AC37, AC43.
 // Mock all API modules — no real network.
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -10,6 +10,19 @@ import { SettingsPage } from "@/pages/SettingsPage";
 vi.mock("@/api/settings", () => ({
   getApiKeyStatus: vi.fn().mockResolvedValue({ configured: true }),
   updateApiKey: vi.fn().mockResolvedValue({ configured: true }),
+  getSplitConfig: vi.fn().mockResolvedValue({
+    enabled: false,
+    shares: { partner_a: 50, partner_b: 50 },
+    categories: [],
+    sections: [],
+    labels: { partner_a: "Partner A", partner_b: "Partner B" },
+    warning: null,
+  }),
+  updateSplitConfig: vi.fn(),
+}));
+
+vi.mock("@/api/categories", () => ({
+  listCategories: vi.fn().mockResolvedValue({ categories: [] }),
 }));
 
 vi.mock("@/api/partners", () => ({
@@ -41,6 +54,7 @@ describe("SettingsPage — AC33 render", () => {
     expect(screen.getByRole("heading", { name: "Partners" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Accounts" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Category Mappings" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryAllByText(/Loading/)).toHaveLength(0));
   });
 });
 
@@ -76,7 +90,7 @@ describe("SettingsPage — AC43 CategoryMappingsEditor", () => {
   it("renders empty state when no categories", async () => {
     render(<SettingsPage />);
     await waitFor(() =>
-      expect(screen.getByText(/No categories/i)).toBeInTheDocument()
+      expect(within(screen.getByRole("heading", { name: "Category Mappings" }).closest("section")!).getByText(/No categories/i)).toBeInTheDocument()
     );
   });
 });
