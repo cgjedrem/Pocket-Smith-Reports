@@ -17,6 +17,7 @@ from budget_api.routers import (
     mega_reports,
     partners,
     reports,
+    runway,
     settings,
     status,
     sync,
@@ -40,6 +41,11 @@ app = FastAPI(title="Pocket-Smith Reports API", version="0.1.0", lifespan=lifesp
 # Fixes AC10/AC14/AC23 at framework level. All pydantic errors → 400 {detail: string}.
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
+    if request.url.path in {"/api/bills/runway", "/api/settings/runway"}:
+        # Never echo caller field names or values on money-sensitive routes.
+        return JSONResponse(status_code=400, content={
+            "detail": "Invalid runway request. Provide only liquid_account_ids as unique positive account ID strings."
+        })
     errors = exc.errors()
     if errors:
         first = errors[0]
@@ -89,6 +95,7 @@ app.include_router(reports.router, prefix="/api")  # /api/reports/*
 app.include_router(mega_reports.router, prefix="/api")  # /api/mega-reports/*
 app.include_router(category_mappings.router, prefix="/api")  # /api/category-mappings
 app.include_router(bills.router, prefix="/api")  # /api/bills/dashboard
+app.include_router(runway.router, prefix="/api")  # Local runway result + selection.
 
 
 # Bills router — no-store on /api/bills/dashboard + /api/bills/dashboard/events
@@ -100,6 +107,8 @@ _NO_STORE_PATHS = frozenset(
         "/api/bills/dashboard",
         "/api/bills/dashboard/events",
         "/api/bills/dashboard/event",
+        "/api/bills/runway",
+        "/api/settings/runway",
     }
 )
 
