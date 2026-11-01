@@ -16,6 +16,14 @@ Merged-plan gate was checked and **NOT passed**; direct user continuations
 authorized local backend/frontend implementation nonetheless, not gate passage or
 publication. See [plan.md](plan.md).
 
+**Calculation v2 (2026-11-01, FR-028–FR-030).** Runway spending is now household
+net spending as in Reports (`basis: "household_net_spending"`); refunds reduce it,
+and monthly values/averages can be zero or negative (average ≤ 0 → `nonpositive_burn`).
+Owner burn uses the common economy split shares on split categories plus own net
+elsewhere (`owner_attribution: "common_economy_split"`), or net by paying account
+(`"payer"`). Records below that mention gross burn are dated v1 evidence and were
+not re-run against v2.
+
 **Evidence locations.** The harness scripts and raw outputs named below
 (`runway-browser/*`, `runway-http-results.json`, `runway-rt002/`, screenshots and
 Linux logs) live in a local, unpublished evidence directory, written here as
@@ -806,8 +814,8 @@ a decorated fixture is needed. `World(private).use_large_history()` creates
 **10,000** transactions in July/August/September 2026 (**3334/3333/3333**) and
 **20 account mappings**. The transactions intentionally use synthetic checking
 accounts A/B; the other mappings exercise mapped-account scale, not 20 active
-purchase accounts. Default selection is A+B, 120,000 reserves, average gross
-spending 100,000/3, displayed household runway **3.6**.
+purchase accounts. Default selection is A+B, 120,000 reserves; the v1 record was average gross
+spending 100,000/3, displayed household runway **3.6** (calculation v2 net figures not re-recorded here).
 
 Run a script containing this setup only after the PowerShell environment above
 is set. It is exercised by `test_fresh_process_synthetic_integration_recipe`:
@@ -1161,8 +1169,10 @@ Required results:
    local rollover, known pre-month-end/partial sources, explicit complete zero,
    and unknown positive versus unknown zero. A zero owner without coverage excludes
    that month for everyone.
-3. Checking purchase 100 + card purchase 200 = gross 300; positive refunds 40/60
-   do not reduce it. Both repayment legs, savings overrides, investments, transfer
+3. Spending equals Reports `household_totals.total` (net): purchases minus refunds/
+   reimbursements, so a refund reduces burn and months can be zero or negative.
+   Card repayments, transfers, savings and excluded categories follow Reports routing.
+   Both repayment legs, savings overrides, investments, transfer
    flags, excluded accounts/categories, pending entries, and duplicate repeats
    never inflate it. Conflicting IDs across candidate sources invalidate every
    affected month; invalid dates/amounts invalidate their source month.
@@ -1309,7 +1319,7 @@ Browser scenarios:
 4. Toggle privacy on/off with an unsaved draft; inspect monetary text/attributes,
    nonmonetary ratio visibility, and zero request count caused by toggle.
 5. Ask the synthetic acceptance reviewer to identify selected accounts, included
-   months, gross-not-net basis, non-forecast meaning, and no-advice explanation.
+   months, net-as-in-Reports basis, owner attribution (common economy split shares or
    This comprehension result is not implied by unit tests.
 
 For SC-005, generate 10,000 deterministic transactions across the three candidate

@@ -47,13 +47,71 @@ describe("RunwayPanel", () => {
     expect(household).toHaveTextContent("90,000 kr");
     expect(screen.getByRole("region", { name: "Partner A runway" })).toHaveTextContent("3.0 months");
     expect(screen.getByRole("region", { name: "Partner B runway" })).toHaveTextContent("0.5 months");
-    expect(screen.getByText(/Average monthly recorded spending \(gross burn\)/)).toBeVisible();
+    expect(screen.getByText(/Average monthly spending \(net, as in Reports\)/)).toBeVisible();
+    expect(screen.getByText(/refunds and reimbursements reduce spending/i)).toBeVisible();
+    expect(household).toHaveTextContent("Average monthly spending (net)");
+    expect(screen.queryByText(/gross burn|recorded spending/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Monthly net spending" })).toBeVisible();
     expect(screen.getByText(/not a forecast, financial advice, or a recommendation/i)).toBeVisible();
+    expect(screen.getByText(/excluded from net spending as in Reports/i)).toBeVisible();
     expect(screen.getByText(/3 of 3 completed months/)).toBeVisible();
-    expect(screen.getByText(/account-owner-based/i)).toBeVisible();
     expect(screen.getByRole("heading", { name: "July 2026" })).toBeVisible();
     expect(screen.getByText(/Catalog collected: Unknown/)).toBeVisible();
     expect(screen.getAllByText(/Balance date: 2026-10-30 \(date only\)/)).toHaveLength(2);
+  });
+
+  it("explains common economy split attribution with owner labels and shares", async () => {
+    payload.split_shares = { partner_a: 60, partner_b: 40 };
+    payload.owners[0].owner.label = "Alex";
+    payload.owners[1].owner.label = "Sam";
+    render(<RunwayPanel />);
+    await screen.findByText("1.3 months");
+    expect(screen.getByText(/^Owner spending:/)).toHaveTextContent(
+      "Owner spending: shared categories split 60 / 40 (Alex / Sam, common economy split); other spending by who paid. Owners sum to the household.",
+    );
+    expect(screen.getByRole("region", { name: "Alex runway" })).toHaveTextContent("Attribution: 60% of shared categories + own other spending");
+    expect(screen.getByRole("region", { name: "Sam runway" })).toHaveTextContent("Attribution: 40% of shared categories + own other spending");
+    expect(screen.getByRole("region", { name: "Household runway" })).not.toHaveTextContent("Attribution:");
+  });
+
+  it("maps split shares by owner slot, not response order", async () => {
+    payload.split_shares = { partner_a: 55.5, partner_b: 44.5 };
+    payload.owners.reverse();
+    render(<RunwayPanel />);
+    await screen.findByText("1.3 months");
+    expect(screen.getByText(/^Owner spending:/)).toHaveTextContent("split 55.5 / 44.5 (Partner A / Partner B");
+    expect(screen.getByRole("region", { name: "Partner B runway" })).toHaveTextContent("44.5% of shared categories");
+  });
+
+  it("explains payer attribution without split shares", async () => {
+    payload.owner_attribution = "payer";
+    payload.split_shares = null;
+    render(<RunwayPanel />);
+    await screen.findByText("1.3 months");
+    expect(screen.getByText(/^Owner spending:/)).toHaveTextContent("Owner spending: attributed to the partner whose account paid (net).");
+    expect(screen.getByRole("region", { name: "Partner A runway" })).toHaveTextContent("Attribution: paid from own accounts (net)");
+    expect(screen.queryByText(/common economy split/)).not.toBeInTheDocument();
+  });
+
+  it("formats negative net monthly spending with a minus sign", async () => {
+    payload.observations[0].owners[1].spending = -1500;
+    payload.observations[0].household_spending = -250;
+    render(<RunwayPanel />);
+    const july = await screen.findByRole("region", { name: "July 2026 observation" });
+    const negative = within(july).getByText("-1,500 kr");
+    expect(negative).toHaveClass("tabular-nums");
+    expect(within(july).getByText("-250 kr")).toHaveClass("tabular-nums");
+    expect(runwayMoney(-1500, "USD")).toBe("-1,500 USD");
+  });
+
+  it.each([0, -400])("keeps runway unavailable for nonpositive net average %s", async (average) => {
+    payload.household = { ...payload.household, average_monthly_spending: average, runway_months: null, runway_display: null, status: "unavailable", issues: [issue("nonpositive_burn")] };
+    render(<RunwayPanel />);
+    await screen.findByText(/Net spending is zero or negative/);
+    const household = screen.getByRole("region", { name: "Household runway" });
+    expect(household).toHaveTextContent("Unavailable");
+    expect(household).toHaveTextContent(runwayMoney(average, "NOK"));
+    expect(screen.queryByText("1.3 months")).not.toBeInTheDocument();
   });
 
   it("identifies every missing/partial month without older backfill", async () => {

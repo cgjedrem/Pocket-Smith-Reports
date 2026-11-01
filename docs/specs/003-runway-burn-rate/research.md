@@ -89,6 +89,56 @@ netting refunds/income; adding transfer inference or refund pairing. Rejected:
 missing guarantees or changed metric. Keep this stricter logic runway-local,
 without refactoring legacy Bills math.
 
+**Superseded by R3b (2026-11-01)** for amounts.
+
+## R3b — Reports-equivalent net basis and split attribution (SC-split / RD-002)
+
+**Decision** (user-directed, 2026-11-01): Runway monthly spending is computed by
+the production Reports accounting:
+
+1. `report_builder.load_accounting_inputs` loads the shared config.
+2. `report_builder._load_transactions` loads the month.
+3. `build_contract` (wrapping `build_month_contract`) builds the contract.
+4. `household_spending` returns `detailed_household_totals` plus, when the split
+   is enabled, `_resolve_allowed_category_ids` → `net_category_totals` →
+   `compute_split`.
+
+All of these are shared with `build_report`, so the logic is not duplicated.
+
+- Household = `totals.total`.
+- With split on, owner = `totals[slot] − Σ delta(slot)` over household-section
+  split rows.
+- With split off, owner = `totals[slot]` (payer).
+
+**Snapshot feeding**: the Reports loaders take file paths. Runway writes the
+already-read snapshot bytes for the accounting sources and each month into a
+per-request `tempfile.TemporaryDirectory` and points the loaders at it:
+
+- `private_dir`, `account_mapping_path` and `split_config_path` are parameters
+  of `load_accounting_inputs`.
+- Month bytes are written verbatim. When there are identical repeats, a
+  deduplicated `{"transactions": [...]}` is written instead.
+
+This keeps the stable-bundle guarantee (one read set, change detection
+unchanged) without forking the loaders into parsed-object variants. The cost is
+one small temp write per month; 10,000 synthetic transactions take about
+0.65 s.
+
+**Rationale**: RD-002. A real catalog marked a parent category with
+`is_transfer: true`, and runway's own ancestor walk dropped every child, which
+put burn well below Reports. A single source of truth fixes this class of drift
+by construction. Gross versus net was the other gap. The user also asked for
+owner burn to follow the common-economy split.
+
+**Alternatives considered**:
+
+- Patching `_classification` to ignore catalog transfer flags. Rejected: it
+  keeps two classifiers that can drift again.
+- Calling `build_report` per month. Rejected: it builds the full DTO and labels
+  at extra cost and reads live paths.
+- Adding parsed-object entry points to `data_loader` / `load_*` config readers.
+  Rejected: wider change to the Reports surface.
+
 ## R4 — Bounded validation and common months
 
 **Decision**: Server-local date determines exactly the prior three completed

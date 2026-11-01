@@ -73,8 +73,8 @@ def test_pocketsmith_shaped_months_with_null_transfer_flags_on_result_route(runw
     assert [row["coverage"] for row in result["observations"]] == ["unverified"] * 3
     assert "invalid_source" not in {issue["code"] for row in result["observations"] for issue in row["issues"]}
     assert "invalid_source" not in {issue["code"] for issue in result["issues"]}
-    assert [owner["runway_display"] for owner in result["owners"]] == ["172.6", "164.8"]
-    assert result["household"]["runway_display"] == "170.6"
+    assert [owner["runway_display"] for owner in result["owners"]] == ["141.6", "164.8"]
+    assert result["household"]["runway_display"] == "146.8"
     assert result["household"]["status"] == "qualified"
 
 

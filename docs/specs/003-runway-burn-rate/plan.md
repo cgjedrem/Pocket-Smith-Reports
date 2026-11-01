@@ -42,6 +42,17 @@ household. Use the previous three completed server-local months, at least two
 usable observations, and one common month set. No income/refund netting, future
 income, forecasts, historical runway, fair-share allocation, or financial advice.
 
+> **Calculation v2 note (SC-split / RD-002, user-directed, 2026-11-01).** The
+> gross basis and the "no netting / no fair-share" scope above are superseded.
+> Monthly spending now comes from the Reports pipeline via shared
+> `report_builder` helpers (`load_accounting_inputs`, `build_contract`,
+> `household_spending`), fed from runway's stable snapshot bytes. The bytes are
+> copied into a per-request temp dir, so the unchanged path-based Reports
+> loaders run against them. Household = `household_totals.total` (net). Owners
+> follow the common-economy split when it is enabled; otherwise they are
+> attributed by payer. See spec FR-028–030, `data-model.md` §4 and tasks
+> T036/T037.
+
 Use three new local-only endpoints and a separate `runway_config.json`. Derive
 spending from validated raw transactions, never from legacy Bills fallback zeros,
 projected savings, or frontend mock stores. Return explicit availability,

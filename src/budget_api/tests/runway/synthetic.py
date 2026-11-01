@@ -85,7 +85,7 @@ def pocketsmith_transaction(number, account, amount, month, is_transfer=None, ca
 def pocketsmith_month(month, index):
     """Raw month as the sync writes it: bare top-level list, no provenance block.
 
-    Amounts scale with index + 1. Counted per scale unit: partner A 260.75, partner B 91.00.
+    Amounts scale with index + 1. Reports net per scale unit: partner A 317.75, partner B 91.00.
     """
     scale = index + 1
     purchases = [  # account, amount, transaction is_transfer, category is_transfer
@@ -94,10 +94,10 @@ def pocketsmith_month(month, index):
         (A, "-300.00", True, False),  # transfer at transaction level
         (B, "-45.10", None, False),  # counts
         (B, "-15.90", None, False),  # counts
-        (A, "500.00", None, False),  # credit. never spend
+        (A, "20.00", None, False),  # refund. net reduces A
         (CARD, "-60.00", None, False),  # counts for card owner A
         (B, "-200.00", None, True),  # transfer at category level
-        (SAVINGS, "-77.00", None, False),  # savings account. not consumption
+        (SAVINGS, "-77.00", None, False),  # savings acct, common category. Reports count it for owner A
         (B, "-30.00", False, False),  # counts
     ]
     return [
@@ -130,6 +130,11 @@ class World:
                 ],
             },
             "category_catalog.json": {"categories": []},
+            # Reports need a section per leaf. No-category rows load as "uncategorized".
+            "detailed_section_mapping.json": {
+                "category_sections": {"uncategorized": "common", "2100050": "common"},
+                "account_roles": {},
+            },
             "runway_config.json": {"schema_version": 1, "liquid_account_ids": [A, B]},
         }
         for index, month in enumerate(MONTHS):

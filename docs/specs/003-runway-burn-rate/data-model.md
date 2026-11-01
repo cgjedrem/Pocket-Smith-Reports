@@ -197,6 +197,36 @@ Classify valid records in this order:
 No salary/event totals, planned CC purchases, current/future records, repayment
 netting, or shared-split allocation. Negative posted uncategorized purchases count.
 
+> **Superseded for amounts by calculation v2 (SC-split / RD-002, user-directed,
+> 2026-11-01).** The validation rules above (identity, date, amount, posting
+> state, flag shapes, dedupe, conflicts, ownership) still gate a month. The
+> classification steps 1–5 no longer decide amounts. After validation the
+> deduplicated month bytes go through the Reports pipeline
+> (`report_builder._load_transactions` → `build_contract` →
+> `household_spending`):
+>
+> - Household monthly spending = `detailed.household_totals.total`, net (paid −
+>   received) over home/common/personal_partner_a/personal_partner_b/trips.
+>   Refunds reduce burn. Pending rows count as Reports count them.
+> - Routing follows the detailed section mapping (parent sections inherited).
+>   Transaction/embedded-category `is_transfer: true` routes to excluded unless
+>   the section is home/savings/excluded. **Catalog `is_transfer` flags are not
+>   read** (RD-002: a transfer-flagged parent "home" category dropped mortgage,
+>   upkeep and insurance children). The "cc payment" title rule and account-type
+>   exclusions are gone; Reports use sections. A savings-type account's purchase
+>   in a household section counts, as in Reports.
+> - Owner: Reports slot via `_partner_slot_map`. Split enabled and both slots
+>   owned → `totals[slot] − Σ split delta` (household-section split rows).
+>   Otherwise → `totals[slot]` (payer). Sum of owners = household.
+> - Monthly values and averages are signed. Average ≤ 0 → `nonpositive_burn`,
+>   ratio null.
+> - A Reports error for one month (unmapped category, non-numeric amount,
+>   unowned account) → that month `invalid_source`. Invalid shared config
+>   (section mapping, roles, catalog, split) → global `invalid_source`.
+> - Mortgage payments, including principal, count as burn because Reports
+>   count them under home. Partial months are shown as-is, with the existing
+>   coverage qualifications.
+
 ## 5. Monthly spending observation
 
 Exactly three candidate rows in ascending order. Each contains month,
@@ -243,8 +273,14 @@ overflow or positive underflow must be an explicit invalid-source result, never
 NaN/infinity/false zero.
 
 Implementation uses a calculation-local Decimal precision of 700 to cover the
-finite JSON-float exponent range and signed cancellation without intermediate
-rounding to binary floats. Present JSON `null` sources and duplicate object keys
+finite JSON-float exponent range and signed cancellation. Reports
+(`household_spending`) sums amounts in binary floats, so its monthly totals carry
+float noise (e.g. `96736.35999999999`). Each included month's household and owner
+spending is therefore quantized to cents (`0.01`, half up) before use: in payer
+mode household and both owners are rounded independently; in split mode owner A
+is rounded and owner B = household − owner A, so owners sum exactly to household.
+Averages and the ratio are computed from those cent values and are not rounded
+further. Present JSON `null` sources and duplicate object keys
 are invalid, not equivalent to a missing optional file. Malformed consumed
 structures fail closed; unrelated classification entries remain outside validation.
 

@@ -59,7 +59,7 @@ git-ignored `.env`), run your first **Sync**, and build a report from
 ## Runway & Burn Rate
 
 Open **Bills → Runway & Burn Rate** to compare explicitly selected liquid
-balances with **average monthly recorded spending (gross burn)**, per account
+balances with **average monthly spending (net, as in Reports)**, per account
 owner and for the household. Runway loads independently, even when the current
 Bills snapshot is missing. Changing the Bills past/future window does not change
 Runway's previous-three-completed-month window.
@@ -97,15 +97,22 @@ regeneration, credential access, or synchronization is required by these routes.
 All three operations return `Cache-Control: no-store`.
 
 Spending uses at least two of the previous three completed local calendar months,
-with no older backfill. It counts negative posted checking/card purchases without
-netting refunds or income; transfers, repayments, savings/investment movements,
-and exclusions do not count. Reserves use the signed recorded balances of selected
-owned checking/savings accounts, not credit limits or projected savings.
+with no older backfill. It is the same household net spending as the Reports page
+(home, common, personal and trips): refunds and reimbursements reduce it, so a
+month or the average can be zero or negative (runway then unavailable). Transfers,
+card repayments, savings and excluded categories do not count. Reserves use the
+signed recorded balances of selected owned checking/savings accounts, not credit
+limits or projected savings.
+
+Owner burn follows the common economy split when it is enabled: each partner
+carries their split share (for example 60 / 40) of split-category spending plus
+their own net spending elsewhere, and owners sum to the household. Without the
+split, owner burn is what that partner's accounts paid (net).
 
 Missing balances, invalid history, nonpositive inputs, and currency conflicts have
 explicit unavailable reasons. Unknown coverage, currency, and source/balance dates
 remain qualified; recalculation does not make old data fresh. The ratio is
-account-owner-based, not fair-share allocation, a forecast, or financial advice.
+descriptive, not a forecast or financial advice.
 See the [API contract](docs/specs/003-runway-burn-rate/contracts/runway-api.md) and
 [synthetic validation guide](docs/specs/003-runway-burn-rate/quickstart.md).
 

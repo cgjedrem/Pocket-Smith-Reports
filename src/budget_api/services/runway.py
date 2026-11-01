@@ -1,4 +1,8 @@
-"""Local recorded-spending comparison. No snapshots, credentials, sync, or writes on GET."""
+"""Local household burn vs liquid reserves. No snapshots, credentials, sync, or writes on GET.
+
+Monthly spending = Reports household net spending (report_builder.household_spending),
+computed from a stable snapshot of the source bytes copied into a scratch dir.
+"""
 
 from __future__ import annotations
 
@@ -9,15 +13,15 @@ import json
 import math
 from pathlib import Path
 import re
+import tempfile
 
 from pydantic import ValidationError
 
-from budget_api.models.category_mappings import DETAILED_CATEGORY_SECTIONS, KPI_ROLES
 from budget_api.models.runway import (
     AccountOption, Issue, Measures, MonthObservation, Owner, OwnerObservation,
     OwnerResult, RunwayConfig, RunwayResponse, RunwaySettings, RunwayUpdate, SelectedAccount,
 )
-from budget_api.services import storage
+from budget_api.services import report_builder, storage
 
 _ID = re.compile(r"^[1-9][0-9]*$")
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -165,16 +169,21 @@ def _decode(raw):
         raise InvalidSource() from None
 
 
+def _accounting_sources():
+    # Config files the Reports accounting reads. Copied from the bundle, never re-read live.
+    return (storage.ACCOUNT_MAPPING_PATH, storage.CATEGORY_CATALOG_PATH, storage.CATEGORY_ROLES_PATH,
+            storage.DETAILED_SECTION_MAPPING_PATH, storage.SPLIT_CONFIG_PATH)
+
+
 def _paths(months=()):
     # Fixed sources only. No filename search or snapshot fallback.
-    return [
+    return list(dict.fromkeys([
         storage.PRIVATE_DATA_DIR / "runway_config.json",
         storage.ACCOUNT_MAPPING_PATH, storage.ACCOUNT_CATALOG_PATH,
         storage.SYNC_STATUS_PATH,
-        *([storage.CATEGORY_CATALOG_PATH, storage.CATEGORY_ROLES_PATH,
-           storage.DETAILED_SECTION_MAPPING_PATH] if months else []),
+        *(_accounting_sources() if months else ()),
         *(storage.monthly_ps_raw_path(month) for month in months),
-    ]
+    ]))
 
 
 def _bundle(months=()):
@@ -250,13 +259,16 @@ def _context(bundle):
     if not partners:
         raise InvalidSource("ownership_incomplete")
     owners = []
-    for index, (key, value) in enumerate(sorted(partners.items())):
+    # Same slot map Reports + split use. No slot = "" (Reports two-slot only).
+    slots = report_builder.partner_slot_map(mappings)
+    for key, value in sorted(partners.items()):
         if not key or not isinstance(value, dict):
             raise InvalidSource("ownership_incomplete")
         label = value.get("label", key)
         if not isinstance(label, str):
             raise InvalidSource()
-        owners.append(Owner(partner_id=key, partner_slot=("a", "b")[index] if index < 2 else "", label=label or key))
+        slot = slots.get(key, "").removeprefix("partner_")
+        owners.append(Owner(partner_id=key, partner_slot=slot, label=label or key))
     for key in bindings:
         _id(key)
     catalog = _decode(bundle[storage.ACCOUNT_CATALOG_PATH])
@@ -366,79 +378,49 @@ def _month_window(now):
     return list(reversed(months))
 
 
-def _classification(bundle, partners):
-    catalog = _decode(bundle[storage.CATEGORY_CATALOG_PATH])
-    roles = _decode(bundle[storage.CATEGORY_ROLES_PATH])
-    sections = _decode(bundle[storage.DETAILED_SECTION_MAPPING_PATH])
-    roles = {} if roles is None else _mapping(roles)
-    sections = {} if sections is None else _mapping(_mapping(sections).get("category_sections", {}))
-    excluded = set()
-    for partner in partners.values():
-        if partner.get("savings_category_id") is not None:
-            excluded.add(_id(partner["savings_category_id"]))
-    nodes, parents = {}, {}
-    if catalog is not None:
-        rows = _mapping(catalog).get("categories")
-        if not isinstance(rows, list):
-            raise InvalidSource()
-        pending = [(row, None) for row in rows]
-        while pending:
-            row, parent = pending.pop()
-            key = _id(_mapping(row).get("id"))
-            if key in nodes:
-                raise InvalidSource()
-            explicit = row.get("parent_id")
-            explicit = _id(explicit) if explicit is not None else None
-            if parent is not None and explicit not in {None, parent}:
-                raise InvalidSource()
-            nodes[key], parents[key] = row, explicit or parent
-            children = row.get("children", [])
-            if not isinstance(children, list):
-                raise InvalidSource()
-            pending.extend((child, key) for child in children)
-        for key, row in nodes.items():
-            title = row.get("title", "")
-            if not isinstance(title, str):
-                raise InvalidSource()
-            if _transfer_flag(row) or "cc payment" in title.lower():
-                excluded.add(key)
-    # Referenced config values validated at classification; unrelated values ignored.
-    def is_excluded(key, embedded):
-        title = embedded.get("title", "")
-        if not isinstance(title, str):
-            raise InvalidSource()
-        if _transfer_flag(embedded):
-            return True
-        if "cc payment" in title.lower():
-            return True
-        seen = set()
-        while key is not None:
-            if key in seen:
-                raise InvalidSource()
-            seen.add(key)
-            role = roles.get(key)
-            section = sections.get(key)
-            if role is not None and (not isinstance(role, str) or role not in KPI_ROLES):
-                raise InvalidSource()
-            if section is not None and (not isinstance(section, str) or section not in DETAILED_CATEGORY_SECTIONS):
-                raise InvalidSource()
-            if key in excluded or role in {"exclude", "savings", "investment"} or section in {"cc_payments", "excluded", "savings"}:
-                return True
-            key = parents.get(key)
-        return False
+@dataclass
+class Accounting:
+    """Reports accounting inputs loaded from snapshot copies in `scratch`."""
+    scratch: Path
+    inputs: report_builder.AccountingInputs
+    excluded: set[str]
+    slots: dict[str, str]  # partner_id -> partner_a/partner_b, Reports slot rule
+    split: bool  # split enabled and both slots owned
 
-    # Reject cycles even if an earlier exclusion would stop traversal.
-    for key in parents:
-        seen = set()
-        while key is not None:
-            if key in seen:
-                raise InvalidSource()
-            seen.add(key)
-            parent = parents.get(key)
-            if parent is not None and parent not in nodes:
-                raise InvalidSource()
-            key = parent
-    return is_excluded, catalog is None
+    @property
+    def attribution(self):
+        return "common_economy_split" if self.split else "payer"
+
+    @property
+    def shares(self):
+        return dict(self.inputs.split_config["shares"]) if self.split else None
+
+
+def _accounting(bundle, scratch, owners):
+    # Snapshot bytes -> scratch files -> unchanged Reports loaders. Live files never re-read.
+    for path in _accounting_sources():
+        raw = bundle[path]
+        if raw is _UNREADABLE:
+            raise InvalidSource()
+        if raw is not None:
+            (scratch / path.name).write_bytes(raw)
+    try:
+        mapping_path = scratch / storage.ACCOUNT_MAPPING_PATH.name
+        inputs = report_builder.load_accounting_inputs(
+            "runway", private_dir=scratch, account_mapping_path=mapping_path,
+            split_config_path=scratch / storage.SPLIT_CONFIG_PATH.name,
+        )
+        excluded = report_builder.load_excluded_account_ids(mapping_path)
+    except InvalidSource:
+        raise
+    except Exception:
+        # Reports raise with payee/category detail. Keep only the code.
+        raise InvalidSource() from None
+    # Owner.partner_slot already = Reports slot map. One source.
+    slots = {owner.partner_id: f"partner_{owner.partner_slot}" for owner in owners if owner.partner_slot}
+    owned = set(slots.values())
+    split = inputs.split_config is not None and {"partner_a", "partner_b"} <= owned
+    return Accounting(scratch, inputs, excluded, slots, split)
 
 
 def _provenance(raw, month, now, row, system_calendar):
@@ -493,6 +475,22 @@ class Spending:
     row: MonthObservation
     amounts: dict[str, Decimal] = field(default_factory=dict)
     currencies: dict[str, Currency] = field(default_factory=dict)
+    household: Decimal | None = None
+
+
+def _decimal(value) -> Decimal:
+    # Reports floats -> Decimal via shortest repr. Non-finite = unusable month.
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise InvalidSource()
+    return Decimal(repr(value))
+
+
+_CENT = Decimal("0.01")
+
+
+def _cents(value: Decimal) -> Decimal:
+    # Monthly money -> cents, half up. Averages/ratio stay unrounded.
+    return value.quantize(_CENT, rounding=ROUND_HALF_UP)
 
 
 def _fingerprint(item):
@@ -545,19 +543,48 @@ def _identity_conflicts(bundle, months):
     return {month for key in conflicts for month in seen[key][1]}
 
 
-def _observe(raw, month, now, owners, bindings, accounts, classify, classification_unknown, system_calendar,
+def _reports_month(raw, month, transactions, keep, accounting):
+    """Reports household spending for one validated month. Any pipeline error -> InvalidSource."""
+    path = accounting.scratch / storage.monthly_ps_raw_path(month).name
+    # Plain decode = same parse the Reports loader uses.
+    plain = json.loads(raw)
+    if isinstance(plain, dict) and len(keep) == len(transactions):
+        path.write_bytes(raw)  # Snapshot bytes as-is. Already wrapped.
+    else:
+        # Bare list -> wrap here (no second temp copy). Identical repeats count once.
+        rows = plain if isinstance(plain, list) else plain["transactions"]
+        path.write_text(json.dumps({"transactions": [rows[index] for index in keep]}), encoding="utf-8")
+    try:
+        loaded = report_builder.load_wrapped_transactions(month, path, accounting.excluded)
+        contract = report_builder.build_contract(loaded, accounting.inputs)
+        records = contract["normalized_transactions"]
+        mapping = contract["detailed_section_mapping"]
+        spending = report_builder.household_spending(
+            records, mapping, accounting.inputs.split_config if accounting.split else None,
+            accounting.inputs.category_parents,
+        )
+        sections = [report_builder.routed_section(record, mapping) for record in records]
+    except Exception:
+        # Reports errors carry payees/ids. Keep only the code. Month-scoped, never 500.
+        raise InvalidSource() from None
+    return records, sections, spending
+
+
+def _observe(raw, month, now, owners, bindings, accounts, accounting, classification_unknown, system_calendar,
              identity_conflict=False):
     row = _empty_observation(month, owners)
-    amounts = {owner.partner_id: Decimal(0) for owner in owners}
-    currencies = {owner.partner_id: Currency() for owner in owners}
+    owner_ids = [owner.partner_id for owner in owners]
+    amounts = {owner: Decimal(0) for owner in owner_ids}
+    currencies = {owner: Currency() for owner in owner_ids}
+    household = None
     try:
         if raw is None:
             raise InvalidSource("missing_source")
         transactions = _provenance(_decode(raw), month, now, row, system_calendar)
         if identity_conflict:
             raise InvalidSource()
-        seen = {}
-        for transaction in transactions:
+        seen, keep, currency_by_id = {}, [], {}
+        for index, transaction in enumerate(transactions):
             item = _mapping(transaction)
             key = _id(item.get("id"))
             fingerprint = _fingerprint(item)
@@ -566,42 +593,80 @@ def _observe(raw, month, now, owners, bindings, accounts, classify, classificati
                     raise InvalidSource()
                 continue
             seen[key] = fingerprint
+            keep.append(index)
             account = _mapping(item.get("transaction_account"))
             account_id = _id(account.get("id"))
             when = _date(item.get("date"))
             if when.isoformat()[:7] != month:
                 raise InvalidSource()
-            amount = _money(item.get("amount"))
+            _money(item.get("amount"))
             if item.get("status") not in ("posted", "pending"):
                 raise InvalidSource()
-            transfer = _transfer_flag(item)
+            _transfer_flag(item)
             category = item.get("category")
             category = {} if category is None else _mapping(category)
-            category_id = _id(category.get("id")) if category else None
-            category_transfer = _transfer_flag(category)
+            if category:
+                _id(category.get("id"))
+            _transfer_flag(category)
             if not isinstance(category.get("title", ""), str):
                 raise InvalidSource()
-            binding = bindings.get(account_id, {})
-            binding = _mapping(binding)
-            if _flag(binding, "excluded") or item["status"] == "pending" or amount >= 0 or transfer or category_transfer:
-                continue
-            kind = binding.get("type")
-            if kind in ("savings", "investment") or classify(category_id, category):
-                continue
+            binding = _mapping(bindings.get(account_id, {}))
+            if _flag(binding, "excluded"):
+                continue  # Reports drop excluded accounts too.
             owner = binding.get("partner_id")
-            if kind not in ("checking", "cc") or not isinstance(owner, str) or owner not in amounts:
+            if not isinstance(owner, str) or owner not in amounts:
                 raise InvalidSource("ownership_incomplete")
             if account_id in accounts and accounts[account_id] is None:
                 raise InvalidSource()
             catalog_account = accounts.get(account_id, {})
-            currency = _currency(item.get("currency_code"), account.get("currency_code"),
-                                 catalog_account.get("currency_code"))
-            currencies[owner] = _currencies([currencies[owner], currency])
-            if currencies[owner].status == "conflict":
-                raise InvalidSource("currency_conflict")
-            amounts[owner] += abs(amount)
-        if row.coverage != "complete" and any(value == 0 for value in amounts.values()):
-            raise InvalidSource("unproven_zero")
+            currency_by_id[key] = _currency(item.get("currency_code"), account.get("currency_code"),
+                                            catalog_account.get("currency_code"))
+        slot_owner = {}
+        for owner in owner_ids:
+            slot = accounting.slots.get(owner)
+            if slot is None:
+                raise InvalidSource("ownership_incomplete")  # Reports are two-slot only.
+            slot_owner[slot] = owner
+        try:
+            records, sections, spending = _reports_month(raw, month, transactions, keep, accounting)
+            # Reports sums in binary floats (96736.35999999999). Monthly values -> cents.
+            # Owner = own net by payer, minus split delta on household split rows.
+            # Split on: fair share of split categories + own net elsewhere. Sum = household.
+            totals = spending.totals
+            household = _cents(_decimal(totals["total"]))
+            for slot, owner in slot_owner.items():
+                amounts[owner] = _decimal(totals[slot])
+            if spending.split is not None:
+                for item in spending.split["rows"]:
+                    if item["section"] in report_builder.HOUSEHOLD_COMPOSITION:
+                        amounts[slot_owner["partner_a"]] -= _decimal(item["delta"])
+                        amounts[slot_owner["partner_b"]] -= _decimal(item["delta_b"])
+                # Round A, B = remainder. Owners sum exactly to household.
+                owner_a = _cents(amounts[slot_owner["partner_a"]])
+                amounts[slot_owner["partner_a"]] = owner_a
+                amounts[slot_owner["partner_b"]] = household - owner_a
+            else:
+                amounts = {owner: _cents(amount) for owner, amount in amounts.items()}
+            payers = set()
+            for record, section in zip(records, sections):
+                if section not in report_builder.HOUSEHOLD_COMPOSITION:
+                    continue
+                payer = slot_owner.get(record["owner"])
+                if payer is None:
+                    raise InvalidSource("ownership_incomplete")
+                payers.add(payer)
+                shared = record["category_path"][-1]["id"] in spending.allowed_category_ids
+                for owner in (owner_ids if shared else [payer]):
+                    currencies[owner] = _currencies([currencies[owner], currency_by_id[_id(record["id"])]])
+                    if currencies[owner].status == "conflict":
+                        raise InvalidSource("currency_conflict")
+        except InvalidSource:
+            raise
+        except (KeyError, TypeError, IndexError, ValueError):
+            # Reports shape disagrees with runway index (missing slot/delta/id). Month only, never 500.
+            raise InvalidSource() from None
+        if row.coverage != "complete" and any(owner not in payers for owner in owner_ids):
+            raise InvalidSource("unproven_zero")  # No household rows: cannot tell zero from missing.
         for owner in row.owners:
             currency = currencies[owner.partner_id]
             owner.spending = _number(amounts[owner.partner_id])
@@ -610,7 +675,7 @@ def _observe(raw, month, now, owners, bindings, accounts, classify, classificati
         if household_currency.status == "conflict":
             row.issues.append(_issue("currency_conflict", month=month))
         else:
-            row.household_spending = _number(sum(amounts.values(), Decimal(0)))
+            row.household_spending = _number(household)
             row.household_currency_code = household_currency.code
         row.status = "included"
         if row.coverage != "complete":
@@ -625,11 +690,11 @@ def _observe(raw, month, now, owners, bindings, accounts, classify, classificati
         for owner in row.owners:
             owner.spending = None
         row.household_spending = None
-        amounts, currencies = {}, {}
+        amounts, currencies, household = {}, {}, None
     if row.freshness != "fresh":
         row.issues.append(_issue("source_stale" if row.freshness == "stale" else "source_date_unknown",
                                  qualification=True, month=month))
-    return Spending(row, amounts, currencies)
+    return Spending(row, amounts, currencies, household)
 
 
 def _selected(options, accounts, now, system_calendar):
@@ -711,7 +776,7 @@ def _measures(owner_id, ids, selected, balances, balance_currencies, observation
             issues.extend(i for i in observation.row.issues if i.code != "currency_conflict")
             if owner_id is None:
                 currency_rows.extend(observation.currencies.values())
-                amount_rows.append(sum(observation.amounts.values(), Decimal(0)))
+                amount_rows.append(observation.household)
             else:
                 currency_rows.append(observation.currencies[owner_id])
                 amount_rows.append(observation.amounts[owner_id])
@@ -776,12 +841,13 @@ def _calculate_runway(now: datetime, *, system_calendar: bool) -> RunwayResponse
     ids, state = None, "invalid_settings"
     balances, balance_currencies = {}, {}
     catalog_date, catalog_freshness = None, "unknown"
+    accounting = None
     try:
         ids, state = _config(bundle)
     except InvalidSource:
         issues.append(_issue("invalid_settings"))
     try:
-        owners, partners, bindings, accounts, catalog = _context(bundle)
+        owners, _, bindings, accounts, catalog = _context(bundle)
         options = _account_options(ids or [], owners, bindings, accounts)
         selected, balances, balance_currencies = _selected(options, accounts, now, system_calendar)
         if ids and any(not a.eligible for a in selected):
@@ -795,15 +861,18 @@ def _calculate_runway(now: datetime, *, system_calendar: bool) -> RunwayResponse
                 catalog_date, catalog_freshness = stamp.isoformat(), _freshness(stamp, now)
         if catalog_freshness != "fresh":
             issues.append(_issue("source_stale" if catalog_freshness == "stale" else "source_date_unknown", qualification=True))
-        classify, classification_unknown = _classification(bundle, partners)
         conflicts = _identity_conflicts(bundle, months)
-        observations = [
-            _observe(bundle[storage.monthly_ps_raw_path(month)], month, now, owners,
-                     bindings, accounts, classify, classification_unknown, system_calendar,
-                     identity_conflict=month in conflicts)
-            for month in months
-        ]
-    except (InvalidSource, DecimalException, RecursionError) as error:
+        with tempfile.TemporaryDirectory(prefix="runway-", ignore_cleanup_errors=True) as scratch:
+            accounting = _accounting(bundle, Path(scratch), owners)
+            classification_unknown = bundle[storage.CATEGORY_CATALOG_PATH] is None
+            observations = [
+                _observe(bundle[storage.monthly_ps_raw_path(month)], month, now, owners,
+                         bindings, accounts, accounting, classification_unknown, system_calendar,
+                         identity_conflict=month in conflicts)
+                for month in months
+            ]
+    except (InvalidSource, DecimalException, RecursionError, OSError) as error:
+        # OSError: scratch dir create/write/cleanup. Path detail never surfaced.
         code = error.code if isinstance(error, InvalidSource) else "invalid_source"
         issues.append(_issue(code))
     if ids and not selected:
@@ -847,4 +916,6 @@ def _calculate_runway(now: datetime, *, system_calendar: bool) -> RunwayResponse
         selected_account_ids=ids, selected_accounts=selected, catalog_collected_at=catalog_date,
         catalog_freshness=catalog_freshness, observations=[ob.row for ob in observations],
         owners=owner_results, household=household, issues=_unique(issues),
+        owner_attribution=accounting.attribution if accounting else "payer",
+        split_shares=accounting.shares if accounting else None,
     )

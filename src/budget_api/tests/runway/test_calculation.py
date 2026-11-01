@@ -58,31 +58,27 @@ def test_calendar(now, expected, world):
     assert calculate_runway(now=now).candidate_months == expected
 
 
-def test_gross_exclusions_dedupe_and_descendants(world):
+def test_reports_exclusions_dedupe_and_refunds(world):
     mapping = world.data["account_mappings.json"]
-    mapping["partners"]["partner_a"]["savings_category_id"] = 2100014
     mapping["accounts"]["1100004"] = {"excluded": True}
-    mapping["accounts"]["1100005"] = {"partner_id": "partner_a", "type": "investment"}
-    world.data["category_roles.json"] = {"2100001": "savings", "2100002": "investment", "2100003": "exclude"}
-    world.data["detailed_section_mapping.json"] = {"category_sections": {"2100004": "cc_payments", "2100005": "excluded", "2100006": "savings"}}
-    world.data["category_catalog.json"] = {"categories": [
-        {"id": 2100010, "title": "CC PAYMENT one", "children": [{"id": 2100011}]},
-        {"id": 2100012, "title": "CC Payment two"},
-        {"id": 2100015, "is_transfer": True, "children": [{"id": 2100016}]},
-    ]}
+    world.data["detailed_section_mapping.json"]["category_sections"].update(
+        {"2100004": "cc_payments", "2100005": "excluded", "2100006": "savings", "2100099": "common"}
+    )
     rows = [transaction(1, A, -100), transaction(2, CARD, -200), transaction(3, B, -50)]
     rows += [deepcopy(rows[0]), transaction(4, A, 40), transaction(5, CARD, 60)]
-    for index, cat in enumerate([2100001, 2100002, 2100003, 2100004, 2100005, 2100006, 2100011, 2100012, 2100014, 2100016]):
-        rows.append(transaction(100 + index, category={"id": cat}))
+    for index, cat in enumerate([2100004, 2100005, 2100006]):
+        rows.append(transaction(100 + index, category={"id": cat, "title": f"Synthetic section {index}"}))
     rows += [
-        transaction(200, is_transfer=True), transaction(201, category={"id": 2100099, "is_transfer": True}),
-        transaction(202, SAVINGS), transaction(203, "1100004"), transaction(204, "1100005"),
-        transaction(205, status="pending"), transaction(206, amount=100, category={"id": 2100011}),
+        transaction(200, is_transfer=True),
+        transaction(201, category={"id": 2100099, "title": "Synthetic moved", "is_transfer": True}),
+        transaction(203, "1100004"), transaction(205, status="pending"),
     ]
     world.data["2026-07_ps_raw.json"] = complete("2026-07", rows)
     result = world.result()
+    # By hand. A = 100 + 200 (card) + 100 pending - 40 - 60 refunds = 300. B = 50. Household 350.
+    # Duplicate once. cc_payments/excluded/savings sections, transfers, excluded account: never.
     assert result["observations"][0]["household_spending"] == 350
-    assert result["observations"][0]["owners"][0]["spending"] == 300
+    assert [owner["spending"] for owner in result["observations"][0]["owners"]] == [300, 50]
 
 
 @pytest.mark.parametrize("change", [
@@ -314,10 +310,12 @@ def test_invalid_embedded_category_title_excludes_month(world, title):
     assert result["owners"][0]["runway_display"] == "2.6"
 
 
-def test_valid_embedded_repayment_title_still_excludes_purchase(world):
+def test_embedded_repayment_title_alone_does_not_route_section_mapping_does(world):
+    # Reports route by section mapping, not by title text.
     world.data["2026-07_ps_raw.json"]["transactions"][0]["category"] = {
         "id": 2100099, "title": "Synthetic CC Payment",
     }
+    world.data["detailed_section_mapping.json"]["category_sections"]["2100099"] = "cc_payments"
     result = world.result()
     assert result["included_months"] == MONTHS
     assert result["observations"][0]["owners"][0]["spending"] == 0
@@ -547,7 +545,8 @@ def place_transfer_flag(world, site, flag):
     elif site == "embedded_category":
         holder = row["category"] = {"id": 2100050, "title": "Synthetic dining"}
     else:
-        row["category"] = {"id": 2100050}
+        # Catalog site. Embedded leaf carries title; flag only in the catalog.
+        row["category"] = {"id": 2100050, "title": "Synthetic dining"}
         holder = {"id": 2100050, "title": "Synthetic dining"}
         if site == "catalog_ancestor":  # flag on parent. purchase sits in child
             holder = {"id": 2100051, "title": "Synthetic parent", "children": [holder]}
@@ -562,6 +561,8 @@ def place_transfer_flag(world, site, flag):
                          ids=["null", "false", "absent", "true"])
 def test_transfer_flag_semantics_at_each_pocketsmith_site(world, site, flag, counted):
     place_transfer_flag(world, site, flag)
+    # RD-002: Reports read transaction/embedded flags only. Catalog flags never drop spend.
+    counted = counted or site.startswith("catalog")
     result = world.result()
     july = result["observations"][0]
     assert (july["status"], july["coverage"]) == ("included", "complete")
@@ -588,16 +589,20 @@ def test_null_transaction_transfer_flag_counts_as_gross_spend_like_false(world):
     assert result["included_months"] == MONTHS
 
 
-def test_null_category_transfer_flag_does_not_mask_other_exclusions(world):
+def test_null_category_transfer_flag_does_not_mask_section_exclusions(world):
     world.data["category_catalog.json"] = {"categories": [
         {"id": 2100050, "title": "Synthetic CC Payment", "is_transfer": None},
         {"id": 2100051, "title": "Synthetic parent", "is_transfer": None,
          "children": [{"id": 2100052, "title": "Synthetic child", "is_transfer": None}]},
+        {"id": 2100098, "title": "Synthetic dining"},
+        {"id": 2100099, "title": "Synthetic CC Payment"},
     ]}
-    world.data["category_roles.json"] = {"2100051": "exclude"}
+    world.data["detailed_section_mapping.json"]["category_sections"].update(
+        {"2100050": "cc_payments", "2100051": "excluded", "2100098": "common", "2100099": "cc_payments"}
+    )
     world.data["2026-07_ps_raw.json"] = complete("2026-07", [
-        transaction(1, A, -100, category={"id": 2100050, "is_transfer": None}),  # catalog title rule
-        transaction(2, A, -200, category={"id": 2100052, "is_transfer": None}),  # parent role exclude
+        transaction(1, A, -100, category={"id": 2100050, "title": "Synthetic CC Payment", "is_transfer": None}),
+        transaction(2, A, -200, category={"id": 2100052, "title": "Synthetic child", "is_transfer": None}),  # parent section
         transaction(3, A, -300, category={"id": 2100099, "title": "Synthetic CC Payment", "is_transfer": None}),
         transaction(4, A, -400, category={"id": 2100098, "title": "Synthetic dining", "is_transfer": None}),
     ])
@@ -622,12 +627,13 @@ def test_non_boolean_transfer_flag_invalidates_transaction_and_embedded_category
 
 @pytest.mark.parametrize("value", NON_BOOLEAN, ids=NON_BOOLEAN_IDS)
 @pytest.mark.parametrize("site", ["catalog_row", "catalog_ancestor"])
-def test_non_boolean_catalog_transfer_flag_fails_closed(world, site, value):
+def test_non_boolean_catalog_transfer_flag_is_not_an_authority(world, site, value):
+    # Reports ignore catalog transfer flags. Runway follows. Spend counts.
     place_transfer_flag(world, site, value)
     result = world.result()
-    assert result["included_months"] == []
-    assert "invalid_source" in codes(result)
-    assert {(row["status"], row["coverage"]) for row in result["observations"]} == {("excluded", "invalid")}
+    assert result["included_months"] == MONTHS
+    assert "invalid_source" not in codes(result)
+    assert result["observations"][0]["owners"][0]["spending"] == 100
 
 
 @pytest.mark.parametrize("value", [None, "false", 0])
@@ -670,20 +676,25 @@ def test_pocketsmith_shaped_months_with_mixed_transfer_flags_are_included_unveri
         world.data[f"{month}_ps_raw.json"] = pocketsmith_month(month, index)  # bare list. no provenance
     result = world.result()
     assert result["included_months"] == MONTHS
-    # By hand per scale unit (months scale x1, x2, x3).
-    # A = 120.50 + 80.25 + 60.00 (card). B = 45.10 + 15.90 + 30.00. Transfers, credit, savings never count.
+    # By hand per scale unit (months scale x1, x2, x3). Reports net basis.
+    # A = 120.50 + 80.25 + 60.00 (card) + 77.00 (savings acct) - 20.00 refund = 317.75.
+    # B = 45.10 + 15.90 + 30.00 = 91. Transfers (txn or embedded category flag) never count.
     for scale, observation in enumerate(result["observations"], 1):
         assert (observation["status"], observation["coverage"]) == ("included", "unverified")
         assert ("coverage_unverified", "qualification") in {(i["code"], i["severity"]) for i in observation["issues"]}
         assert all(i["severity"] == "qualification" for i in observation["issues"])
-        assert [owner["spending"] for owner in observation["owners"]] == [260.75 * scale, 91 * scale]
-        assert observation["household_spending"] == 351.75 * scale
+        a_month, b_month = (owner["spending"] for owner in observation["owners"])
+        # Cent-rounded monthly values. Exact, no float noise.
+        assert (a_month, b_month) == (317.75 * scale, 91 * scale)
+        assert observation["household_spending"] == 408.75 * scale
+        assert a_month + b_month == observation["household_spending"]
     a, b = result["owners"]
     household = result["household"]
-    assert (a["average_monthly_spending"], b["average_monthly_spending"]) == (521.5, 182)
-    assert household["average_monthly_spending"] == 703.5
-    # Reserves 90000 / 30000 / 120000 over the monthly means.
-    assert (a["runway_display"], b["runway_display"], household["runway_display"]) == ("172.6", "164.8", "170.6")
+    # Mean scale (1 + 2 + 3) / 3 = 2.
+    assert (a["average_monthly_spending"], b["average_monthly_spending"]) == (635.5, 182)
+    assert household["average_monthly_spending"] == 817.5
+    # 90000 / 635.5 = 141.62. 30000 / 182 = 164.84. 120000 / 817.5 = 146.79.
+    assert (a["runway_display"], b["runway_display"], household["runway_display"]) == ("141.6", "164.8", "146.8")
     assert household["status"] == "qualified"
     assert "coverage_unverified" in codes(household)
     assert "insufficient_history" not in codes(household)
@@ -721,15 +732,19 @@ def test_bank_date_precision_and_24_hour_boundary(world, value, precision, code)
         assert account["balance_freshness"] == "fresh"
 
 
-@pytest.mark.parametrize("reserve,spending", [("1e-300", "-1e300"), ("1e300", "-1e-300")])
-def test_unrepresentable_ratio_never_zero_or_infinity(world, reserve, spending):
+@pytest.mark.parametrize("reserve,spending,code", [
+    ("1e-300", -1e300, "invalid_source"),
+    ("1e307", -0.01, "invalid_source"),  # 1e309 overflows float
+    ("1e300", -1e-300, "nonpositive_burn"),  # Monthly cents: 1e-300 -> 0.00
+])
+def test_unrepresentable_ratio_never_zero_or_infinity(world, reserve, spending, code):
     world.data["account_catalog.json"]["accounts"][0]["current_balance"] = reserve
     for month in MONTHS:
         world.data[f"{month}_ps_raw.json"]["transactions"][0]["amount"] = spending
     result = world.result()["owners"][0]
     assert result["runway_months"] is None
     assert result["runway_display"] is None
-    assert "invalid_source" in codes(result)
+    assert code in codes(result)
 
 
 def test_removed_selected_account_blocks_only_its_reserve_owner(world):
@@ -743,8 +758,10 @@ def test_removed_selected_account_blocks_only_its_reserve_owner(world):
 
 def test_missing_category_authority_and_unrelated_split_do_not_invent_data(world):
     world.remove("category_catalog.json")
-    world.data["split_config.json"] = {"shares": {"partner_a": 0, "partner_b": 100}}
+    # Valid but disabled split: payer attribution, no invented share.
+    world.data["split_config.json"] = {"enabled": False, "shares": {"partner_a": 0, "partner_b": 100}, "categories": []}
     result = world.result()
+    assert result["owner_attribution"] == "payer"
     assert result["owners"][0]["runway_months"] == 3
     assert "classification_unverified" in codes(result["household"])
 

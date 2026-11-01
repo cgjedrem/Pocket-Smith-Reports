@@ -32,6 +32,46 @@ the final review record.
 RD-001 section below. It is outside the review3 verdict and has its own bounded
 review (pass-with-caveats) in that section.
 
+**Update 2026-11-01 (v2):** a user-directed change and a second real-data
+defect, RD-002, are covered by tasks T036–T038. See the v2 section below.
+
+## Runway v2 — net basis, common-economy split, RD-002 — 2026-11-01
+
+**Trigger:** the user asked to verify runway against their real data and to
+attribute owner burn by the common-economy split rather than by who paid.
+
+**RD-002 (real data):** runway household spending was far below the Reports
+household total. A catalog parent category carried `is_transfer: true`, and
+runway's ancestor walk excluded all of its children (home costs such as the
+mortgage) even though their own flags were false and Reports counts them.
+Runway was also gross while Reports is net of refunds.
+
+**Change:** monthly spending now comes from the same production accounting as
+Reports (shared `report_builder` helpers fed from runway's stable snapshot):
+household = Reports household total; owners = Reports partner net minus the
+split delta when the split is enabled (fair share on split categories, own net
+elsewhere; owners sum to household), otherwise net by payer. `basis` is
+`household_net_spending`, `calculation_version` 2, new `owner_attribution` and
+`split_shares`; monthly values are signed and rounded to cents.
+
+**Review:** bounded independent review, pass-with-caveats, no critical or
+important findings. Fixed (T038): float noise (cent rounding, exact owner sum),
+per-month error isolation instead of a possible 500, single scratch copy with
+cleanup-error handling, one partner-slot source of truth and public helpers,
+stale docs and a duplicate assert.
+
+**Evidence (local Windows, uncommitted tree before commit):** runway 289,
+API 943, canonical 1281 passed (2 `pdf_renderer` deselected); client vitest
+420/420 and build OK; LG-002 guard 4 passed; SC-005 10,000-transaction backend
+check about 0.6 s. Real-data reconciliation (read-only run of the new code
+against the user's data; values not recorded here): for each of the three
+months, runway household spending equals the Reports household total to the
+cent, and owner values equal an independent computation of partner net minus
+split delta from the Reports output.
+
+**Not verified:** Linux run of the new tests, real-HTTP browser scenario under
+v2, human usability and screen reader review.
+
 ## RD-001 real-data finding — 2026-11-01
 
 **Status:** fixed, reviewed and committed as a follow-up to `897a49e`. Outside the

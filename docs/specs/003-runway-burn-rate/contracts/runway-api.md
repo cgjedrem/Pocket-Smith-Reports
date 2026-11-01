@@ -127,10 +127,12 @@ a domain result with null measures.
 | Field | Type | Meaning |
 |---|---|---|
 | `schema_version` | integer, 1 | Independent API version. |
-| `calculation_version` | integer, 1 | Runway calculation version only. |
+| `calculation_version` | integer, 2 | Runway calculation version only. v2 = SC-split / RD-002 (2026-11-01). |
 | `calculated_at` | ISO offset-aware datetime | Time evaluated, not time data was collected. |
 | `as_of_month` | `YYYY-MM` | Server-local current month. |
-| `basis` | `"gross_recorded_spending"` | Excludes refunds/income netting and forecasting. |
+| `basis` | `"household_net_spending"` | Reports household net spending (`detailed.household_totals`); no forecasting. |
+| `owner_attribution` | `"common_economy_split" \| "payer"` | Split: owner = fair share of split categories + own net elsewhere. Payer: own net by paying account owner. |
+| `split_shares` | `{partner_a, partner_b}` numbers or null | Split percentages in use; null for payer attribution. |
 | `candidate_months` | string[3] | Exact prior three completed months, ascending. |
 | `included_months` | string[] | Common included subset, ascending. |
 | `included_month_count` | integer, 0..3 | Must equal array length. |
@@ -175,7 +177,7 @@ returned as the full selected total when one selected account is invalid.
 |---|---|---|
 | `selected_account_ids` | string[] | Current attribution of selected IDs. |
 | `reserves` | finite number or null | Signed total of exactly those selected accounts. |
-| `average_monthly_spending` | finite number >=0 or null | Mean over common included months; null if <2. |
+| `average_monthly_spending` | finite signed number or null | Mean over common included months; null if <2. Can be <=0 (refunds) -> `nonpositive_burn`, ratio null. |
 | `runway_months` | finite number >0 or null | Unrounded descriptive ratio, never infinity or zero. |
 | `runway_display` | string or null | One decimal (`"3.0"`, `"1.3"`) or `"<0.1"`; UI appends "months". |
 | `currency_code` | uppercase code or null | Common comparison basis if established, else null. |
@@ -201,8 +203,8 @@ its scope text explicitly describes selected accounts, not all household assets.
 | `collected_at` | ISO datetime or null | Explicit raw-source collection date. |
 | `freshness` | `fresh \| stale \| unknown` | Collection age, not spending date age. |
 | `coverage_start`, `coverage_end` | ISO date or null | Explicit inclusive bounds. |
-| `owners` | array of `{partner_id, spending, currency_code, currency_status}` | Spending finite >=0 or null; codes/status as above. |
-| `household_spending` | finite number >=0 or null | Sum once where compatible, null on conflict/excluded source. |
+| `owners` | array of `{partner_id, spending, currency_code, currency_status}` | Spending finite signed net or null; codes/status as above. |
+| `household_spending` | finite signed number or null | Reports `household_totals.total` for the month; null on conflict/excluded source. |
 | `household_currency_code` | uppercase code or null | Compatible household observation basis. |
 | `issues` | Issue[] | Every exclusion or qualification. |
 
@@ -257,7 +259,7 @@ Deduplicate repeated identical issues; do not stop after the first limitation.
 
 At October 2026, include July/August/September:
 
-| Scope | Monthly gross spend | Reserves | Mean | Numeric ratio | Display |
+| Scope | Monthly net spend | Reserves | Mean | Numeric ratio | Display |
 |---|---|---|---|---|---|
 | Partner A | 20,000 / 30,000 / 40,000 | 90,000 | 30,000 | 3 | 3.0 months |
 | Partner B | 50,000 / 60,000 / 70,000 | 30,000 | 60,000 | 0.5 | 0.5 months |
@@ -268,6 +270,34 @@ still qualifies them. Removing August uses July/September for all means, marks
 August excluded, and never substitutes June. With one usable month all means and
 ratios are null. With only A selected, household still divides A's selected
 reserves by both owners' combined valid mean; B reserves/ratio are null.
+
+### v2 basis (SC-split / RD-002, user-directed, 2026-11-01)
+
+Monthly spending is the Reports page's own accounting, not a runway copy:
+`report_builder.load_accounting_inputs` -> `_load_transactions` ->
+`build_contract` (`build_month_contract`) -> `household_spending`
+(`detailed_household_totals` + optional `compute_split`). Household =
+`household_totals.total` (home + common + personal_partner_a +
+personal_partner_b + trips, net paid - received). Transfers, cc_payments,
+savings and excluded sections follow Reports routing; a transfer flag on a
+catalog parent no longer drops children (RD-002).
+
+Owner per month, slot by Reports partner-slot map:
+
+- split enabled (both slots owned): `household_totals[slot] - sum(split delta for slot)`
+  over split rows in household sections (`delta` for partner_a, `delta_b` for
+  partner_b) = fair share on split categories + own net elsewhere; A + B = household.
+- split absent/disabled: `household_totals[slot]` (net by payer).
+
+Synthetic 60/40 example (July): home A 10,000 + B 2,000; common A 3,000 + B 1,000
+minus a 400 refund (a 600 transfer in common routes to excluded); personal A 500, B 700; trip
+A 1,200. Household 18,000. Payer: A 14,700 / B 3,300. Split on home+common:
+A 7,200 + 2,160 + 500 + 1,200 = 11,060; B 4,800 + 1,440 + 700 = 6,940.
+
+A Reports pipeline error in one month (unmapped category, non-numeric amount,
+missing owner) excludes only that month with `invalid_source`; message text is
+dropped (may carry payees). Invalid split/mapping/roles config is global
+`invalid_source`, as invalid classification sources were in v1.
 
 ## Compatibility and privacy acceptance
 

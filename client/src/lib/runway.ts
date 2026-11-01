@@ -1,6 +1,6 @@
 import { formatKr } from "@/components/bills/finance-format";
 import { maskAmount } from "@/lib/privacy-store";
-import type { RunwayIssue, RunwayOwner, RunwayAccountOption } from "@/types/runway";
+import type { RunwayIssue, RunwayOwner, RunwayAccountOption, RunwayResponse } from "@/types/runway";
 
 // No conversion. Known foreign currency must not wear a kr label.
 export function runwayMoney(value: number | null, currency: string | null): string {
@@ -16,6 +16,38 @@ export function runwayMonth(month: string): string {
 
 export function runwayDate(date: string | null): string {
   return date ? date.replace("T", " ") : "Unknown";
+}
+
+// Share pct, max 2 decimals, no trailing zeros: 60 -> "60", 55.5 -> "55.5".
+function sharePct(value: number): string {
+  return String(Number(value.toFixed(2)));
+}
+
+type AttributionSource = Pick<RunwayResponse, "owner_attribution" | "split_shares"> & {
+  owners: { owner: RunwayOwner }[];
+};
+
+function isSplit(data: AttributionSource): data is AttributionSource & { split_shares: NonNullable<RunwayResponse["split_shares"]> } {
+  return data.owner_attribution === "common_economy_split" && data.split_shares !== null;
+}
+
+/** Panel-level sentence describing how owner spending is attributed. */
+export function runwayAttributionText(data: AttributionSource): string {
+  if (!isSplit(data)) return "Owner spending: attributed to the partner whose account paid (net).";
+  // Slot -> label; fallback generic slot names.
+  const label = (slot: "a" | "b") =>
+    data.owners.find((entry) => entry.owner.partner_slot === slot)?.owner.label ?? `Partner ${slot.toUpperCase()}`;
+  const { partner_a, partner_b } = data.split_shares;
+  return `Owner spending: shared categories split ${sharePct(partner_a)} / ${sharePct(partner_b)} (${label("a")} / ${label("b")}, common economy split); other spending by who paid. Owners sum to the household.`;
+}
+
+/** Owner-card attribution line for split share or payer basis. */
+export function runwayOwnerAttributionText(data: AttributionSource, owner: RunwayOwner): string {
+  if (!isSplit(data)) return "Attribution: paid from own accounts (net)";
+  const share = owner.partner_slot === "a" ? data.split_shares.partner_a : owner.partner_slot === "b" ? data.split_shares.partner_b : null;
+  return share === null
+    ? "Attribution: own net spending (no split slot)"
+    : `Attribution: ${sharePct(share)}% of shared categories + own other spending`;
 }
 
 const reasons: Record<string, string> = {
@@ -37,7 +69,7 @@ const reasons: Record<string, string> = {
   sources_changing: "Local sources are changing. Retry runway when stable.",
   currency_conflict: "Incompatible currencies — affected comparison unavailable; no conversion.",
   nonpositive_reserves: "Selected reserves are zero or negative. Runway undefined.",
-  nonpositive_burn: "Recorded spending is zero. Runway undefined.",
+  nonpositive_burn: "Net spending is zero or negative (refunds exceed purchases). Runway undefined.",
   coverage_unverified: "Month coverage unverified — recorded transactions only.",
   currency_unverified: "Single-currency assumption; currency unverified.",
   source_stale: "Source older than 24 hours.",

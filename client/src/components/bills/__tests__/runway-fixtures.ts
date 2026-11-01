@@ -43,10 +43,12 @@ export function runwayFixture(): RunwayResponse {
   const settings = settingsFixture();
   return {
     schema_version: 1,
-    calculation_version: 1,
+    calculation_version: 2,
     calculated_at: "2026-10-31T12:00:00+00:00",
     as_of_month: "2026-10",
-    basis: "gross_recorded_spending",
+    basis: "household_net_spending",
+    owner_attribution: "common_economy_split",
+    split_shares: { partner_a: 60, partner_b: 40 },
     candidate_months: ["2026-07", "2026-08", "2026-09"],
     included_months: ["2026-07", "2026-08", "2026-09"],
     included_month_count: 3,

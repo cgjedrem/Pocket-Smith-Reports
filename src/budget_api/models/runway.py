@@ -1,4 +1,4 @@
-"""Runway v1 request, settings, and response contracts."""
+"""Runway request, settings, and response contracts (calculation v2: household net basis)."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints, field_validator
 
 AccountId = Annotated[str, StringConstraints(strict=True, pattern=r"^[1-9][0-9]*$")]
+# Signed. Net spending can be <= 0 (refunds). Average <= 0 -> nonpositive_burn issue.
 Money = Annotated[float, Field(allow_inf_nan=False)]
-NonnegativeMoney = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 PositiveRatio = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 CurrencyStatus = Literal["verified", "unverified", "conflict"]
 Freshness = Literal["fresh", "stale", "unknown"]
@@ -83,7 +83,7 @@ class SelectedAccount(AccountOption):
 
 class OwnerObservation(BaseModel):
     partner_id: str
-    spending: NonnegativeMoney | None
+    spending: Money | None
     currency_code: str | None
     currency_status: CurrencyStatus
 
@@ -97,7 +97,7 @@ class MonthObservation(BaseModel):
     coverage_start: str | None = None
     coverage_end: str | None = None
     owners: list[OwnerObservation]
-    household_spending: NonnegativeMoney | None = None
+    household_spending: Money | None = None
     household_currency_code: str | None = None
     issues: list[Issue]
 
@@ -105,7 +105,7 @@ class MonthObservation(BaseModel):
 class Measures(BaseModel):
     selected_account_ids: list[str]
     reserves: Money | None
-    average_monthly_spending: NonnegativeMoney | None
+    average_monthly_spending: Money | None
     runway_months: PositiveRatio | None
     runway_display: str | None
     currency_code: str | None
@@ -120,12 +120,20 @@ class OwnerResult(Measures):
     owner: Owner
 
 
+class SplitShares(BaseModel):
+    partner_a: float
+    partner_b: float
+
+
 class RunwayResponse(BaseModel):
     schema_version: Literal[1] = 1
-    calculation_version: Literal[1] = 1
+    calculation_version: Literal[2] = 2
     calculated_at: str
     as_of_month: str
-    basis: Literal["gross_recorded_spending"] = "gross_recorded_spending"
+    basis: Literal["household_net_spending"] = "household_net_spending"
+    # Owner burn: split config shares on split categories, else who paid.
+    owner_attribution: Literal["common_economy_split", "payer"] = "payer"
+    split_shares: SplitShares | None = None
     candidate_months: list[str] = Field(min_length=3, max_length=3)
     included_months: list[str]
     included_month_count: int = Field(ge=0, le=3)

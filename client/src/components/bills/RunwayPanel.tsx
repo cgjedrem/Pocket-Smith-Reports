@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { RunwaySettings } from "@/components/bills/RunwaySettings";
 import { useRunway } from "@/hooks/useRunway";
 import { useAmountsHidden } from "@/lib/privacy-store";
-import { runwayDate, runwayIssueText, runwayMoney, runwayMonth } from "@/lib/runway";
-import type { RunwayIssue, RunwayMeasures, RunwayResponse } from "@/types/runway";
+import { runwayAttributionText, runwayDate, runwayIssueText, runwayMoney, runwayMonth, runwayOwnerAttributionText } from "@/lib/runway";
+import type { RunwayIssue, RunwayMeasures, RunwayOwner, RunwayResponse } from "@/types/runway";
 
 interface IssuesProps {
   issues: RunwayIssue[];
@@ -25,9 +25,11 @@ interface MeasuresProps {
   label: string;
   measures: RunwayMeasures;
   data: RunwayResponse;
+  // Owner card only; household has no attribution line.
+  owner?: RunwayOwner;
 }
 
-function Measures({ label, measures, data }: MeasuresProps) {
+function Measures({ label, measures, data, owner }: MeasuresProps) {
   const id = useId();
   return (
     <section aria-label={`${label} runway`} className="min-w-0 rounded-lg border bg-background p-4">
@@ -40,8 +42,9 @@ function Measures({ label, measures, data }: MeasuresProps) {
       </p>
       <dl className="space-y-2 text-sm">
         <div><dt>Selected liquid reserves</dt><dd className="font-medium tabular-nums">{runwayMoney(measures.reserves, measures.reserves_currency_code)}</dd></div>
-        <div><dt>Average monthly recorded spending</dt><dd className="font-medium tabular-nums">{runwayMoney(measures.average_monthly_spending, measures.spending_currency_code)}</dd></div>
+        <div><dt>Average monthly spending (net)</dt><dd className="font-medium tabular-nums">{runwayMoney(measures.average_monthly_spending, measures.spending_currency_code)}</dd></div>
       </dl>
+      {owner && <p className="mt-2 text-xs text-muted-foreground">{runwayOwnerAttributionText(data, owner)}</p>}
       <p className="mt-2 text-xs text-muted-foreground">{measures.selected_account_ids.length} selected accounts · Currency: {measures.currency_code ?? "Unverified (household display unit)"} · {measures.currency_status}</p>
       <Issues issues={measures.issues} data={data} />
     </section>
@@ -64,8 +67,8 @@ export function RunwayPanel() {
           {error ? "Retry runway" : "Refresh runway"}
         </Button>
       </div>
-      <p className="mt-2 text-sm">Average monthly recorded spending (gross burn). Selected liquid reserves divided by past recorded spending; income and positive refunds are not subtracted.</p>
-      <p className="mt-2 text-sm text-muted-foreground">Account-owner-based, not a fair-share allocation. Household compares only selected reserves with all configured owners’ spending, not all household assets.</p>
+      <p className="mt-2 text-sm">Average monthly spending (net, as in Reports). Selected liquid reserves divided by past household net spending: the same total as the Reports page (home, common, personal and trips). Refunds and reimbursements reduce spending; income is not subtracted.</p>
+      <p className="mt-2 text-sm text-muted-foreground">Household compares only selected reserves with the household’s net spending, not all household assets.</p>
       <div className="mt-4 space-y-4">
         {loading && <p role="status">{data ? "Refreshing runway… Previous result shown below." : "Loading runway…"}</p>}
         {error && <ErrorAlert message={error} />}
@@ -73,8 +76,9 @@ export function RunwayPanel() {
           <>
             <p className="text-xs text-muted-foreground">Results use the last loaded saved selection, not unsaved choices.{error ? " Refresh failed; previous result retained." : ""}</p>
             {(data.selection_status === "empty" || data.selection_status === "unconfigured") && <p className="font-medium">Select liquid accounts</p>}
+            <p className="text-sm">{runwayAttributionText(data)}</p>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {data.owners.map((entry) => <Measures key={entry.owner.partner_id} label={entry.owner.label} measures={entry} data={data} />)}
+              {data.owners.map((entry) => <Measures key={entry.owner.partner_id} label={entry.owner.label} measures={entry} data={data} owner={entry.owner} />)}
               <Measures label="Household" measures={data.household} data={data} />
             </div>
             {data.owners.length === 0 && <p>No configured account owners available. See source limitations.</p>}
@@ -87,7 +91,7 @@ export function RunwayPanel() {
               <p className="text-xs text-muted-foreground">Catalog collected: {runwayDate(data.catalog_collected_at)} · {data.catalog_freshness}. Recalculation does not refresh underlying data.</p>
             </div>
             <div>
-              <h3 className="mb-2 font-semibold">Monthly recorded spending</h3>
+              <h3 className="mb-2 font-semibold">Monthly net spending</h3>
               <div className="grid gap-3 lg:grid-cols-3">
                 {data.observations.map((row) => (
                   <section key={row.month} aria-label={`${runwayMonth(row.month)} observation`} className="min-w-0 rounded-lg border p-3 text-sm">
@@ -125,7 +129,7 @@ export function RunwayPanel() {
         )}
         {!data && !loading && !error && <p>Result not loaded. Refresh runway to read the saved selection.</p>}
         <RunwaySettings state={state} />
-        <p className="text-xs text-muted-foreground">Descriptive observations, not a forecast, financial advice, or a recommendation. Ignores future income and spending changes; no safe spending level or guaranteed duration. Recorded classification may miss unmarked transfers. Transfers, savings, investments, and identified card repayments are excluded from gross burn; source limitations remain visible above.</p>
+        <p className="text-xs text-muted-foreground">Descriptive observations, not a forecast, financial advice, or a recommendation. Ignores future income and spending changes; no safe spending level or guaranteed duration. Recorded classification may miss unmarked transfers. Transfers, card repayments, savings, and excluded categories are excluded from net spending as in Reports; source limitations remain visible above.</p>
       </div>
     </section>
   );
