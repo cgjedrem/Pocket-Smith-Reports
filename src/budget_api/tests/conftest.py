@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import os
+import socket
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+
+os.environ["BILLS_CALC_LOG"] = "0"
 
 from budget_api.services import env_writer, storage
 
@@ -51,7 +55,28 @@ def tmp_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Monkeypatch env_writer.ENV_PATH to tmp_path/.env."""
     env_path = tmp_path / ".env"
     monkeypatch.setattr(env_writer, "ENV_PATH", env_path)
+    monkeypatch.delenv(env_writer.API_KEY_FILE_ENV, raising=False)
     return env_path
+
+
+@pytest.fixture(autouse=True)
+def isolated_backend_storage(tmp_private_dir, tmp_env_file, monkeypatch):
+    """Isolate legacy fallback and lifespan; reject real storage and network."""
+    original_open = Path.open
+    forbidden = storage.REPOSITORY_ROOT / "data" / "private"
+    real_env = storage.REPOSITORY_ROOT / ".env"
+
+    def guarded_open(path, *args, **kwargs):
+        resolved = path.resolve()
+        if resolved == real_env or resolved.is_relative_to(forbidden):
+            raise AssertionError("test attempted real private storage access")
+        return original_open(path, *args, **kwargs)
+
+    def no_network(*args, **kwargs):
+        raise AssertionError("test attempted network access")
+
+    monkeypatch.setattr(Path, "open", guarded_open)
+    monkeypatch.setattr(socket, "create_connection", no_network)
 
 
 # --------------------------------------------------------------------------- #

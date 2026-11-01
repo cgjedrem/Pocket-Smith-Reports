@@ -3,8 +3,11 @@
 GET /api/bills/dashboard?month=YYYY-MM — pure file read, no PS calls.
 GET /api/bills/dashboard/events?month=YYYY-MM[&...filters] — flatten + filter + sort.
 GET /api/bills/dashboard/event?id=X&month=YYYY-MM — one event by id, first-match-wins.
+GET /api/bills/lifestyle-creep?month=YYYY-MM[&reference_start=YYYY-MM&reference_end=YYYY-MM]:
+    read-only saved-history evaluation, never syncs.
 
-All endpoints: Cache-Control: no-store via middleware allow-list.
+All four endpoints: Cache-Control: no-store via the middleware allow-list in main.py.
+The runway routes live in routers/runway.py and are covered by the same allow-list.
 """
 
 from __future__ import annotations
@@ -15,9 +18,11 @@ import sys
 import traceback
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 
-from budget_api.services import storage
+from budget_api.models.lifestyle_creep import LifestyleCreepResponse, ReportLifestyleCreepResponse
+from budget_api.services import lifestyle_creep, storage
+from budget_api.services.report_lifestyle_creep import read_report_lifestyle_creep
 
 router = APIRouter()
 
@@ -35,11 +40,39 @@ _LIMIT_CAP = 1000
 _LIMIT_DEFAULT = 500
 
 
+@router.get("/bills/lifestyle-creep")
+def lifestyle_creep_history(
+    request: Request, month: str = Query(...), threshold_percent: str | None = Query(None),
+    reference_start: str | None = Query(None), reference_end: str | None = Query(None),
+    grouping: str | None = Query(None),
+) -> LifestyleCreepResponse | ReportLifestyleCreepResponse:
+    """Describe saved CC spending (default) or report economy. Never sync."""
+    try:
+        if len(request.query_params.getlist("grouping")) > 1 or grouping not in {None, "report"}:
+            raise ValueError("grouping must be report when supplied, and must not be repeated")
+        if any(len(request.query_params.getlist(key)) > 1 for key in ("month", "threshold_percent")):
+            raise ValueError("month and threshold_percent must not be repeated")
+        if any(len(request.query_params.getlist(key)) > 1 for key in ("reference_start", "reference_end")):
+            raise ValueError("reference_start and reference_end must not be repeated")
+        selection = lifestyle_creep.validate_selection(
+            month, threshold_percent, reference_start, reference_end,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    try:
+        if grouping == "report":
+            return read_report_lifestyle_creep(selection)
+        return lifestyle_creep.read_lifestyle_creep(selection)
+    except Exception:
+        # No raw history, paths, or exception text in response/logs.
+        raise HTTPException(status_code=500, detail="internal error reading lifestyle creep history") from None
+
+
 @router.get("/bills/dashboard")
 def dashboard(month: str = Query(...)) -> dict:
     """Read bills dashboard snapshot for `month` from disk. No-store, no validate."""
     # L4 Q4=b — always fresh, no caching. Middleware sets no-store on all
-    # /api/bills/* responses (covers 200, 400, 404, 500).
+    # responses for paths in the main.py allow-list (covers 200, 400, 404, 500).
 
     # Manual pattern check — override FastAPI's auto-422 message (L2 Q1 final).
     if not _MONTH_PATTERN.match(month):
@@ -108,7 +141,7 @@ def events(
     when both are sent, `partner_id` wins. Pre-field (schema-4) snapshots
     carry no partner_id — filtering by it yields no rows there (never 500).
     """
-    # No-store set by middleware on all /api/bills/* responses.
+    # No-store set by middleware (path is in the main.py allow-list).
 
     # Validate (alphabetical order: category, from, limit, month, order, partner, to, type).
     errors: list[str] = []
@@ -197,7 +230,7 @@ def event_detail(
     month: str,
 ) -> dict:
     """Return one event by id for the given month. Bare dict, first-match-wins."""
-    # No-store set by middleware on all /api/bills/* responses.
+    # No-store set by middleware (path is in the main.py allow-list).
 
     # Validate (alphabetical: id, month).
     errors: list[str] = []

@@ -28,6 +28,13 @@ vi.mock("@/hooks/useBillsSourceSubscription", () => ({
   useBillsSourceSubscription: vi.fn(() => 0),
 }));
 
+// Detector moved to its own tab. Spy only — Bills must never call it.
+vi.mock("@/api/lifestyle-creep", () => ({
+  getLifestyleCreep: vi.fn(),
+  getEconomyLifestyleCreep: vi.fn(),
+}));
+
+import { getLifestyleCreep, getEconomyLifestyleCreep } from "@/api/lifestyle-creep";
 import { useBillsEvents, useBillsSnapshot } from "@/hooks/useBills";
 import { BillsPage } from "@/pages/BillsPage";
 import { ApiError } from "@/types/api";
@@ -231,4 +238,31 @@ describe("BillsPage", () => {
     expect(mockedSnap).toHaveBeenLastCalledWith(currentMonth(), 1, 12);
     expect(runwayFetch).toHaveBeenCalledTimes(2);
   });
+
+  it.each(["dashboard", "notFound", "error", "loading"] as const)(
+    "does not render or fetch the lifestyle creep detector (%s)",
+    async (state) => {
+      mockedSnap.mockReturnValue({
+        snapshots: state === "dashboard" ? [snapPayload() as never] : [],
+        months: [currentMonth()],
+        loading: state === "loading",
+        error: state === "error" ? new ApiError("Cannot reach server") : null,
+        notFound: state === "notFound",
+        refetch: vi.fn(),
+      });
+      mockedEvents.mockReturnValue({
+        events: [], total: 0, loading: false, error: null, refetch: vi.fn(),
+      });
+      renderPage();
+      await screen.findByText("1.3 months");
+      expect(
+        screen.queryByRole("region", { name: "Lifestyle creep detector" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Detector viewing month")).not.toBeInTheDocument();
+      expect(getLifestyleCreep).not.toHaveBeenCalled();
+      expect(getEconomyLifestyleCreep).not.toHaveBeenCalled();
+      // Only the two Runway GETs — no detector request via fetch either.
+      expect(runwayFetch).toHaveBeenCalledTimes(2);
+    },
+  );
 });

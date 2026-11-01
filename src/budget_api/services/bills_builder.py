@@ -15,9 +15,11 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from budget_api.models.bills import BillsSnapshot
+from budget_api.models.bills import BillsSnapshot, CCSpendHistory
 from budget_api.services import bills_classifier, bills_derivations, storage
+from budget_api.services.bills_derivations import MonthAcquisition
 from budget_api.services.ps_client import PSClient, PSClientError
+from budget_api.services.economy_history import EconomyContext, build_economy_history
 
 
 class NoBillsAccountError(Exception):
@@ -570,6 +572,8 @@ def build_bills_snapshot(
     deltas_per_month: dict[str, dict[str, float]] | None,
     prior_snapshot: dict[str, Any] | None = None,
     today: date | None = None,
+    acquisition: MonthAcquisition | None = None,
+    economy_context: EconomyContext | None = None,
 ) -> dict[str, Any]:
     """Build the bills dashboard snapshot dict for one month.
 
@@ -646,6 +650,12 @@ def build_bills_snapshot(
         for acct_id, mapping in account_mappings.get("accounts", {}).items():
             if mapping.get("partner_id") == partner_id:
                 partner_account_ids.add(str(acct_id))
+
+        # Separate trust boundary. Never inherit legacy exception-to-zero behavior.
+        history = _build_cc_history(
+            month, transactions, account_mappings, category_roles, category_catalog,
+            account_catalog, partner_id, partner_account_ids, cc_payment_cat_id, acquisition,
+        )
 
         classified = _classify_partner_events(
             events,
@@ -1189,6 +1199,7 @@ def build_bills_snapshot(
                 "real_bills": real_bills,
                 "cc_usage": cc_usage,
                 "cc_usage_by_category": cc_usage_by_category,
+                "cc_spend_history": history.model_dump(),
                 "budget_usage": budget_usage,
                 "net": net,
                 "status": status,
@@ -1197,7 +1208,10 @@ def build_bills_snapshot(
         )
 
     snapshot = {
-        "schema_version": 5,
+        "schema_version": 7,
+        "economy_spend_history": build_economy_history(
+            month, transactions, account_mappings, acquisition, economy_context,
+        ).model_dump(),
         "month": month,
         "month_label": _month_label(month),
         "is_past": is_past,
@@ -1221,6 +1235,45 @@ def build_bills_snapshot(
     return snapshot
 
 
+def _build_cc_history(
+    month: str,
+    transactions: list[dict[str, Any]],
+    account_mappings: dict[str, Any],
+    category_roles: dict[str, Any],
+    category_catalog: list[dict],
+    account_catalog: list[dict],
+    partner_id: str,
+    partner_account_ids: set[str],
+    cc_payment_category_id: int | None,
+    acquisition: MonthAcquisition | None,
+) -> CCSpendHistory:
+    def unavailable(reason: str) -> CCSpendHistory:
+        return CCSpendHistory(status="unavailable", reason=reason, scope_key=None,
+                              categories=None, uncategorized_amount=None)
+
+    if acquisition is None:
+        return unavailable("missing_source_context")
+    try:
+        if not isinstance(acquisition, MonthAcquisition) or not acquisition.valid_for(month, transactions):
+            return unavailable("invalid_source")
+        history = bills_derivations.compute_cc_spend_history(
+            month, transactions, account_mappings, category_roles, category_catalog,
+            account_catalog, partner_id, partner_account_ids, cc_payment_category_id,
+        )
+    except ValueError:
+        return unavailable("invalid_source")
+    if not _cc_account_ids(account_mappings, partner_id):
+        return unavailable("no_cc_accounts")
+    acquired = acquisition.started_at
+    source_month = f"{acquired.year:04d}-{acquired.month:02d}"
+    if month > source_month:
+        return unavailable("future_month")
+    if month == source_month:
+        return CCSpendHistory(status="partial", reason="open_month", scope_key=history.scope_key,
+                              categories=None, uncategorized_amount=None)
+    return history
+
+
 def build_bills_chain(
     months: list[str],
     events_per_month: dict[str, list[dict]],
@@ -1231,6 +1284,8 @@ def build_bills_chain(
     account_catalog: list[dict],
     warnings: list[str] | None = None,
     today: date | None = None,
+    acquisitions: dict[str, MonthAcquisition] | None = None,
+    economy_context: EconomyContext | None = None,
 ) -> dict[str, dict]:
     """Build the full savings chain in one pass. Caller writes to disk.
 
@@ -1319,6 +1374,8 @@ def build_bills_chain(
             deltas_per_month=deltas_per_month,
             prior_snapshot=snapshots.get(prior_m),
             today=today,
+            acquisition=acquisitions.get(m) if acquisitions is not None else None,
+            economy_context=economy_context,
         )
         for w in month_warnings:
             if w not in warnings:

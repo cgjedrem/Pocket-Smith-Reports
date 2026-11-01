@@ -7,7 +7,218 @@ Called by bills_builder during sync.
 from __future__ import annotations
 
 from datetime import date as _date
+from datetime import datetime
+from dataclasses import dataclass
+from decimal import Decimal, localcontext
+import calendar
+import hashlib
+import json
+import re
 from typing import Any, Literal
+
+from budget_api.models.bills import CCSpendHistory, canonical_decimal
+from budget_api.models.category_mappings import KPI_ROLES
+
+
+@dataclass(frozen=True)
+class MonthAcquisition:
+    """Successful full-range fetch context, bound to the supplied collection."""
+
+    month: str
+    start_date: str
+    end_date: str
+    started_at: datetime
+    transactions: list[dict]
+
+    def valid_for(self, month: str, transactions: list[dict]) -> bool:
+        first = _date.fromisoformat(month + "-01")
+        last = f"{month}-{calendar.monthrange(first.year, first.month)[1]:02d}"
+        return (self.month == month and self.start_date == month + "-01"
+                and self.end_date == last and isinstance(self.started_at, datetime)
+                and self.transactions is transactions and isinstance(transactions, list))
+
+
+def exact_decimal_precision(values: list[Decimal]) -> int:
+    """Precision sufficient for sums and two-factor products of these values."""
+    if not values:
+        return 28
+    width = max(v.adjusted() for v in values) - min(v.as_tuple().exponent for v in values) + 1
+    return max(28, 2 * max(width, 1) + len(str(len(values))) + 20)
+
+
+def _source_id(value: Any) -> str:
+    if type(value) is int and value > 0:
+        return str(value)
+    if isinstance(value, str) and re.fullmatch(r"[1-9][0-9]*", value):
+        return value
+    raise ValueError("invalid source identity")
+
+
+def _source_title(record: dict) -> str:
+    title = record.get("title", "")
+    if not isinstance(title, str):
+        raise ValueError("invalid source label")
+    return title
+
+
+def compute_cc_spend_history(
+    month: str,
+    transactions: list[dict],
+    account_mappings: dict,
+    category_roles: dict,
+    category_catalog: list[dict],
+    account_catalog: list[dict],
+    partner_id: str,
+    partner_account_ids: set[str],
+    cc_payment_category_id: int | None,
+) -> CCSpendHistory:
+    """Validate source inputs, then aggregate the canonical CC population."""
+    if not isinstance(month, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}", month):
+        raise ValueError("invalid source month")
+    _date.fromisoformat(month + "-01")
+    if (not isinstance(transactions, list) or not isinstance(account_mappings, dict)
+            or not isinstance(category_roles, dict) or not isinstance(category_catalog, list)
+            or not isinstance(account_catalog, list) or not isinstance(partner_account_ids, set)):
+        raise ValueError("invalid source collection")
+    partners = account_mappings.get("partners")
+    accounts = account_mappings.get("accounts")
+    if not isinstance(partners, dict) or not isinstance(accounts, dict):
+        raise ValueError("invalid source ownership")
+    for pid, partner in partners.items():
+        if not isinstance(pid, str) or not pid.strip() or not isinstance(partner, dict):
+            raise ValueError("invalid source ownership")
+        if "label" in partner and not isinstance(partner["label"], str):
+            raise ValueError("invalid source label")
+    if not isinstance(partner_id, str) or partner_id not in partners:
+        raise ValueError("invalid source partner")
+    catalog_accounts = set()
+    for record in account_catalog:
+        if not isinstance(record, dict):
+            raise ValueError("invalid source account")
+        aid = _source_id(record.get("id"))
+        if aid in catalog_accounts:
+            raise ValueError("duplicate source account")
+        catalog_accounts.add(aid)
+    if not catalog_accounts.issubset(accounts):
+        raise ValueError("unresolved catalog ownership")
+    owned = set()
+    cc_records = []
+    eligible = set()
+    for aid, record in accounts.items():
+        if not isinstance(aid, str) or _source_id(aid) != aid or not isinstance(record, dict):
+            raise ValueError("invalid source mapping")
+        owner = record.get("partner_id")
+        kind = record.get("type")
+        excluded = record.get("excluded")
+        valid_owner = isinstance(owner, str) and owner in partners
+        valid_kind = isinstance(kind, str) and kind in {"cc", "checking", "savings"}
+        # Excluded null bindings need no invented ownership/type.
+        if (type(excluded) is not bool
+                or not (valid_owner or (excluded and owner is None))
+                or not (valid_kind or (excluded and kind is None))):
+            raise ValueError("unresolved source ownership")
+        if not excluded and aid not in catalog_accounts:
+            raise ValueError("missing source account")
+        if owner == partner_id:
+            owned.add(aid)
+            if kind == "cc":
+                cc_records.append(dict(account_id=aid, partner_id=owner, type=kind, excluded=excluded))
+                if not excluded:
+                    eligible.add(aid)
+    if owned != partner_account_ids:
+        raise ValueError("inexact partner account set")
+    excludes = set()
+    for cid, role in category_roles.items():
+        if not isinstance(role, str) or role not in KPI_ROLES:
+            raise ValueError("invalid category role")
+        # Only exclude keys shape population. Stray non-ID keys (e.g. synthetic
+        # "uncategorized" from reports pipeline) with other roles are ignored.
+        if role == "exclude":
+            excludes.add(int(_source_id(cid)))
+    payment = None if cc_payment_category_id is None else int(_source_id(cc_payment_category_id))
+    titles = {}
+    transfers = set()
+
+    def visit(nodes):
+        if not isinstance(nodes, list):
+            raise ValueError("invalid category catalog")
+        for node in nodes:
+            if not isinstance(node, dict):
+                raise ValueError("invalid category catalog")
+            cid = int(_source_id(node.get("id")))
+            if cid in titles:
+                raise ValueError("duplicate source category")
+            titles[cid] = _source_title(node)
+            transfer = node.get("is_transfer", False)
+            if type(transfer) is not bool:
+                raise ValueError("invalid transfer flag")
+            if transfer:
+                transfers.add(cid)
+            visit(node.get("children", []))
+
+    visit(category_catalog)
+    normalized = []
+    embedded_titles: dict[int, set[str]] = {}
+    for txn in transactions:
+        if not isinstance(txn, dict):
+            raise ValueError("invalid transaction")
+        when = txn.get("date")
+        if not isinstance(when, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", when):
+            raise ValueError("invalid transaction date")
+        _date.fromisoformat(when)
+        if when[:7] != month:
+            raise ValueError("transaction outside source month")
+        amount = txn.get("amount")
+        if isinstance(amount, bool) or not isinstance(amount, (int, float, Decimal)):
+            raise ValueError("invalid transaction amount")
+        amount = Decimal(str(amount))
+        if not amount.is_finite():
+            raise ValueError("invalid transaction amount")
+        if not isinstance(txn.get("status"), str) or txn["status"] not in {"posted", "pending"}:
+            raise ValueError("invalid transaction status")
+        account = txn.get("transaction_account")
+        if not isinstance(account, dict):
+            raise ValueError("missing transaction account")
+        aid = _source_id(account.get("id"))
+        if aid not in accounts or aid not in catalog_accounts:
+            raise ValueError("unknown transaction account")
+        category = txn.get("category")
+        if category is not None and not isinstance(category, dict):
+            raise ValueError("invalid transaction category")
+        category = category or {}
+        cid = None if category.get("id") is None else int(_source_id(category["id"]))
+        title = _source_title(category)
+        transfer = category.get("is_transfer", cid in transfers)
+        if type(transfer) is not bool or transfer != (cid in transfers):
+            raise ValueError("contradictory transfer context")
+        if cid is not None and title:
+            embedded_titles.setdefault(cid, set()).add(title)
+        normalized.append(txn | {"amount": amount, "transaction_account": {"id": aid},
+                                 "category": {"id": cid, "title": title, "is_transfer": transfer}})
+    scope = {
+        "version": "cc-spend-v1", "partner_id": partner_id,
+        "owned_cc_accounts": sorted(cc_records, key=lambda r: r["account_id"]),
+        "eligible_cc_account_ids": sorted(eligible),
+        "cc_payment_category_id": payment, "exclude_category_ids": sorted(excludes),
+        "transfer_category_ids": sorted(transfers),
+        "policy": {"posted_outgoing_only": True, "positive_magnitude": True,
+                   "refunds_netted": False, "parent_rollup": False, "uncategorized_separate": True},
+    }
+    digest = hashlib.sha256(json.dumps(scope, sort_keys=True, separators=(",", ":"),
+                                       ensure_ascii=False).encode("utf-8")).hexdigest()
+    totals: dict[int, Decimal] = {}
+    with localcontext() as ctx:
+        ctx.prec = exact_decimal_precision([t["amount"] for t in normalized])
+        for txn, cid in _iter_real_cc_txns(normalized, account_mappings, partner_account_ids, payment, excludes):
+            totals[cid] = totals.get(cid, Decimal(0)) + txn["amount"].copy_abs()
+    uncategorized = totals.pop(-1, Decimal(0))
+    categories = {
+        str(cid): {"title": titles.get(cid) or min(embedded_titles.get(cid, {""})),
+                   "amount": canonical_decimal(totals[cid])}
+        for cid in sorted(totals, key=str)
+    }
+    return CCSpendHistory(status="complete", reason=None, scope_key="cc-spend-v1:" + digest,
+                          categories=categories, uncategorized_amount=canonical_decimal(uncategorized))
 
 
 def compute_salary(

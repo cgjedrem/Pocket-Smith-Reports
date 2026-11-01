@@ -213,6 +213,45 @@ class TestPagination:
         result = client.get_transactions("1", "2026-07-01", "2026-07-31")
         assert len(result) == MAX_PAGINATION_PAGES
 
+    @pytest.mark.parametrize("method,path", [
+        ("get_transactions", "/users/1/transactions"),
+        ("get_transactions_for_account", "/transaction_accounts/1/transactions"),
+        ("get_events", "/users/1/events"),
+    ])
+    def test_strict_pagination_cap_rejects_remaining_page(self, monkeypatch, method, path):
+        monkeypatch.setattr("budget_api.services.ps_client.MAX_PAGINATION_PAGES", 1)
+        response = _fake_response(
+            json.dumps([{"id": "synthetic-row"}]).encode(),
+            {"link": f'<{BASE_URL}{path}?page=2>; rel="next"'},
+        )
+        calls = _patch_open(monkeypatch, [response])
+        client = PSClient("key", require_complete_pagination=True)
+        with pytest.raises(PSClientError, match="pagination cap"):
+            getattr(client, method)("1", "2026-07-01", "2026-07-31")
+        assert calls["count"] == 1
+
+    @pytest.mark.parametrize("method,path", [
+        ("get_transactions", "/users/1/transactions"),
+        ("get_transactions_for_account", "/transaction_accounts/1/transactions"),
+        ("get_events", "/users/1/events"),
+    ])
+    @pytest.mark.parametrize("page_count", [1, 2])
+    def test_strict_complete_pagination_at_cap(self, monkeypatch, method, path, page_count):
+        monkeypatch.setattr("budget_api.services.ps_client.MAX_PAGINATION_PAGES", page_count)
+        rows = [{"id": f"synthetic-{i}"} for i in range(page_count)]
+        responses = [
+            _fake_response(
+                json.dumps([row]).encode(),
+                {"link": f'<{BASE_URL}{path}?page={i + 2}>; rel="next"'}
+                if i + 1 < page_count else {},
+            )
+            for i, row in enumerate(rows)
+        ]
+        calls = _patch_open(monkeypatch, responses)
+        client = PSClient("key", require_complete_pagination=True)
+        assert getattr(client, method)("1", "2026-07-01", "2026-07-31") == rows
+        assert calls["count"] == page_count
+
     def test_repeated_url_raises(self, monkeypatch):
         # Same next URL twice → repeat detected.
         link = f'<{BASE_URL}/users/1/transactions?per_page=1000&page=2>; rel="next"'

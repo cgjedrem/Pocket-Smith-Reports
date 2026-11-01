@@ -6,9 +6,134 @@ Validated before atomic write (sync job) — trust the file on read.
 
 from __future__ import annotations
 
-from typing import Literal
+import re
+from decimal import Decimal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+
+
+def canonical_decimal(value: Decimal) -> str:
+    """Serialize a finite Decimal without rounding or exponent notation."""
+    if not value.is_finite():
+        raise ValueError("decimal must be finite")
+    if value == 0:
+        return "0"
+    text = format(value, "f")
+    return text.rstrip("0").rstrip(".") if "." in text else text
+
+
+def _decimal_string(value: str) -> str:
+    if not re.fullmatch(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?", value):
+        raise ValueError("expected canonical decimal string")
+    if canonical_decimal(Decimal(value)) != value:
+        raise ValueError("expected canonical decimal string")
+    return value
+
+
+def _nonnegative(value: str) -> str:
+    if Decimal(value) < 0:
+        raise ValueError("amount must be nonnegative")
+    return value
+
+
+DecimalString = Annotated[str, Field(strict=True), AfterValidator(_decimal_string)]
+Amount = Annotated[DecimalString, AfterValidator(_nonnegative)]
+CategoryId = Annotated[str, Field(strict=True, pattern=r"^[1-9][0-9]*$")]
+ScopeKey = Annotated[str, Field(strict=True, pattern=r"^cc-spend-v1:[0-9a-f]{64}$")]
+HistoryReason = Literal[
+    "open_month", "future_month", "no_cc_accounts", "missing_source_context", "invalid_source"
+]
+
+
+class CategorySpend(BaseModel):
+    model_config = ConfigDict(strict=True)
+    title: str
+    amount: Amount
+
+
+class CCSpendHistory(BaseModel):
+    """Trusted monthly observation; unknown coverage carries no money."""
+
+    model_config = ConfigDict(strict=True)
+    status: Literal["complete", "partial", "unavailable"]
+    reason: HistoryReason | None
+    scope_key: ScopeKey | None
+    categories: dict[CategoryId, CategorySpend] | None
+    uncategorized_amount: Amount | None
+
+    @model_validator(mode="after")
+    def coverage(self):
+        if self.status == "complete":
+            valid = (self.reason is None and self.scope_key is not None
+                     and self.categories is not None and self.uncategorized_amount is not None)
+        elif self.status == "partial":
+            valid = (self.reason == "open_month" and self.scope_key is not None
+                     and self.categories is None and self.uncategorized_amount is None)
+        else:
+            valid = (self.reason in {"future_month", "no_cc_accounts",
+                                     "missing_source_context", "invalid_source"}
+                     and self.scope_key is None and self.categories is None
+                     and self.uncategorized_amount is None)
+        if not valid:
+            raise ValueError("inconsistent history coverage")
+        return self
+
+
+EconomyGroupId = Literal["shared", "personal_partner_a", "personal_partner_b"]
+
+
+class EconomyCategorySpend(CategorySpend):
+    amount: DecimalString
+
+
+class EconomySpendGroup(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+    group_id: EconomyGroupId
+    label: str
+    partner_id: str | None
+    partner_slot: Literal["a", "b", ""]
+    categories: dict[CategoryId, EconomyCategorySpend]
+    uncategorized_amount: DecimalString
+
+    @model_validator(mode="after")
+    def identity(self):
+        slot = {"shared": "", "personal_partner_a": "a", "personal_partner_b": "b"}[self.group_id]
+        if self.partner_slot != slot or (
+            self.group_id == "shared" and self.partner_id is not None
+        ) or (slot and (not self.partner_id or not self.partner_id.strip())):
+            raise ValueError("invalid economy group identity")
+        return self
+
+
+class EconomySpendHistory(BaseModel):
+    """Schema-7 report population evidence, independent of outgoing CC evidence."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+    status: Literal["complete", "partial", "unavailable"]
+    reason: HistoryReason | None
+    scope_key: Annotated[str, Field(pattern=r"^economy-spend-v1:[0-9a-f]{64}$")] | None
+    groups: list[EconomySpendGroup] | None
+
+    @model_validator(mode="after")
+    def coverage(self):
+        if self.status == "complete":
+            if self.reason is not None or self.scope_key is None or self.groups is None:
+                raise ValueError("complete economy history requires evidence")
+            if [g.group_id for g in self.groups] != ["shared", "personal_partner_a", "personal_partner_b"]:
+                raise ValueError("economy history requires exactly three ordered groups")
+            if self.groups[1].partner_id == self.groups[2].partner_id:
+                raise ValueError("personal identities must be distinct")
+            ids = [cid for g in self.groups for cid in g.categories]
+            if len(ids) != len(set(ids)):
+                raise ValueError("category IDs must be unique across economy groups")
+        elif self.status == "partial":
+            if self.reason != "open_month" or self.scope_key is None or self.groups is not None:
+                raise ValueError("partial economy history cannot carry amounts")
+        elif (self.reason not in {"future_month", "missing_source_context", "invalid_source"}
+              or self.scope_key is not None or self.groups is not None):
+            raise ValueError("unavailable economy history cannot carry evidence")
+        return self
 
 
 class BillsEvent(BaseModel):
@@ -38,6 +163,7 @@ class PartnerBills(BaseModel):
     """Per-partner derived fields for the bills dashboard."""
 
     partner: str
+    cc_spend_history: CCSpendHistory | None = None
     # Additive schema-5 fields. Default "" = pre-field (schema-4) snapshot.
     partner_id: str = ""
     partner_slot: str = ""  # deterministic, sorted-partner_id order → "a"/"b"
@@ -132,7 +258,8 @@ class SourceCounts(BaseModel):
 class BillsSnapshot(BaseModel):
     """Top-level snapshot for one month. Written to bills_dashboard_YYYY-MM.json."""
 
-    schema_version: int = 5
+    schema_version: int = 7
+    economy_spend_history: EconomySpendHistory | None = None
     month: str  # YYYY-MM
     month_label: str
     is_past: bool

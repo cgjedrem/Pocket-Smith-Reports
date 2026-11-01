@@ -169,6 +169,157 @@ cd client && pnpm build && pnpm test
 
 Tests marked `pdf_renderer` require working native WeasyPrint libraries.
 
+## Lifestyle-creep detector
+
+`GET /api/bills/lifestyle-creep?month=2026-10&threshold_percent=20&reference_start=2026-07&reference_end=2026-09&grouping=report`
+compares report-grouped category spending in one completed target month
+with average monthly spending in a selected reference period of 2–24 consecutive
+completed months. The reference period must end before the target, and the target
+must be earlier than the API's current month for any financial comparison.
+The current API month is accepted only as an unavailable selection: it returns
+`insufficient_history` / `partial_month` / `open_month`, three insufficient groups without money,
+and reads no snapshots. Future API months are rejected. The separate threshold defaults to 20%
+and accepts values from 1–100%. A category is flagged only when its target-month
+spending is strictly above the reference average by more than that threshold.
+This is descriptive, not financial advice.
+
+The page shows three tables in report order: **Shared economy** (Home + Common
+only), then the two configured personal sections. Included checking and card
+accounts contribute paid minus received across both payers. Personal placement
+follows the report category section, not the owner of the paying account.
+Refunds reduce spending; net negative observations, targets and reference means
+remain visible. Trips, savings, income, excluded and credit-card payment sections
+are omitted. The client does not reclassify categories, merge their IDs or invent
+an overall total. A zero/negative reference mean or fewer than two positive
+reference samples suppresses the warning without erasing the amounts.
+
+The endpoint only reads saved Bills snapshots. Report mode requires explicit
+schema-7 report-economy evidence for every selected completed month. Older CC-only
+history cannot establish these groups. Missing, partial, unavailable or
+differently configured evidence blocks all three groups, preserves their headings,
+and shows resync guidance, not zero-filled spending. Check report mappings, then
+explicitly re-sync all selected reference months and the target with one consistent
+configuration through the normal Sync flow. Pending/unknown transaction status
+conservatively prevents complete report evidence. GET/Retry never syncs, repairs
+or fabricates history. New decimal fields are strings; existing Bills totals and
+the default outgoing-CC API response (omit `grouping`) are unchanged.
+
+The detector has its own **Lifestyle Creep** tab in the top navigation, directly
+after **Bills** (route `/lifestyle-creep`). It is independent of the Bills page:
+Bills no longer shows the card, and opening the tab sends no Bills dashboard or
+Runway requests.
+
+- Choose **Target month**, **Reference start**, and **Reference end**, then
+  **Apply comparison** to apply all three drafts together. The default target is
+  the latest completed local calendar month; the default reference period is the
+  three months immediately before it. Targets must be completed and earlier than
+  the current month. Reference periods must contain 2–24 consecutive completed
+  months before target. The earliest target is `0001-03`; the earliest reference
+  month is `0001-01`. Invalid or missing dates are rejected without fetching.
+- The client always sends `month` as the target and both explicit reference
+  bounds and `grouping=report`. Required evidence is exactly the reference months plus the target.
+  For references July–September and target December, only July, August,
+  September, and December are required; intervening months are not read.
+  Missing snapshots never shift, shorten, or zero-fill the selected history.
+  The card labels target, reference boundaries, and exact evidence coverage.
+- Edit **Threshold (1–100%)** and **Apply threshold**. Decimals are accepted;
+  invalid drafts never fetch or replace the applied value. The default is 20%,
+  retained across target/reference changes for this visit only. Canonically
+  equivalent decimals do not refetch; fresh visits reset the selection and threshold. Neither
+  is stored in the URL or localStorage.
+- Inspect each group's target spend, reference-period average, change, growth,
+  and server-provided threshold outcome. Expand category details for all 3–25
+  required observations and one target-versus-average comparison. Actual adjacent
+  month-over-month growth is shown separately only when available. Uncategorized spending
+  assigned by the report classifier is shown separately for each group, including
+  signed refunds, and never treated as a category alert.
+- Expanding a category's **Target comparison** disclosure mounts a usage graph
+  for that category only (collapsed disclosures render no chart). It plots the
+  reference months and target chronologically with a solid usage line, a dashed
+  **Trailing average (up to 3 prior months)** line, triangles for months strictly
+  above their own trailing average and a square outline for the target. The
+  average uses up to three immediately preceding consecutive evidence months,
+  excludes the month itself and starts only after two; earlier months have no
+  average or marker. Unselected months between reference end and target break
+  both lines (never zero-filled) and the month after the break has no average.
+  Markers are descriptive only, not the applied threshold or server verdict.
+  A legend, summary and graph data table give a text alternative. With **Hide
+  amounts** on, the chart is replaced by a masked placeholder (no plotted
+  coordinates or tooltip) and table money shows `****`; toggling never fetches
+  or collapses the disclosure. Details: [quickstart section 22](docs/specs/005-lifestyle-creep/quickstart.md#22-category-usage-graph---2026-11-02).
+  Final verification (2026-11-02): independent review passed; frontend-only
+  deployment passed 333 synthetic graph/browser assertions and six separate
+  live metadata-only assertions. Live document/report GETs returned 200 with
+  three ready report groups; no live graph was opened. API and named data volume
+  were unchanged and both services remain healthy. Feature tasks: **63/63**.
+- Use a category row's **Hide** button to hide that row and its detail disclosure
+  for that group. Each group has a hidden count, **Show hidden categories**
+  toggle, and **Restore all**; shown hidden rows are marked **Hidden** and offer
+  **Restore**. If every category is hidden, the view says so and keeps recovery
+  controls available. This is presentation only: the assessment still covers all
+  categories. Visibility uses stable `group_id`/`category_id` pairs, not labels
+  or nullable person IDs, survives target,
+  reference and threshold changes during this visit, and resets on a fresh visit.
+  Hide/show/restore never fetches or writes settings, snapshots or API data, and
+  **Hide amounts** still masks every monetary value when hidden rows are shown.
+- Missing, legacy or partial history shows affected months and a link to **Sync**.
+  Check report mappings and explicitly re-sync every selected completed reference
+  and target month with one consistent configuration, then use **Retry history**. Retry only
+  rereads the same applied target, reference bounds, and threshold; it does not start sync.
+- The global **Hide amounts** control masks all monetary details, including
+  collapsed disclosures. Percentages and dates remain visible, with no refetch.
+
+If API callers omit both reference bounds, the API defaults to the three months
+immediately preceding the explicitly selected target. This page always sends
+both bounds. Corrected client verification, the passing independent review, and
+the completed container/browser smoke are recorded in
+[quickstart section 19](docs/specs/005-lifestyle-creep/quickstart.md#19-corrected-target-month-and-reference-period---2026-11-02).
+
+Historical visit-local category visibility implementation and test results are recorded in
+[quickstart section 20](docs/specs/005-lifestyle-creep/quickstart.md#20-visit-local-category-visibility---2026-11-02);
+the three-group frontend amendment is documented in
+[quickstart section 21](docs/specs/005-lifestyle-creep/quickstart.md#21-shared-economy-backend-and-persisted-report-group-evidence).
+T057–T060 are complete: independent review passed and both rebuilt services are
+healthy on port 8080 with the existing private volume retained. Final browser
+verification passed 68 assertions (57 synthetic, 11 unmocked structural-only).
+Old history honestly shows three insufficient groups and resync guidance; it is
+not automatically upgraded to schema 7. Check report mappings and explicitly
+resync the selected completed months to acquire report-group evidence. Verification
+did not run sync or modify saved data. Earlier two-person CC browser evidence
+remains historical.
+
+Known limitations and clock-boundary handling (details in
+[quickstart section 16](docs/specs/005-lifestyle-creep/quickstart.md#16-post-rebase-real-data-validation)):
+
+- **Time zone:** the API checks the target against its process clock, while the
+  card defaults from the browser's local calendar. Near a month boundary, the
+  browser's latest completed target can still be the API's current month.
+  The API then returns `insufficient_history`, not a selection error, without
+  reading saved history or exposing money, even if a snapshot claims `complete`.
+  The card shows the open-month reason and no reliable conclusion. Wait until
+  the API month closes or choose an earlier target; re-sync after closure if
+  saved history was acquired while open. The client still excludes its own
+  current month. The clocks themselves are not synchronized by this handling.
+- **Sync-window shape:** the last month of a sync window has no everyday-budget
+  zone, and past savings balances use only deltas inside the window, so a window
+  that stops before the current month can leave a partial picture [Inference].
+  Re-sync through the usual sync end month, as above.
+- **Hand-edited roles (original CC API mode):** an `exclude` entry in `category_roles.json` whose key is
+  not a canonical category ID makes CC history report `invalid_source` with no
+  detail about the key, because the evidence builder fails closed.
+- **Re-sync depth:** a default target month M needs the three reference months
+  M-3 through M-1 plus M re-synced with this build. Custom reference bounds
+  require those selected months plus target M. Older stored months stay
+  `legacy_history` until they are re-synced.
+- **Nav width:** the extra tab widens the top navigation. On Mega Reports the
+  fixed contents toggle overlaps the nav's **Hide amounts** button in viewports
+  narrower than about 864px (about 150px wider than before). The nav already
+  overflowed at 390px. Left unchanged; see
+  [quickstart section 17](docs/specs/005-lifestyle-creep/quickstart.md#known-limitation-nav-overlap-on-mega-reports).
+
+See the [complete API contract and example](docs/specs/005-lifestyle-creep/contracts/lifestyle-creep-api.md)
+and [safe test commands, results and browser evidence](docs/specs/005-lifestyle-creep/quickstart.md).
+
 ## License
 
 [MIT](LICENSE)

@@ -5,6 +5,7 @@ import { BillsPage } from "@/pages/BillsPage";
 import { BillsPreviewPage } from "@/pages/BillsPreviewPage";
 import { DocsPage } from "@/pages/DocsPage";
 import { DataCoveragePage } from "@/pages/DataCoveragePage";
+import { LifestyleCreepPage } from "@/pages/LifestyleCreepPage";
 import { MegaReportsPage } from "@/pages/MegaReportsPage";
 import { MonthlyReportsPage } from "@/pages/MonthlyReportsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: "bills", element: <BillsPage /> },
       { path: "data-coverage", element: <DataCoveragePage /> },
       { path: "bills-preview", element: <BillsPreviewPage /> },
+      { path: "lifestyle-creep", element: <LifestyleCreepPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "docs", element: <DocsPage /> },
     ],

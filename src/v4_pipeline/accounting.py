@@ -1929,6 +1929,27 @@ def detailed_personal_sections(
     return result
 
 
+def detailed_spending_groups(
+    records: list[dict[str, Any]], mapping: dict[str, dict[str, str]],
+) -> dict[str, list[dict[str, Any]]]:
+    """The three comparison populations, using detailed-report routing/grouping.
+
+    Keep the constituent records so decimal consumers need not sum rounded
+    floating-point presentation totals or allocate by the paying account.
+    """
+    return {
+        group: _category_groups([
+            record for section in sections
+            for record in _records_in_section(records, section, mapping)
+        ])
+        for group, sections in {
+            "shared": ("home", "common"),
+            "personal_partner_a": ("personal_partner_a",),
+            "personal_partner_b": ("personal_partner_b",),
+        }.items()
+    }
+
+
 def detailed_cc_payments_section(
     records: list[dict[str, Any]], mapping: dict[str, dict[str, str]]
 ) -> dict[str, Any]:
