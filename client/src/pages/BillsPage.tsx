@@ -1,6 +1,7 @@
 // Bills page — wraps BillsDashboard. Window picker (past/future months) +
 // explicit Apply button. Month is always the current local month — no
 // selector. Committed window is mirrored to query params (?past=, ?future=).
+// Lifestyle creep detector lives on its own tab (pages/LifestyleCreepPage).
 
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -43,8 +44,7 @@ export function BillsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Always the current local month. Re-derive each render so month-rollover
-  // (e.g. tab open across midnight) picks up the new value on next paint.
+  // Preserve dashboard's existing mount-time month.
   const month = useMemo(() => currentMonth(), []);
 
   // Committed window — fed to BE fetch. Update only via "Apply" or Enter.
@@ -128,7 +128,7 @@ export function BillsPage() {
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-4">
       {showDashboard ? (
         <>
           <header className="flex flex-col gap-2">

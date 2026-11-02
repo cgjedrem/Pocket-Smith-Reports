@@ -77,7 +77,7 @@ if ($?) { Write-Output "PASS" }
 $env:PYTHONPATH = 'src'; python -m pytest src/budget_api/tests/reports/test_regen_smoke.py -q
 if ($?) { Write-Output "PASS" }
 # Expected: monthly + mega shapes regenerate from data/sample_apr_2026.json
-# under contract v2; bills snapshot rebuilds at schema_version 5 with
+# under contract v2; bills snapshot rebuilds at schema_version 7 with
 # partner_id fields; recursive walk finds no legacy key strings.
 # Golden byte-equality: src/budget_api/tests/reports/test_golden_fixture.py
 ```

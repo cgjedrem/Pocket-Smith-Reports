@@ -98,10 +98,11 @@ app.include_router(bills.router, prefix="/api")  # /api/bills/dashboard
 app.include_router(runway.router, prefix="/api")  # Local runway result + selection.
 
 
-# Bills router — no-store on /api/bills/dashboard + /api/bills/dashboard/events
-# + /api/bills/dashboard/event.
+# no-store allow-list: the three /api/bills/dashboard* reads, the runway result
+# and selection routes (/api/bills/runway, /api/settings/runway) and the
+# lifestyle-creep read (/api/bills/lifestyle-creep).
 # HTTPException handler strips response.headers, so set via middleware on the way out.
-# Explicit allow-list: any future /api/bills/* gets caching by default (safer).
+# Explicit allow-list: any new path gets caching by default until listed here (safer).
 _NO_STORE_PATHS = frozenset(
     {
         "/api/bills/dashboard",
@@ -109,6 +110,7 @@ _NO_STORE_PATHS = frozenset(
         "/api/bills/dashboard/event",
         "/api/bills/runway",
         "/api/settings/runway",
+        "/api/bills/lifestyle-creep",
     }
 )
 

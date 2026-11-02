@@ -462,6 +462,45 @@ def load_category_parents(catalog_path: str | Path) -> dict[str, str | None]:
     return parents
 
 
+def load_category_transfer_flags(catalog_path: str | Path) -> dict[str, bool]:
+    """Load authoritative transfer classification for every catalog category."""
+    try:
+        catalog = json.loads(Path(catalog_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise AccountingValidationError("Category catalog is unreadable") from error
+    catalog = _required_mapping(catalog, "category catalog")
+    categories = catalog.get("categories")
+    if not isinstance(categories, list):
+        raise AccountingValidationError("Category catalog.categories must be a list")
+    flags: dict[str, bool] = {}
+
+    def add_categories(nodes: list[Any], field: str) -> None:
+        for index, category in enumerate(nodes):
+            category = _required_mapping(category, f"{field}[{index}]")
+            category_id = _required_identifier(
+                category.get("id"), f"{field}[{index}].id"
+            )
+            if category_id in flags:
+                raise AccountingValidationError(
+                    "Category catalog has duplicate category IDs"
+                )
+            flag = category.get("is_transfer")
+            if type(flag) is not bool:
+                raise AccountingValidationError(
+                    f"{field}[{index}].is_transfer must be a boolean"
+                )
+            flags[category_id] = flag
+            children = category.get("children", [])
+            if not isinstance(children, list):
+                raise AccountingValidationError(
+                    f"{field}[{index}].children must be a list"
+                )
+            add_categories(children, f"{field}[{index}].children")
+
+    add_categories(categories, "category catalog.categories")
+    return flags
+
+
 def load_category_titles(catalog_path: str | Path) -> dict[str, str]:
     """Load authoritative display titles keyed by PocketSmith category ID."""
     try:
@@ -1927,6 +1966,27 @@ def detailed_personal_sections(
             "pct_household": _safe_pct(subtotal, household_total),
         }
     return result
+
+
+def detailed_spending_groups(
+    records: list[dict[str, Any]], mapping: dict[str, dict[str, str]],
+) -> dict[str, list[dict[str, Any]]]:
+    """The three comparison populations, using detailed-report routing/grouping.
+
+    Keep the constituent records so decimal consumers need not sum rounded
+    floating-point presentation totals or allocate by the paying account.
+    """
+    return {
+        group: _category_groups([
+            record for section in sections
+            for record in _records_in_section(records, section, mapping)
+        ])
+        for group, sections in {
+            "shared": ("home", "common"),
+            "personal_partner_a": ("personal_partner_a",),
+            "personal_partner_b": ("personal_partner_b",),
+        }.items()
+    }
 
 
 def detailed_cc_payments_section(

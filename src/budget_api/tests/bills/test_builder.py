@@ -300,9 +300,8 @@ def test_build_bills_snapshot_includes_planned_cc_buys():
     assert partner_b["planned_cc_buys"] == 0
 
 
-def test_build_bills_snapshot_schema_version_is_5():
-    """schema-5: additive partner_id + partner_slot on events/partners (T043).
-    v4 snapshots still load (both fields default "")."""
+def test_build_bills_snapshot_schema_version_is_7():
+    """Schema 7 adds report history; absent acquisition stays unavailable."""
     snapshot = build_bills_snapshot(
         month="2026-07",
         events=_ps_events(),
@@ -314,7 +313,10 @@ def test_build_bills_snapshot_schema_version_is_5():
         live_combined=None,
         deltas_per_month=None,
     )
-    assert snapshot["schema_version"] == 5
+    assert snapshot["schema_version"] == 7
+    assert snapshot["economy_spend_history"]["reason"] == "missing_source_context"
+    assert all(p["cc_spend_history"]["reason"] == "missing_source_context"
+               for p in snapshot["partners"])
 
 
 def test_build_bills_snapshot_emits_partner_id_and_slot():

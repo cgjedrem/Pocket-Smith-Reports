@@ -71,6 +71,13 @@ def load(
     else:
         transactions = []
 
+    return prepare_transactions(month, transactions, excluded_account_ids)
+
+
+def prepare_transactions(
+    month: str, transactions: list[dict], excluded_account_ids: set[str] | None = None,
+) -> list[dict]:
+    """Apply the report's month/account/category preparation without file I/O."""
     excluded_account_ids = excluded_account_ids or set()
     out = []
     for t in transactions:

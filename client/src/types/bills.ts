@@ -1,6 +1,21 @@
 // TS types — mirror backend Pydantic models exactly.
 // Source: src/budget_api/models/bills.py + design doc L4.
 
+import type { DecimalString, HistoryReason } from "./lifestyle-creep";
+
+export interface CategorySpend {
+  title: string;
+  amount: DecimalString;
+}
+
+export interface CCSpendHistory {
+  status: "complete" | "partial" | "unavailable";
+  reason: HistoryReason;
+  scope_key: string | null;
+  categories: Record<string, CategorySpend> | null;
+  uncategorized_amount: DecimalString | null;
+}
+
 export type BillsEventType = "bill" | "buy" | "savings" | "salary";
 export type BillsPartnerStatus = "covered" | "partial" | "shortfall";
 
@@ -67,6 +82,8 @@ export interface PartnerBills {
    * cc_usage (values sum to it). Past + current months; null when no real
    * CC activity or on snapshots written before the field existed. */
   cc_usage_by_category?: Record<string, number> | null;
+  /** Schema 6 evidence; missing legacy history stays unknown. */
+  cc_spend_history?: CCSpendHistory | null;
   budget_usage: number;
   net: number;
   status: BillsPartnerStatus;

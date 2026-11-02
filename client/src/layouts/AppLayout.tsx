@@ -67,6 +67,19 @@ export function AppLayout() {
             Bills
           </NavLink>
           <NavLink
+            to="/lifestyle-creep"
+            className={({ isActive }) =>
+              cn(
+                "border-b-2 border-transparent px-2 py-1 text-base no-underline",
+                isActive
+                  ? "border-accent text-accent"
+                  : "text-muted-foreground hover:text-foreground",
+              )
+            }
+          >
+            Lifestyle Creep
+          </NavLink>
+          <NavLink
             to="/data-coverage"
             className={({ isActive }) =>
               cn(

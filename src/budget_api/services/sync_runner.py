@@ -20,10 +20,12 @@ from budget_api.services import env_writer, storage
 from budget_api.services.ps_client import PSClient, PSClientError
 from budget_api.services.bills_builder import (
     NoBillsAccountError,
+    MonthAcquisition,
     build_bills_chain,
     ensure_prior_month,
 )
 from input_contract import monthly_filename
+from budget_api.services.economy_history import load_economy_context
 
 
 def _month_dates(month: str) -> tuple[str, str]:
@@ -187,7 +189,8 @@ def sync_all(start_month: str, end_month: str) -> SyncResult:
 
     try:
         api_key = _read_api_key()
-        client = PSClient(api_key)
+        # All paginated inputs must finish, including prior-month fallback.
+        client = PSClient(api_key, require_complete_pagination=True)
         user = client.get_me()
         user_id = str(user["id"])
 
@@ -223,9 +226,16 @@ def sync_all(start_month: str, end_month: str) -> SyncResult:
         # --- Per-month: transactions + events (collected for the chain) ---
         events_per_month: dict[str, list[dict]] = {}
         transactions_per_month: dict[str, list[dict]] = {}
+        acquisitions: dict[str, MonthAcquisition] = {}
         for month in months:
             start_date, end_date = _month_dates(month)
+            acquisition_started = datetime.now()
             transactions = client.get_transactions(user_id, start_date, end_date)
+            if not isinstance(transactions, list):
+                raise ValueError("invalid monthly transaction collection")
+            acquisitions[month] = MonthAcquisition(
+                month, start_date, end_date, acquisition_started, transactions,
+            )
             storage.atomic_write_json(
                 storage.PRIVATE_DATA_DIR / monthly_filename(month, "live"),
                 transactions,
@@ -266,14 +276,15 @@ def sync_all(start_month: str, end_month: str) -> SyncResult:
 
         # earliest month needs m-1 on disk for estimated_cc_bill
         if months:
-            try:
-                ensure_prior_month(client, user_id, months[0], bills_warnings)
-            except PSClientError as e:
-                bills_warnings.append(
-                    f"Bills chain: prior month fetch for {months[0]} failed: {e}"
-                )
+            # Failed acquisition blocks all new Bills publication, including fallback.
+            ensure_prior_month(client, user_id, months[0], bills_warnings)
 
         try:
+            try:
+                economy_context = load_economy_context(months[0]) if months else None
+            except (ValueError, OSError):
+                economy_context = None
+                bills_warnings.append("Report economy history unavailable: check report mappings and re-sync.")
             snapshots = build_bills_chain(
                 months=months,
                 events_per_month=events_per_month,
@@ -283,6 +294,8 @@ def sync_all(start_month: str, end_month: str) -> SyncResult:
                 category_catalog=category_catalog,
                 account_catalog=account_catalog,
                 warnings=bills_warnings,
+                acquisitions=acquisitions,
+                economy_context=economy_context,
             )
             for month in sorted(snapshots):
                 storage.atomic_write_json(

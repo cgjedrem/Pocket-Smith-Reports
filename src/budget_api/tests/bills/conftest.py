@@ -11,11 +11,10 @@ same commit that was green on 2026-08-31 (run 33385741392).
 from __future__ import annotations
 
 import pytest
+from datetime import datetime
 
-from budget_api.services import bills_builder
 
-
-class _FrozenDatetime(bills_builder.datetime):
+class _FrozenDatetime(datetime):
     """datetime pinned to 2026-08-31 — the last-green fixture epoch."""
 
     @classmethod
@@ -26,7 +25,7 @@ class _FrozenDatetime(bills_builder.datetime):
 
 
 @pytest.fixture(autouse=True)
-def frozen_bills_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+def frozen_bills_clock(monkeypatch: pytest.MonkeyPatch, isolated_backend_storage) -> None:
     """Freeze the builder's clock for every bills test.
 
     Single patch point: `_current_month`, `_month_flags`, the
@@ -37,4 +36,6 @@ def frozen_bills_clock(monkeypatch: pytest.MonkeyPatch) -> None:
     clock override it themselves (see
     test_month_flags_uses_local_time_not_utc).
     """
+    from budget_api.services import bills_builder
+
     monkeypatch.setattr(bills_builder, "datetime", _FrozenDatetime)

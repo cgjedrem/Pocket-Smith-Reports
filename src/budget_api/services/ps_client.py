@@ -94,12 +94,15 @@ class PSClient:
 
     All methods return raw decoded JSON (dict or list[dict]).
     Raises PSClientError on any auth/network/shape failure.
+    Set require_complete_pagination to reject capped partial acquisitions.
+    Default callers retain legacy cap-and-return behavior.
     """
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, *, require_complete_pagination: bool = False) -> None:
         if not api_key or not api_key.strip():
             raise PSClientError("PS API key is empty")
         self._api_key = api_key.strip()
+        self._require_complete_pagination = require_complete_pagination
 
     # -- single GET -------------------------------------------------------
 
@@ -136,6 +139,10 @@ class PSClient:
             if url in seen_urls:
                 raise PSClientError("PocketSmith pagination link repeats a prior page")
             if page_count >= MAX_PAGINATION_PAGES:
+                if self._require_complete_pagination:
+                    raise PSClientError(
+                        "PocketSmith pagination cap reached before acquisition completed"
+                    )
                 print(
                     f"PSClient: pagination cap hit at {MAX_PAGINATION_PAGES} pages "
                     f"for {path} — results truncated"
