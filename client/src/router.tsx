@@ -4,6 +4,7 @@ import { AppLayout } from "@/layouts/AppLayout";
 import { BillsPage } from "@/pages/BillsPage";
 import { BillsPreviewPage } from "@/pages/BillsPreviewPage";
 import { DocsPage } from "@/pages/DocsPage";
+import { DataCoveragePage } from "@/pages/DataCoveragePage";
 import { MegaReportsPage } from "@/pages/MegaReportsPage";
 import { MonthlyReportsPage } from "@/pages/MonthlyReportsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { path: "reports", element: <MonthlyReportsPage /> },
       { path: "mega-reports", element: <MegaReportsPage /> },
       { path: "bills", element: <BillsPage /> },
+      { path: "data-coverage", element: <DataCoveragePage /> },
       { path: "bills-preview", element: <BillsPreviewPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "docs", element: <DocsPage /> },

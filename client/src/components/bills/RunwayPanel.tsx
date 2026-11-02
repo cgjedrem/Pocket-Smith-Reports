@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { Link } from "react-router-dom";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,10 @@ interface IssuesProps {
 }
 
 function Issues({ issues, data }: IssuesProps) {
-  const messages = [...new Set(issues.map((issue) =>
+  // Source provenance belongs on Data coverage; keep result blockers and actionable qualifications here.
+  const messages = [...new Set(issues
+    .filter((issue) => !["coverage_unverified", "source_date_unknown", "source_times_differ", "classification_unverified"].includes(issue.code))
+    .map((issue) =>
     runwayIssueText(issue, data.owners.map((entry) => entry.owner), data.selected_accounts),
   ))];
   if (!messages.length) return null;
@@ -77,36 +81,18 @@ export function RunwayPanel() {
             <p className="text-xs text-muted-foreground">Results use the last loaded saved selection, not unsaved choices.{error ? " Refresh failed; previous result retained." : ""}</p>
             {(data.selection_status === "empty" || data.selection_status === "unconfigured") && <p className="font-medium">Select liquid accounts</p>}
             <p className="text-sm">{runwayAttributionText(data)}</p>
+            <p className="text-sm">Based on recorded PocketSmith transactions for the last three completed months.</p>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {data.owners.map((entry) => <Measures key={entry.owner.partner_id} label={entry.owner.label} measures={entry} data={data} owner={entry.owner} />)}
               <Measures label="Household" measures={data.household} data={data} />
             </div>
             {data.owners.length === 0 && <p>No configured account owners available. See source limitations.</p>}
             <Issues issues={data.issues} data={data} />
+            <Issues issues={data.observations.flatMap((row) => row.issues)} data={data} />
             <div className="text-sm">
               <p>As of {runwayMonth(data.as_of_month)} · {data.included_month_count} of 3 completed months included.</p>
-              <p>Candidate months: {data.candidate_months.map(runwayMonth).join(", ")}.</p>
               <p>Included months: {data.included_months.length ? data.included_months.map(runwayMonth).join(", ") : "None"}. At least two required; no older backfill.</p>
-              <p className="mt-1 text-xs text-muted-foreground">Independent of the Bills display window. Calculated: {runwayDate(data.calculated_at)}. This is not a source collection date.</p>
-              <p className="text-xs text-muted-foreground">Catalog collected: {runwayDate(data.catalog_collected_at)} · {data.catalog_freshness}. Recalculation does not refresh underlying data.</p>
-            </div>
-            <div>
-              <h3 className="mb-2 font-semibold">Monthly net spending</h3>
-              <div className="grid gap-3 lg:grid-cols-3">
-                {data.observations.map((row) => (
-                  <section key={row.month} aria-label={`${runwayMonth(row.month)} observation`} className="min-w-0 rounded-lg border p-3 text-sm">
-                    <h4 className="font-medium">{runwayMonth(row.month)}</h4>
-                    <p>{row.status === "included" ? "Included" : "Excluded"} · Coverage: {row.coverage}</p>
-                    <dl className="mt-2 space-y-1">
-                      {row.owners.map((entry) => <div key={entry.partner_id} className="flex flex-wrap justify-between gap-2"><dt>{ownerLabel(entry.partner_id)}</dt><dd className="tabular-nums">{runwayMoney(entry.spending, entry.currency_code)}</dd></div>)}
-                      <div className="flex flex-wrap justify-between gap-2 font-medium"><dt>Household</dt><dd className="tabular-nums">{runwayMoney(row.household_spending, row.household_currency_code)}</dd></div>
-                    </dl>
-                    <p className="mt-2 text-xs text-muted-foreground">Collected: {runwayDate(row.collected_at)} · {row.freshness}</p>
-                    <p className="text-xs text-muted-foreground">Coverage dates: {runwayDate(row.coverage_start)} – {runwayDate(row.coverage_end)}</p>
-                    <Issues issues={row.issues} data={data} />
-                  </section>
-                ))}
-              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Independent of the Bills display window. Month-by-month source coverage and provenance dates are on <Link className="underline" to="/data-coverage">Data coverage</Link>.</p>
             </div>
             <div>
               <h3 className="mb-2 font-semibold">Selected reserve accounts</h3>
@@ -129,7 +115,7 @@ export function RunwayPanel() {
         )}
         {!data && !loading && !error && <p>Result not loaded. Refresh runway to read the saved selection.</p>}
         <RunwaySettings state={state} />
-        <p className="text-xs text-muted-foreground">Descriptive observations, not a forecast, financial advice, or a recommendation. Ignores future income and spending changes; no safe spending level or guaranteed duration. Recorded classification may miss unmarked transfers. Transfers, card repayments, savings, and excluded categories are excluded from net spending as in Reports; source limitations remain visible above.</p>
+        <p className="text-xs text-muted-foreground">Descriptive observations, not a forecast, financial advice, or a recommendation. Ignores future income and spending changes; no safe spending level or guaranteed duration. Recorded classification may miss unmarked transfers. Transfers, card repayments, savings, and excluded categories are excluded from net spending as in Reports; see Data coverage for source limitations.</p>
       </div>
     </section>
   );

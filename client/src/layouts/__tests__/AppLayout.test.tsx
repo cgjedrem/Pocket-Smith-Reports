@@ -48,4 +48,9 @@ describe("AppLayout hide-amounts toggle", () => {
     expect(toggle.tagName).toBe("BUTTON");
     expect(toggle).toHaveAttribute("type", "button");
   });
+
+  it("adds a discoverable Data coverage navigation link", () => {
+    renderLayout();
+    expect(screen.getByRole("link", { name: "Data coverage" })).toHaveAttribute("href", "/data-coverage");
+  });
 });

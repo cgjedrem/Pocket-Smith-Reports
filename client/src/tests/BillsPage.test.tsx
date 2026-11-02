@@ -111,6 +111,7 @@ describe("BillsPage", () => {
     });
     renderPage();
     expect(screen.getByRole("heading", { name: /bills/i })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Data coverage" })).toHaveAttribute("href", "/data-coverage");
     // Mock snapshot has 0 events → BillsDashboard renders its 3-view toggle.
     await waitFor(() =>
       expect(screen.getByText(/^Grid$/)).toBeInTheDocument(),

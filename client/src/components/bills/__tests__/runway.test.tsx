@@ -1,9 +1,15 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render as testingRender, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RunwayPanel } from "@/components/bills/RunwayPanel";
 import { issue, jsonResponse, runwayFixture, settingsFixture, deferred } from "./runway-fixtures";
 import { setAmountsHidden } from "@/lib/privacy-store";
 import { runwayIssueText, runwayMoney } from "@/lib/runway";
+
+function render(ui: ReactNode) {
+  return testingRender(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
 let payload: ReturnType<typeof runwayFixture>;
 let config: ReturnType<typeof settingsFixture>;
@@ -51,12 +57,13 @@ describe("RunwayPanel", () => {
     expect(screen.getByText(/refunds and reimbursements reduce spending/i)).toBeVisible();
     expect(household).toHaveTextContent("Average monthly spending (net)");
     expect(screen.queryByText(/gross burn|recorded spending/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Monthly net spending" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Monthly net spending" })).not.toBeInTheDocument();
     expect(screen.getByText(/not a forecast, financial advice, or a recommendation/i)).toBeVisible();
     expect(screen.getByText(/excluded from net spending as in Reports/i)).toBeVisible();
     expect(screen.getByText(/3 of 3 completed months/)).toBeVisible();
-    expect(screen.getByRole("heading", { name: "July 2026" })).toBeVisible();
-    expect(screen.getByText(/Catalog collected: Unknown/)).toBeVisible();
+    expect(screen.getByText("Based on recorded PocketSmith transactions for the last three completed months.")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Data coverage" })).toHaveAttribute("href", "/data-coverage");
+    expect(screen.queryByText(/Catalog collected:/)).not.toBeInTheDocument();
     expect(screen.getAllByText(/Balance date: 2026-10-30 \(date only\)/)).toHaveLength(2);
   });
 
@@ -93,14 +100,13 @@ describe("RunwayPanel", () => {
     expect(screen.queryByText(/common economy split/)).not.toBeInTheDocument();
   });
 
-  it("formats negative net monthly spending with a minus sign", async () => {
+  it("keeps month-level spending amounts off Bills", async () => {
     payload.observations[0].owners[1].spending = -1500;
     payload.observations[0].household_spending = -250;
     render(<RunwayPanel />);
-    const july = await screen.findByRole("region", { name: "July 2026 observation" });
-    const negative = within(july).getByText("-1,500 kr");
-    expect(negative).toHaveClass("tabular-nums");
-    expect(within(july).getByText("-250 kr")).toHaveClass("tabular-nums");
+    await screen.findByText("1.3 months");
+    expect(screen.queryByText("-1,500 kr")).not.toBeInTheDocument();
+    expect(screen.queryByText("-250 kr")).not.toBeInTheDocument();
     expect(runwayMoney(-1500, "USD")).toBe("-1,500 USD");
   });
 
@@ -134,16 +140,26 @@ describe("RunwayPanel", () => {
     expect(screen.queryByText("June 2026")).not.toBeInTheDocument();
   });
 
-  it("renders qualified coverage/currency and tiny server-rounded ratios", async () => {
+  it("keeps invalid-source blockers visible on Bills", async () => {
+    payload.observations[0].status = "excluded";
+    payload.observations[0].coverage = "invalid";
+    payload.observations[0].issues = [issue("invalid_source", { month: "2026-07", severity: "blocking" })];
+    render(<RunwayPanel />);
+    await screen.findByText(/July 2026: Local source invalid/);
+  });
+
+  it("keeps metadata-only coverage and source-date qualifications off Bills", async () => {
     payload.household.runway_display = "<0.1";
     payload.household.runway_months = 0.001;
     payload.household.currency_status = "unverified";
-    payload.household.issues = [issue("coverage_unverified", { month: "2026-07" }), issue("currency_unverified"), issue("source_times_differ")];
+    payload.household.issues = [issue("coverage_unverified", { month: "2026-07" }), issue("currency_unverified"), issue("source_times_differ"), issue("source_date_unknown")];
+    payload.owners[0].issues = [issue("coverage_unverified", { month: "2026-07", partner_id: "owner_a" }), issue("source_date_unknown", { partner_id: "owner_a" })];
     render(<RunwayPanel />);
     await screen.findByText("<0.1 months");
-    expect(screen.getByText(/Month coverage unverified — recorded transactions only/)).toHaveTextContent("July 2026");
     expect(screen.getByText(/Single-currency assumption; currency unverified/)).toBeVisible();
-    expect(screen.getByText(/Sources collected at different times/)).toBeVisible();
+    expect(screen.queryByText(/Month coverage unverified|Sources collected at different times|Source collection date unknown/)).not.toBeInTheDocument();
+    expect(screen.getByText("Based on recorded PocketSmith transactions for the last three completed months.")).toBeVisible();
+    expect(screen.getByText(/^Included months:/)).toHaveTextContent("July 2026, August 2026, September 2026");
   });
 
   it.each([0, -2000])("preserves observed reserves %s without fabricating zero months", async (reserves) => {
@@ -263,7 +279,7 @@ describe("RunwayPanel", () => {
     await screen.findByText("1.3 months");
   });
 
-  it("masks zero, signed balances and observations on all text/attribute surfaces", async () => {
+  it("masks reserve amounts while no monthly spending amounts appear on Bills", async () => {
     payload.selected_accounts[0].balance = -2345;
     payload.selected_accounts[1].balance = 0;
     payload.observations[0].owners[0].spending = 0;
@@ -272,7 +288,7 @@ describe("RunwayPanel", () => {
     act(() => setAmountsHidden(true));
     const panel = screen.getByRole("region", { name: "Runway & Burn Rate" });
     expect(panel.innerHTML).not.toMatch(/2,345|0 kr|120,000|90,000|70,000/);
-    expect(within(panel).getAllByText("****").length).toBeGreaterThan(15);
+    expect(within(panel).getAllByText("****").length).toBeGreaterThan(5);
     expect(within(panel).getByText("1.3 months")).toBeVisible();
   });
 
@@ -307,7 +323,6 @@ describe("RunwayPanel", () => {
     expect(household).toHaveTextContent("90,000 kr");
     expect(household).toHaveTextContent("Incompatible currencies");
     expect(household).toHaveTextContent("Balance date unknown");
-    expect(household).toHaveTextContent("August 2026");
     expect(screen.queryByText("1.3 months")).not.toBeInTheDocument();
   });
 
@@ -329,7 +344,7 @@ describe("RunwayPanel", () => {
     render(<RunwayPanel />);
     await screen.findByText("1.3 months");
     expect(screen.getByRole("region", { name: "Partner B renamed runway" })).toHaveTextContent("0.5 months");
-    expect(screen.getByRole("region", { name: "July 2026 observation" })).toHaveTextContent("Partner B renamed");
+    expect(screen.queryByRole("region", { name: "July 2026 observation" })).not.toBeInTheDocument();
     expect(screen.getByText("Reserve B · Partner B renamed")).toBeVisible();
   });
 });
