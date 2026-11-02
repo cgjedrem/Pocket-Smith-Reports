@@ -159,6 +159,15 @@ As a household user sharing the screen, I want existing hide-amounts behavior to
 - **FR-029** *(SC-split, 2026-11-01)*: When the common-economy split is enabled and both split slots map to configured owners, owner monthly spending MUST equal that owner's Reports net minus their split delta. That is the fair share of split categories plus their own net on non-split categories, and owners sum to household. Otherwise owner spending is net by paying account owner. The response MUST expose `owner_attribution` (`common_economy_split | payer`) and `split_shares`.
 - **FR-030** *(2026-11-01)*: A Reports accounting error for one candidate month (for example an unmapped category or an unowned account) MUST exclude only that month with `invalid_source` and MUST NOT surface as a server error or leak source text. An invalid shared accounting configuration (section mapping, roles, catalog, split) makes classification unusable for every month (global `invalid_source`). Runway MUST evaluate the stable source snapshot, never re-read live files.
 
+### Current UI placement (2026-11-02)
+
+The backend response, issue severity, inclusion rules, and qualified/unavailable calculations above are unchanged. Current presentation separates summary from diagnostics:
+
+- **Bills → Runway & Burn Rate** shows runway measures, selected reserve accounts/settings, an exact included-month count and included-month names, and the note “Based on recorded PocketSmith transactions for the last three completed months.” It does not show the month-by-month coverage table or transaction-source provenance dates.
+- **Data coverage** is a routed page in the global navigation and linked from the Bills runway panel. It shows candidate/included months, monthly coverage and source dates, catalog/calculation dates, and safely formatted source diagnostics. It intentionally shows no spending or balance amounts.
+- `coverage_unverified`, `source_date_unknown`, `source_times_differ`, and `classification_unverified` remain backend qualifications and are presented on Data coverage rather than repeated in Bills. This placement does not imply verified or complete coverage. Known partial, invalid, or missing history, insufficient history, currency/selection failures, and stale balance/source warnings remain visible with the Bills result as applicable.
+- Selected-account balance dates and stale-balance details remain beside the account balances in Bills. The global amount-masking behavior remains in effect for Bills monetary values; the Data coverage page does not render money.
+
 ### Key Entities *(include if feature involves data)*
 
 - **Runway selection**: The explicitly saved set of unique liquid account identities; independent of account bindings. Missing/empty, valid, and invalid selections are distinguishable.

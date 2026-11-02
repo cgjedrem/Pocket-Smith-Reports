@@ -62,14 +62,17 @@ Open **Bills → Runway & Burn Rate** to compare explicitly selected liquid
 balances with **average monthly spending (net, as in Reports)**, per account
 owner and for the household. Runway loads independently, even when the current
 Bills snapshot is missing. Changing the Bills past/future window does not change
-Runway's previous-three-completed-month window.
+Runway's previous-three-completed-month window. Bills shows the included-month
+count and names, plus the note: “Based on recorded PocketSmith transactions for
+the last three completed months.”
 
 1. Expand **Liquid account settings**. No accounts are selected automatically.
 2. Choose eligible owned checking/savings accounts and click **Save selection**.
    This saves locally and refreshes Runway only; no sync is started.
-3. Read the selected accounts, exact included/excluded months, source dates, and
-   qualifications alongside the ratios. **Refresh runway** rereads local sources;
-   it does not fetch fresh bank data.
+3. Read runway measures and reserve/account qualifications in Bills. Use
+   **Data coverage** in the top navigation or the Bills link for month-by-month
+   coverage, transaction source dates, and source diagnostics. **Refresh runway**
+   rereads local sources; it does not fetch fresh bank data.
 
 **Clear selection** prepares an empty draft; click **Save selection** to apply it.
 **Reset changes** restores the last loaded selection. **Reload saved selection**
@@ -109,10 +112,13 @@ carries their split share (for example 60 / 40) of split-category spending plus
 their own net spending elsewhere, and owners sum to the household. Without the
 split, owner burn is what that partner's accounts paid (net).
 
-Missing balances, invalid history, nonpositive inputs, and currency conflicts have
-explicit unavailable reasons. Unknown coverage, currency, and source/balance dates
-remain qualified; recalculation does not make old data fresh. The ratio is
-descriptive, not a forecast or financial advice.
+Missing balances, partial/invalid/missing history, nonpositive inputs, and currency
+conflicts have explicit unavailable reasons. Unknown coverage, currency, and
+source/balance dates remain qualified and are not treated as verified completeness;
+coverage and transaction-source provenance are shown on **Data coverage**, while
+balance dates and stale-balance warnings remain with the selected accounts in Bills.
+Recalculation does not make old data fresh. The ratio is descriptive, not a forecast
+or financial advice.
 See the [API contract](docs/specs/003-runway-burn-rate/contracts/runway-api.md) and
 [synthetic validation guide](docs/specs/003-runway-burn-rate/quickstart.md).
 
