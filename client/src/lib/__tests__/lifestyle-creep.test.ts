@@ -113,4 +113,10 @@ describe("presentation boundary", () => {
     }
     expect(formatLifestylePercent("27.27272727", "")).toBe("27.27%");
   });
+  it("uses decimal text when finite conversion exceeds safe currency precision", () => {
+    const precise = "90071992547409921";
+    expect(formatLifestyleMoney(precise)).toBe("90,071,992,547,409,921 kr");
+    expect(formatLifestyleMoney(precise, true)).toBe("+90,071,992,547,409,921 kr");
+    expect(formatLifestyleMoney(`-${precise}`, true)).toBe("-90,071,992,547,409,921 kr");
+  });
 });

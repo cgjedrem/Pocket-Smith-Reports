@@ -39,6 +39,7 @@ from accounting import (  # noqa: E402
     has_income_records,
     load_category_parents,
     load_category_roles,
+    load_category_transfer_flags,
     load_detailed_section_mapping,
     load_partner_labels,
     load_split_config,
@@ -487,6 +488,7 @@ class AccountingInputs:
     category_roles: dict[str, str] | None
     category_parents: dict[str, str | None] | None
     split_config: dict[str, Any] | None
+    category_transfer_flags: dict[str, bool] | None = None
 
 
 def load_accounting_inputs(

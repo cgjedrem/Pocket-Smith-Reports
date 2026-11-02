@@ -75,10 +75,11 @@ def source():
             "1100005": {"partner_id": "partner_a", "type": "cc", "excluded": True},
         }}
     categories = [
-        {"id": 910001, "title": "Same", "children": [{"id": 910002, "title": "Same"}]},
+        {"id": 910001, "title": "Same", "is_transfer": False,
+         "children": [{"id": 910002, "title": "Same", "is_transfer": False}]},
         {"id": 910003, "title": "Transfer", "is_transfer": True},
-        {"id": 910004, "title": "CC Payment"},
-        {"id": 910005, "title": "Excluded"},
+        {"id": 910004, "title": "CC Payment", "is_transfer": False},
+        {"id": 910005, "title": "Excluded", "is_transfer": False},
     ]
     return dict(month="2026-07", transactions=[], account_mappings=mappings,
                 category_roles={"910005": "exclude"}, category_catalog=categories,

@@ -96,6 +96,10 @@ function chartNumber(raw: string, exact: ExactDecimal): number | null {
   const number = Number(raw);
   if (!Number.isFinite(number) || Math.abs(number) > Number.MAX_SAFE_INTEGER) return null;
   if ((number === 0) !== (exact.units === 0n)) return null;
+  const roundTrip = parseExactDecimal(String(number));
+  if (!roundTrip) return null;
+  const scale = Math.max(exact.scale, roundTrip.scale);
+  if (align(exact, scale) !== align(roundTrip, scale)) return null;
   return number;
 }
 

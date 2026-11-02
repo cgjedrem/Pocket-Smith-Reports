@@ -117,6 +117,22 @@ describe("lifestyleTrend trailing average", () => {
     expect(ok.points[2].trailingAverage).toBe("6672.835");
   });
 
+  it("rejects coordinates whose decimal round trip loses distinguishing digits", () => {
+    const result = trend([
+      ["2026-07", "100.000"],
+      ["2026-08", "100"],
+      ["2026-09", "100.00000000000000000001"],
+    ]);
+    expect(result.points[2].isAboveTrailingAverage).toBe(true);
+    expect(result.points[2].usage).toBeNull();
+    expect(result.plottable).toBe(false);
+    expect(trend([
+      ["2026-07", "100.000"],
+      ["2026-08", "100"],
+      ["2026-09", "100.00"],
+    ]).plottable).toBe(true);
+  });
+
   it.each(["abc", "Infinity", "NaN", "", "1,5", "--1"])("fails visibly on invalid amount %j", (amount) => {
     const result = lifestyleTrend([{ month: "2026-07", amount }], { month: "2026-07" });
     expect(result).toEqual({ status: "invalid", reason: "The 2026-07 amount is not an exact decimal." });

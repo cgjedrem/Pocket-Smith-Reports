@@ -121,7 +121,7 @@ def test_mega_regen_is_v2_and_clean(tmp_private_dir):
     _assert_no_legacy_strings(report)
 
 
-def test_bills_rebuild_emits_schema6_and_partner_id():
+def test_bills_rebuild_emits_schema7_and_partner_id():
     snapshot = bills_builder.build_bills_snapshot(
         month="2026-07",
         events=_ps_events(),
@@ -133,7 +133,7 @@ def test_bills_rebuild_emits_schema6_and_partner_id():
         live_combined=None,
         deltas_per_month=None,
     )
-    assert snapshot["schema_version"] == 6
+    assert snapshot["schema_version"] == 7
     assert {p["partner_id"] for p in snapshot["partners"]} == {
         "partner_a",
         "partner_b",

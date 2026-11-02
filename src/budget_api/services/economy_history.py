@@ -1,7 +1,7 @@
 """Sync-only report-population evidence. Never invoked by history GETs."""
 
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal, localcontext
 import hashlib
@@ -19,17 +19,27 @@ from v4_pipeline.data_loader import prepare_transactions
 class EconomyContext:
     inputs: report_builder.AccountingInputs
     excluded_account_ids: frozenset[str]
+    partner_labels: dict[str, str]
 
 
 def load_economy_context(month: str) -> EconomyContext:
     """Use exactly the report config loader, once per sync, with no report reads."""
+    inputs = report_builder.load_accounting_inputs(
+        month, private_dir=storage.PRIVATE_DATA_DIR,
+        account_mapping_path=storage.ACCOUNT_MAPPING_PATH,
+        split_config_path=storage.SPLIT_CONFIG_PATH,
+    )
+    if storage.CATEGORY_CATALOG_PATH.exists():
+        inputs = replace(
+            inputs,
+            category_transfer_flags=report_builder.load_category_transfer_flags(
+                storage.CATEGORY_CATALOG_PATH
+            ),
+        )
     return EconomyContext(
-        report_builder.load_accounting_inputs(
-            month, private_dir=storage.PRIVATE_DATA_DIR,
-            account_mapping_path=storage.ACCOUNT_MAPPING_PATH,
-            split_config_path=storage.SPLIT_CONFIG_PATH,
-        ),
+        inputs,
         frozenset(report_builder.load_excluded_account_ids(storage.ACCOUNT_MAPPING_PATH)),
+        report_builder._load_partner_labels()[0],
     )
 
 
@@ -53,6 +63,7 @@ def build_economy_history(
             return unavailable("invalid_source")
         inputs = context.inputs
         if (not inputs.category_parents
+                or not inputs.category_transfer_flags
                 or not inputs.detailed_section_mapping.get("category_sections")):
             return unavailable("missing_source_context")
         accounts = account_mappings.get("accounts")
@@ -84,6 +95,24 @@ def build_economy_history(
             amount = txn.get("amount")
             if isinstance(amount, bool) or not isinstance(amount, (int, float)) or not math.isfinite(amount):
                 return unavailable("invalid_source")
+            category = txn.get("category")
+            if category is not None:
+                if not isinstance(category, dict):
+                    return unavailable("invalid_source")
+                category_id = category.get("id")
+                if isinstance(category_id, bool) or not isinstance(category_id, (str, int)):
+                    return unavailable("invalid_source")
+                category_id = str(category_id)
+                transfer_flag = inputs.category_transfer_flags.get(category_id)
+                if type(transfer_flag) is not bool:
+                    return unavailable("invalid_source")
+                embedded_transfer = category.get("is_transfer")
+                if (embedded_transfer is not None
+                        and (type(embedded_transfer) is not bool
+                             or embedded_transfer != transfer_flag)):
+                    return unavailable("invalid_source")
+                if embedded_transfer is None and transfer_flag:
+                    return unavailable("invalid_source")
         prepared = prepare_transactions(month, deepcopy(transactions), set(context.excluded_account_ids))
         contract = report_builder.build_contract(prepared, inputs)
         mapping = contract.get("detailed_section_mapping")
@@ -99,6 +128,7 @@ def build_economy_history(
             "sections": inputs.detailed_section_mapping,
             "category_roles": inputs.category_roles,
             "parents": inputs.category_parents,
+            "category_transfers": inputs.category_transfer_flags,
             "slots": slots,
         }
         scope = "economy-spend-v1:" + hashlib.sha256(json.dumps(
@@ -116,7 +146,7 @@ def build_economy_history(
             slot = "" if gid == "shared" else gid[-1]
             pid = next((pid for pid, role in slots.items() if role == "partner_" + slot), None)
             label = ("Shared economy" if pid is None else
-                     account_mappings["partners"][pid].get("label") or f"Partner {slot.upper()}")
+                     context.partner_labels.get("partner_" + slot) or f"Partner {slot.upper()}")
             categories = {}
             uncategorized = "0"
             for category in category_groups:

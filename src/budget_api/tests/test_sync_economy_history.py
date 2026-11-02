@@ -32,6 +32,9 @@ def test_sync_acquires_once_and_persists_exact_report_population(report_sync):
     assert snapshot["schema_version"] == 7
     history = snapshot["economy_spend_history"]
     assert history["status"] == "complete"
+    assert [group["label"] for group in history["groups"]] == [
+        "Shared economy", "Partner A", "Partner B",
+    ]
     assert history["groups"][0]["categories"]["910001"]["amount"] == "8"
     assert snapshot["partners"][0]["cc_spend_history"]["categories"]["910001"]["amount"] == "10.3"
     assert len(history["groups"]) == 3
@@ -43,6 +46,18 @@ def test_sync_acquires_once_and_persists_exact_report_population(report_sync):
     assert report["detailed"]["home"]["total"] == 0
     assert sum(Decimal(c["amount"]) for c in history["groups"][0]["categories"].values()) == 8
     assert [g["categories"] for g in history["groups"][1:]] == [{}, {}]
+
+
+def test_sync_persists_report_configured_partner_labels(report_sync):
+    storage.atomic_write_json(storage.PARTNER_LABELS_PATH, {
+        "partner_a": "Ada Example", "partner_b": "Ben Example",
+    })
+    report_sync.get_transactions.return_value = [txn(-10.1)]
+    assert sync_runner.sync_all("2026-07", "2026-07").errors == []
+    history = storage.read_json(storage.bills_dashboard_path("2026-07"))["economy_spend_history"]
+    assert [group["label"] for group in history["groups"]] == [
+        "Shared economy", "Ada Example", "Ben Example",
+    ]
 
 
 def test_sync_empty_closed_month_is_zero_only_with_valid_report_config(report_sync):

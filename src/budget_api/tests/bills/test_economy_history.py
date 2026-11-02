@@ -30,8 +30,14 @@ def economy_source():
         category_roles=None,
         category_parents={cid: None for cid in sections} | {"910002": "910001"},
         split_config=None,
+        category_transfer_flags={cid: cid == "910003" for cid in sections} | {
+            "910002": False,
+        },
     )
-    return value, EconomyContext(inputs, frozenset({"1100005"}))
+    return value, EconomyContext(
+        inputs, frozenset({"1100005"}),
+        {"partner_a": "Partner A", "partner_b": "Partner B"},
+    )
 
 
 def build(value, context, acquired=None):
@@ -92,6 +98,10 @@ def test_scope_is_label_independent_and_covers_all_classification_policy():
     original = build(value, context).scope_key
     value["account_mappings"]["partners"]["partner_a"]["label"] = "Renamed"
     assert build(value, context).scope_key == original
+    labels_changed = replace(
+        context, partner_labels={"partner_a": "Ada Example", "partner_b": "Ben Example"}
+    )
+    assert build(value, labels_changed).scope_key == original
     for field, change in (
         ("category_parents", {"910002": "910010"}),
         ("detailed_section_mapping", {"category_sections": {"910001": "home"}, "account_roles": {}}),
@@ -126,6 +136,48 @@ def test_parent_remap_changes_population_not_card_owner():
     moved = build(value, replace(context, inputs=replace(context.inputs, detailed_section_mapping=changed)))
     assert moved.groups[0].categories == {}
     assert moved.groups[1].categories["910002"].amount == "10"
+
+
+def test_transfer_policy_changes_scope_and_embedded_mismatch_is_unavailable():
+    value, context = economy_source()
+    value["transactions"] = [txn(-10, 910001)]
+    before = build(value, context)
+    assert before.status == "complete"
+    assert before.groups[0].categories["910001"].amount == "10"
+
+    value["transactions"][0]["category"]["is_transfer"] = True
+    flags = context.inputs.category_transfer_flags | {"910001": True}
+    changed = replace(context, inputs=replace(context.inputs, category_transfer_flags=flags))
+    after = build(value, changed)
+    assert after.status == "complete"
+    assert after.scope_key != before.scope_key
+    assert after.groups[0].categories == {}
+
+    value["transactions"][0]["category"]["is_transfer"] = False
+    assert build(value, changed).reason == "invalid_source"
+
+
+@pytest.mark.parametrize("category", [[], "uncategorized", 42, False])
+def test_non_object_non_null_category_is_rejected_before_uncategorized_fallback(category):
+    value, context = economy_source()
+    malformed = txn(-4)
+    malformed["category"] = category
+    value["transactions"] = [malformed]
+    result = build(value, context)
+    assert result.status == "unavailable"
+    assert result.reason == "invalid_source"
+    assert result.groups is None
+
+
+def test_category_without_catalog_transfer_policy_is_unavailable():
+    value, context = economy_source()
+    value["transactions"] = [txn(-10, 910001)]
+    flags = dict(context.inputs.category_transfer_flags)
+    del flags["910001"]
+    context = replace(context, inputs=replace(context.inputs, category_transfer_flags=flags))
+    result = build(value, context)
+    assert result.status == "unavailable"
+    assert result.reason == "invalid_source"
 
 
 def test_savings_account_role_does_not_override_detailed_category_routing():

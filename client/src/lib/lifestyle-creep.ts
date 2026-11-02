@@ -91,7 +91,9 @@ export function lifestyleEvidenceMonths(start: string, end: string, target: stri
 export function formatLifestyleMoney(value: DecimalString, signed = false): string {
   if (isAmountsHidden()) return AMOUNT_MASK;
   const number = Number(value);
-  if (Number.isFinite(number)) return signed ? formatSignedKr(number) : formatKr(number);
+  if (Number.isFinite(number) && Math.abs(number) <= Number.MAX_SAFE_INTEGER) {
+    return signed ? formatSignedKr(number) : formatKr(number);
+  }
   const negative = value.startsWith("-");
   const [whole, fraction] = (negative ? value.slice(1) : value).split(".");
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
