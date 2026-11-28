@@ -249,7 +249,7 @@ Item has both reference value AND a deadline:
 
 ## Health Agent Exception
 
-The `health-agent` and `health-agent-rasma` agents have specialized inbox processing:
+The `health-agent` and `health-agent-<profile>` agents have specialized inbox processing:
 
 **Health Agent Inbox Model:**
 ```
@@ -262,7 +262,7 @@ The `health-agent` and `health-agent-rasma` agents have specialized inbox proces
 **Atomic Protocol:**
 Files move from `/Inbox/` to `/Reference/` after processing. Baseline data is always preserved in Reference for historical tracking.
 
-See `health-agent/SOUL.md` and `health-agent-rasma/SOUL.md` for the specialized health data model.
+See `health-agent/SOUL.md` and `health-agent-<profile>/SOUL.md` for the specialized health data model.
 
 ## Scribe Exception
 

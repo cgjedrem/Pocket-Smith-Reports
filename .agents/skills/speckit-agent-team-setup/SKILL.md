@@ -13,7 +13,7 @@ metadata:
 
 # Agent Team Setup
 
-This command installs the cgjedrem agent-team personas and supporting material that
+This command installs the standard agent-team personas and supporting material that
 shipped with the `agent-team` preset into the current project.
 
 The preset pack is on disk at `.specify/presets/agent-team/` relative to the

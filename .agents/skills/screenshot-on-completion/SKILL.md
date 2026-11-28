@@ -58,17 +58,19 @@ On completion of a UI coding task, the agent writes a task-specific Playwright s
 ### task3-write-script
 - **Purpose:** Write a custom Playwright script tailored to the features you just built. Do NOT reuse a generic script.
 - **How:**
-  - Create `/tmp/screenshot-task.cjs` (CommonJS, uses `require`)
+  - Create `.tmp-screenshots/screenshot-task.cjs` (CommonJS, uses `require`; create `.tmp-screenshots/` first)
   - Use the locally available Playwright installation path
   - For each screenshot scenario from task2:
     - Navigate to the correct route
     - Perform any interactions needed (click buttons, switch themes, open modals)
     - Wait for animations/settle (`waitForTimeout(2000)`)
-    - Capture with descriptive filename: `/tmp/screenshot-DESCRIPTION.png`
+    - Capture with descriptive filename: `.tmp-screenshots/screenshot-DESCRIPTION.png`
   - Close browser at the end
 - **Example structure:**
   ```js
+  const fs = require('fs');
   const { chromium } = require('<local-playwright-path>');
+  fs.mkdirSync('.tmp-screenshots', { recursive: true });
   (async () => {
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -76,12 +78,12 @@ On completion of a UI coding task, the agent writes a task-specific Playwright s
     // Screenshot 1: Theme A idle
     await page.goto('http://localhost:PORT/', { waitUntil: 'networkidle', timeout: 15000 });
     await page.waitForTimeout(3000);
-    await page.screenshot({ path: '/tmp/screenshot-theme-a-idle.png' });
+    await page.screenshot({ path: '.tmp-screenshots/screenshot-theme-a-idle.png' });
     
     // Screenshot 2: Settings modal open
     await page.locator('[aria-label="Settings"]').click();
     await page.waitForTimeout(800);
-    await page.screenshot({ path: '/tmp/screenshot-settings-modal.png' });
+    await page.screenshot({ path: '.tmp-screenshots/screenshot-settings-modal.png' });
     
     await browser.close();
   })();
@@ -94,22 +96,22 @@ On completion of a UI coding task, the agent writes a task-specific Playwright s
   - Use descriptive filenames: `screenshot-{feature}-{state}.png`
   - If theme switching requires specific clicks, code those interactions
   - If mobile viewport is relevant, add a second page context with `{ viewport: { width: 390, height: 844 } }`
-- **Output:** `/tmp/screenshot-task.cjs` + PNG files in `/tmp/screenshot-*.png`
+- **Output:** `.tmp-screenshots/screenshot-task.cjs` + PNG files in `.tmp-screenshots/screenshot-*.png`
 - **Success:** Script runs without errors, all screenshots captured
 
 ### task4-run-playwright
 - **Purpose:** Execute the task-specific Playwright script
 - **How:**
   ```bash
-  node /tmp/screenshot-task.cjs
+  node .tmp-screenshots/screenshot-task.cjs
   ```
 - **Validation:** Check that each screenshot file exists and is > 50KB (smaller files are likely blank/failed):
   ```bash
-  ls -la /tmp/screenshot-*.png
+  ls -la .tmp-screenshots/screenshot-*.png
   ```
   If any file is < 50KB, the screenshot likely failed. Debug and re-run.
 - **If fails:** Check error, fix selector or timing, retry once
-- **Output:** PNG files in `/tmp/screenshot-*.png`, each > 50KB
+- **Output:** PNG files in `.tmp-screenshots/screenshot-*.png`, each > 50KB
 - **Success:** All screenshots captured, script exits 0, all files > 50KB
 
 ### task5-upload-screenshots
@@ -124,13 +126,13 @@ On completion of a UI coding task, the agent writes a task-specific Playwright s
 - **Purpose:** Remove temporary files
 - **How:**
   ```bash
-  rm -f /tmp/screenshot-*.png /tmp/screenshot-task.cjs
+  rm -rf .tmp-screenshots
   ```
 - Also remove any screenshot scripts left in the project directory:
   ```bash
   rm -f screenshot-capture*.mjs screenshot-capture*.cjs
   ```
-- **Success:** No temp files left in /tmp, no screenshot scripts in project dir
+- **Success:** No temp files left in `.tmp-screenshots`, no screenshot scripts in project dir
 
 ---
 
@@ -157,7 +159,7 @@ On completion of a UI coding task, the agent writes a task-specific Playwright s
 - [ ] Task-specific Playwright script written for the features just built
 - [ ] All screenshot files exist and are > 50KB (blank captures indicate failure)
 - [ ] Screenshots uploaded to chat thread via messaging tool (not just "captured")
-- [ ] Temp files cleaned up (both /tmp and project directory)
+- [ ] Temp files cleaned up (both `.tmp-screenshots` and project directory)
 
 ---
 
