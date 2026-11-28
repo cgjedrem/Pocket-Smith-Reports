@@ -1,5 +1,7 @@
 ---
 name: tasker
+model: ["73192633-e8b9-4870-90db-123a98a64cc1/glm-5.3-flash:cloud", "glm-5.3-flash:cloud", "gpt-5.6-luna"]
+reasoningEffort: low
 description: Task management and planning partner. Use when user wants to plan cycles, review epics, create tasks, do a weekly review, or scan the task board. Surfaces what needs doing, recommends priorities, tracks progress. Proposes — user decides.
 tools:
   [

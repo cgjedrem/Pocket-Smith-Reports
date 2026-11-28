@@ -60,3 +60,7 @@ client/src/**/*.d.ts
 # OS
 .DS_Store
 Thumbs.db
+
+
+# APM dependencies
+apm_modules/

@@ -1,0 +1,15 @@
+name: pocket-smith-reports
+version: 1.0.0
+description: APM project for pocket-smith-reports
+# Which agent platforms to deploy to.
+# Resolution order: --target flag > this field > 'apm config set target'
+# > auto-detect from filesystem.
+# Accepted values: agent-skills, antigravity, claude, codex, copilot, cursor, gemini, grok-bot, grok-build, hermes, kiro, opencode, windsurf
+targets:
+  - copilot
+dependencies:
+  apm:
+    - enso-dev-beep/enso-skills-and-scripts/packages/pocket-smith-reports
+  mcp: []
+includes: auto
+scripts: {}
